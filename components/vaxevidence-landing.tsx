@@ -80,9 +80,7 @@ export default function VaxEvidenceLanding() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link href="/" className="flex items-center gap-2.5" aria-label="VaxEvidence Home">
-              <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center">
-                <FileText className="w-5 h-5 text-primary-foreground" />
-              </div>
+              <img src="/logo-final.svg" alt="VaxEvidence Logo" className="w-9 h-9" />
               <span className="text-xl font-bold text-foreground">VaxEvidence</span>
             </Link>
 
@@ -379,9 +377,7 @@ export default function VaxEvidenceLanding() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
             <div className="sm:col-span-2 lg:col-span-1">
               <Link href="/" className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <FileText className="w-4 h-4 text-primary-foreground" />
-                </div>
+                <img src="/logo-final.svg" alt="VaxEvidence Logo" className="w-8 h-8" />
                 <span className="text-lg font-bold text-foreground">VaxEvidence</span>
               </Link>
               <p className="text-muted-foreground text-sm leading-relaxed">
