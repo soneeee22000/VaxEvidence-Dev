@@ -8,15 +8,45 @@ import { Input } from "@/components/ui/input"
 import { fadeUp, stagger, viewportOnce } from "@/components/landing/motion"
 
 export default function CTASection() {
+  const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [submitted, setSubmitted] = useState(false)
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
+  const [message, setMessage] = useState("")
   const reduceMotion = useReducedMotion()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (email) {
+    setStatus("loading")
+    setMessage("")
+
+    try {
+      const response = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          email,
+          source: "landing-page",
+          honeypot: "",
+        }),
+      })
+
+      const payload = await response.json()
+      if (!response.ok) {
+        setStatus("error")
+        setMessage(payload?.error ?? "Something went wrong.")
+        return
+      }
+
+      setStatus("success")
       setSubmitted(true)
+      setName("")
+      setEmail("")
       setTimeout(() => setSubmitted(false), 3000)
+    } catch (error) {
+      setStatus("error")
+      setMessage("Network error. Please try again.")
     }
   }
 
@@ -45,6 +75,14 @@ export default function CTASection() {
             variants={fadeUp(0.2)}
           >
             <Input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Full name"
+              className="h-12 text-base"
+              aria-label="Full name"
+            />
+            <Input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -54,8 +92,13 @@ export default function CTASection() {
               aria-label="Email address"
             />
             <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}>
-              <Button type="submit" size="lg" className="shrink-0 shadow-soft">
-                Start Free Trial
+              <Button
+                type="submit"
+                size="lg"
+                className="shrink-0 shadow-soft"
+                disabled={status === "loading"}
+              >
+                {status === "loading" ? "Submitting..." : "Start Free Trial"}
               </Button>
             </motion.div>
           </motion.form>
@@ -69,6 +112,12 @@ export default function CTASection() {
             <p className="text-green-800 dark:text-green-200 font-medium">Thank you! We&apos;ll be in touch soon.</p>
           </motion.div>
         )}
+
+        {message ? (
+          <p className={`text-sm mt-4 ${status === "success" ? "text-emerald-600" : "text-rose-600"}`} aria-live="polite">
+            {message}
+          </p>
+        ) : null}
 
         <motion.p variants={fadeUp(0.25)} className="text-sm text-muted-foreground mt-4">
           No credit card required • 14-day free trial • Cancel anytime
