@@ -1,7 +1,7 @@
 import { createHash } from "crypto"
 import { NextRequest, NextResponse } from "next/server"
 
-import { supabaseAdmin } from "@/lib/supabase/server"
+import { getSupabaseAdmin } from "@/lib/supabase/server"
 import { normalizeWaitlistRequest, waitlistRequestSchema } from "@/lib/validators/waitlist"
 
 export const runtime = "nodejs"
@@ -68,6 +68,14 @@ export async function POST(request: NextRequest) {
 
   const ipHash = ip !== "unknown" ? hashIp(ip) : null
   const normalizedEmail = payload.email.toLowerCase()
+
+  let supabaseAdmin
+  try {
+    supabaseAdmin = getSupabaseAdmin()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Missing Supabase configuration."
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
 
   const { error: insertError } = await supabaseAdmin
     .from("waitlist_signups")
