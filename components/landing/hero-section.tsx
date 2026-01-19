@@ -10,19 +10,15 @@ import { fadeUp, stagger, viewportOnce } from "@/components/landing/motion"
 import { heroHighlights } from "@/components/landing/content"
 
 export default function HeroSection() {
-  const ref = useRef<HTMLDivElement | null>(null)
   const reduceMotion = useReducedMotion()
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start end", "end start"],
-  })
-  const parallaxY = useSpring(useTransform(scrollYProgress, [0, 1], [0, -40]), {
+  const { scrollY } = useScroll()
+  const parallaxY = useSpring(useTransform(scrollY, [0, 600], [0, -40]), {
     stiffness: 120,
     damping: 24,
   })
 
   return (
-    <section ref={ref} className="relative overflow-hidden">
+    <section className="relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute -top-40 right-10 h-72 w-72 rounded-full bg-primary/20 blur-3xl" />
         <div className="absolute bottom-10 left-10 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
