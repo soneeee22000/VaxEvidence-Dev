@@ -30,8 +30,11 @@ export default function LandingNav() {
             </a>
             <div className="flex items-center gap-2">
               <ThemeToggle />
-              <Button size="sm" className="shadow-soft">
-                Request Demo
+              <Button asChild size="sm" variant="outline">
+                <Link href="/auth">Log in</Link>
+              </Button>
+              <Button asChild size="sm" className="shadow-soft">
+                <Link href="/auth">Sign up</Link>
               </Button>
             </div>
           </div>
@@ -70,8 +73,22 @@ export default function LandingNav() {
                 <a href="#how-it-works" className="nav-link" onClick={() => setMobileMenuOpen(false)}>
                   How It Works
                 </a>
-                <Button size="sm" className="w-fit shadow-soft" onClick={() => setMobileMenuOpen(false)}>
-                  Request Demo
+                <Button
+                  asChild
+                  size="sm"
+                  variant="outline"
+                  className="w-fit"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <Link href="/auth">Log in</Link>
+                </Button>
+                <Button
+                  asChild
+                  size="sm"
+                  className="w-fit shadow-soft"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <Link href="/auth">Sign up</Link>
                 </Button>
               </motion.div>
             </motion.div>
