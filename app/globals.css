@@ -124,3 +124,28 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  .text-gradient {
+    background: linear-gradient(110deg, color-mix(in oklab, var(--primary) 88%, #ffffff), var(--primary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .shadow-soft {
+    box-shadow: 0 14px 40px -30px color-mix(in oklab, var(--primary) 35%, transparent);
+  }
+
+  .nav-link {
+    @apply text-muted-foreground hover:text-foreground transition-colors text-sm font-medium;
+  }
+
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+
+  .card-tilt {
+    transform-style: preserve-3d;
+  }
+}
