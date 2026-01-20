@@ -1,0 +1,4 @@
+ALTER TABLE evidence_items
+ADD COLUMN IF NOT EXISTS external_id TEXT,
+ADD COLUMN IF NOT EXISTS external_source TEXT,
+ADD COLUMN IF NOT EXISTS imported_at TIMESTAMPTZ;

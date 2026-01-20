@@ -673,6 +673,14 @@ export function PubMedSearch() {
 - [ ] Bulk import 10 papers at once
 - [ ] Test on mobile devices
 
+### Implementation Smoke Tests (Manual)
+
+1. Open the Evidence Library and use **Search PubMed** with a vaccine query.
+2. Import a PubMed result and confirm it appears in the library with title/authors.
+3. Use **Quick Import (DOI/PMID)** to preview metadata, then import.
+4. Search ClinicalTrials.gov and import a trial; confirm sponsor/phase appear.
+5. Verify imported items have auto-tags (e.g., safety, efficacy, Phase 3).
+
 ---
 
 ## Environment Variables

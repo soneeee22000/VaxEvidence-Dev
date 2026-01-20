@@ -119,6 +119,9 @@ export interface EvidenceItem {
   publication_date: string | null
   tags: string[]
   status: EvidenceStatus
+  external_id?: string | null
+  external_source?: string | null
+  imported_at?: string | null
   created_at: string
   updated_at: string
 }

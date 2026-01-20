@@ -19,6 +19,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { EvidenceCard } from "@/components/evidence/evidence-card"
+import { PubMedSearch } from "@/components/evidence/pubmed-search"
+import { QuickImport } from "@/components/evidence/quick-import"
+import { TrialSearch } from "@/components/evidence/trial-search"
 import {
   EvidenceFilters,
   type FilterState,
@@ -44,6 +47,16 @@ export default function EvidenceLibraryPage() {
     dateFrom: "",
     dateTo: "",
   })
+
+  const handleImportedEvidence = (item: EvidenceItem) => {
+    setEvidence((prev) => {
+      if (prev.some((existing) => existing.id === item.id)) return prev
+      return [item, ...prev]
+    })
+    if (item.tags && item.tags.length > 0) {
+      setAvailableTags((prev) => Array.from(new Set([...prev, ...item.tags])).sort())
+    }
+  }
 
   // Load evidence and tags
   useEffect(() => {
@@ -174,6 +187,20 @@ export default function EvidenceLibraryPage() {
             Browse and manage vaccine research evidence
           </p>
         </div>
+
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Search External Databases</CardTitle>
+            <CardDescription>
+              Import studies from PubMed, DOI/PMID, and ClinicalTrials.gov.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            <PubMedSearch onImported={handleImportedEvidence} />
+            <QuickImport onImported={handleImportedEvidence} />
+            <TrialSearch onImported={handleImportedEvidence} />
+          </CardContent>
+        </Card>
 
         {/* Search and Controls */}
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
