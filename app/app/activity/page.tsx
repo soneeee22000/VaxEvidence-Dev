@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { ActivityFeed } from "@/components/collaboration/activity-feed"
+import { ActivityExportMenu } from "@/components/export/activity-export-menu"
 import { fetchActivityLog } from "@/lib/supabase/activity"
 import type { ActivityLogWithUser } from "@/lib/validators/activity"
 
@@ -39,10 +40,15 @@ export default function ActivityPage() {
       <div className="mx-auto w-full max-w-4xl">
         <Card>
           <CardHeader>
-            <CardTitle>Activity Feed</CardTitle>
-            <CardDescription>
-              Recent activity across all protocols, evidence, and datasets
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Activity Feed</CardTitle>
+                <CardDescription>
+                  Recent activity across all protocols, evidence, and datasets
+                </CardDescription>
+              </div>
+              <ActivityExportMenu />
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (

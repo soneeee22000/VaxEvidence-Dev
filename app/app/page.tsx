@@ -13,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { WorkspaceExportButton } from "@/components/export/workspace-export-button"
 import { removeAuthCookie, DEV_USER } from "@/lib/auth/dev-auth"
 import {
   fetchProtocols,
@@ -80,6 +81,7 @@ export default function AppDashboardPage() {
                   Evidence Library
                 </Link>
               </Button>
+              <WorkspaceExportButton />
               <Button asChild>
                 <Link href="/app/new">New protocol</Link>
               </Button>

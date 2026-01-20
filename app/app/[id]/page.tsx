@@ -70,6 +70,7 @@ import { useToast } from "@/hooks/use-toast"
 import { CommentThread } from "@/components/collaboration/comment-thread"
 import { CommentInput } from "@/components/collaboration/comment-input"
 import { ReviewPanel } from "@/components/collaboration/review-panel"
+import { ExportMenu } from "@/components/export/export-menu"
 import { fetchComments, createComment, updateComment, deleteComment } from "@/lib/supabase/comments"
 import { fetchReviews, requestReview, submitReviewDecision, cancelReview } from "@/lib/supabase/reviews"
 import { buildCommentThreads, type CommentWithUser } from "@/lib/validators/comment"
@@ -797,6 +798,11 @@ export default function ProtocolDetailPage() {
                   <Link href="/app">Back to dashboard</Link>
                 </Button>
                 <div className="flex flex-wrap gap-2">
+                  <ExportMenu
+                    protocolId={protocolId}
+                    protocolTitle={protocol.title}
+                    hasEvidence={linkedEvidence.length > 0}
+                  />
                   <Button 
                     type="button" 
                     variant="outline" 
