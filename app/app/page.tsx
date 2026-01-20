@@ -19,6 +19,7 @@ import {
   seedSampleProtocols,
   type Protocol,
 } from "@/lib/storage/protocols"
+import { BookOpen } from "lucide-react"
 
 export default function AppDashboardPage() {
   const router = useRouter()
@@ -71,6 +72,12 @@ export default function AppDashboardPage() {
               </CardDescription>
             </div>
             <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline">
+                <Link href="/app/evidence">
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  Evidence Library
+                </Link>
+              </Button>
               <Button asChild>
                 <Link href="/app/new">New protocol</Link>
               </Button>

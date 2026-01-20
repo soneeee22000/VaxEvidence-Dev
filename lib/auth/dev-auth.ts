@@ -14,9 +14,9 @@ const DEV_CREDENTIALS = {
 // Cookie name for auth state
 const AUTH_COOKIE_NAME = "vaxevidence_dev_auth"
 
-// Dev user info
+// Dev user info (must match UUID in Supabase auth.users)
 export const DEV_USER = {
-  id: "dev-user-001",
+  id: "550e8400-e29b-41d4-a716-446655440000",
   email: "admin@vaxevidence.dev",
   name: "Dev Admin",
 } as const
