@@ -32,13 +32,13 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { supabase } from "@/lib/supabase/client"
 import {
-  deleteProtocol,
-  fetchProtocolById,
+  getProtocolById,
   updateProtocol,
-  type ProtocolRecord,
-} from "@/lib/supabase/protocols"
+  deleteProtocol,
+  type Protocol,
+  type ProtocolStatus,
+} from "@/lib/storage/protocols"
 import { protocolSchema, type ProtocolFormValues } from "@/lib/validators/protocol"
 
 export default function ProtocolDetailPage() {
@@ -46,7 +46,7 @@ export default function ProtocolDetailPage() {
   const params = useParams<{ id: string }>()
   const protocolId = params?.id
 
-  const [protocol, setProtocol] = useState<ProtocolRecord | null>(null)
+  const [protocol, setProtocol] = useState<Protocol | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -67,91 +67,76 @@ export default function ProtocolDetailPage() {
   })
 
   useEffect(() => {
-    let isMounted = true
-
-    const load = async () => {
-      const { data: sessionData } = await supabase.auth.getSession()
-      if (!isMounted) return
-      if (!sessionData.session) {
-        router.replace("/auth")
-        return
-      }
-
-      if (!protocolId || typeof protocolId !== "string") {
-        setError("Missing protocol ID.")
-        setIsLoading(false)
-        return
-      }
-
-      const { data, error: fetchError } = await fetchProtocolById(protocolId)
-      if (!isMounted) return
-      if (fetchError) {
-        setError(fetchError.message)
-        setIsLoading(false)
-        return
-      }
-      if (!data) {
-        setError("Protocol not found.")
-        setIsLoading(false)
-        return
-      }
-      setProtocol(data)
-      form.reset({
-        title: data.title,
-        study_question: data.study_question,
-        population: data.population,
-        comparator: data.comparator,
-        outcomes: data.outcomes,
-        design: data.design,
-        status: data.status,
-      })
+    if (!protocolId || typeof protocolId !== "string") {
+      setError("Missing protocol ID.")
       setIsLoading(false)
+      return
     }
 
-    load()
-
-    return () => {
-      isMounted = false
+    const data = getProtocolById(protocolId)
+    
+    if (!data) {
+      setError("Protocol not found.")
+      setIsLoading(false)
+      return
     }
-  }, [protocolId, router])
+    
+    setProtocol(data)
+    form.reset({
+      title: data.title,
+      study_question: data.study_question,
+      population: data.population,
+      comparator: data.comparator,
+      outcomes: data.outcomes,
+      design: data.design,
+      status: data.status,
+    })
+    setIsLoading(false)
+  }, [protocolId, form])
 
-  const handleSave = async (values: ProtocolFormValues) => {
+  const handleSave = (values: ProtocolFormValues) => {
     if (!protocolId || typeof protocolId !== "string") return
     setError(null)
     setIsSaving(true)
-    const { data, error: updateError } = await updateProtocol(protocolId, values)
-    setIsSaving(false)
 
-    if (updateError) {
-      setError(updateError.message)
-      return
-    }
-
-    if (data) {
-      setProtocol(data)
-      form.reset({
-        title: data.title,
-        study_question: data.study_question,
-        population: data.population,
-        comparator: data.comparator,
-        outcomes: data.outcomes,
-        design: data.design,
-        status: data.status,
+    try {
+      const updated = updateProtocol(protocolId, {
+        ...values,
+        status: values.status as ProtocolStatus,
       })
+
+      if (updated) {
+        setProtocol(updated)
+        form.reset({
+          title: updated.title,
+          study_question: updated.study_question,
+          population: updated.population,
+          comparator: updated.comparator,
+          outcomes: updated.outcomes,
+          design: updated.design,
+          status: updated.status,
+        })
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save protocol")
+    } finally {
+      setIsSaving(false)
     }
   }
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!protocolId || typeof protocolId !== "string") return
     if (!window.confirm("Delete this protocol? This cannot be undone.")) return
+    
     setIsDeleting(true)
-    const { error: deleteError } = await deleteProtocol(protocolId)
-    setIsDeleting(false)
-    if (deleteError) {
-      setError(deleteError.message)
-      return
+    const deleted = deleteProtocol(protocolId)
+    
+    if (deleted) {
+      router.push("/app")
+    } else {
+      setError("Failed to delete protocol")
+      setIsDeleting(false)
     }
-    router.push("/app")
   }
 
   if (isLoading) {
@@ -295,7 +280,7 @@ export default function ProtocolDetailPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Status</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger className="w-full">
                               <SelectValue placeholder="Select status" />
@@ -318,7 +303,12 @@ export default function ProtocolDetailPage() {
                   <Link href="/app">Back to dashboard</Link>
                 </Button>
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" onClick={handleDelete} disabled={isDeleting}>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={handleDelete} 
+                    disabled={isDeleting}
+                  >
                     {isDeleting ? "Deleting..." : "Delete"}
                   </Button>
                   <Button type="submit" disabled={isSaving}>

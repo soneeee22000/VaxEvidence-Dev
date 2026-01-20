@@ -1,54 +1,33 @@
 import { NextResponse, type NextRequest } from "next/server"
-import { createServerClient } from "@supabase/ssr"
+import { getAuthFromCookies } from "@/lib/auth/dev-auth"
 
-const getSupabaseUrl = () => {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  if (!url) {
-    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL")
-  }
-  return url
-}
+// =============================================================================
+// DEV-ONLY MIDDLEWARE
+// =============================================================================
+// Simple cookie-based auth check for development.
+// In production, replace with Supabase session validation.
+// =============================================================================
 
-const getSupabaseAnonKey = () => {
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!key) {
-    throw new Error("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY")
-  }
-  return key
-}
-
-export async function middleware(request: NextRequest) {
-  const response = NextResponse.next()
-  const supabase = createServerClient(getSupabaseUrl(), getSupabaseAnonKey(), {
-    cookies: {
-      get: (name) => request.cookies.get(name)?.value,
-      set: (name, value, options) => {
-        response.cookies.set({ name, value, ...options })
-      },
-      remove: (name, options) => {
-        response.cookies.set({ name, value: "", ...options, maxAge: 0 })
-      },
-    },
-  })
-
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  if (pathname.startsWith("/app") && !session) {
+  const cookieHeader = request.headers.get("cookie")
+  const isAuthenticated = getAuthFromCookies(cookieHeader)
+
+  // Protect /app routes - redirect to login if not authenticated
+  if (pathname.startsWith("/app") && !isAuthenticated) {
     const redirectUrl = request.nextUrl.clone()
     redirectUrl.pathname = "/auth"
     return NextResponse.redirect(redirectUrl)
   }
 
-  if (pathname.startsWith("/auth") && session) {
+  // Redirect authenticated users away from auth page
+  if (pathname.startsWith("/auth") && isAuthenticated) {
     const redirectUrl = request.nextUrl.clone()
     redirectUrl.pathname = "/app"
     return NextResponse.redirect(redirectUrl)
   }
 
-  return response
+  return NextResponse.next()
 }
 
 export const config = {

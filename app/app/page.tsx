@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
@@ -13,51 +13,32 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { supabase } from "@/lib/supabase/client"
-import { fetchProtocols, type ProtocolRecord } from "@/lib/supabase/protocols"
+import { removeAuthCookie, DEV_USER } from "@/lib/auth/dev-auth"
+import {
+  getProtocols,
+  seedSampleProtocols,
+  type Protocol,
+} from "@/lib/storage/protocols"
 
 export default function AppDashboardPage() {
   const router = useRouter()
-  const [email, setEmail] = useState<string | null>(null)
-  const [protocols, setProtocols] = useState<ProtocolRecord[]>([])
+  const [protocols, setProtocols] = useState<Protocol[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [isSigningOut, setIsSigningOut] = useState(false)
 
-  const hasProtocols = useMemo(() => protocols.length > 0, [protocols.length])
-
   useEffect(() => {
-    let isMounted = true
+    // Seed sample data on first load (for demo)
+    seedSampleProtocols(DEV_USER.id)
+    
+    // Load protocols from localStorage
+    const stored = getProtocols()
+    setProtocols(stored)
+    setIsLoading(false)
+  }, [])
 
-    const load = async () => {
-      const { data: sessionData } = await supabase.auth.getSession()
-      if (!isMounted) return
-      if (!sessionData.session) {
-        router.replace("/auth")
-        return
-      }
-      setEmail(sessionData.session.user.email ?? null)
-
-      const { data, error: fetchError } = await fetchProtocols()
-      if (!isMounted) return
-      if (fetchError) {
-        setError(fetchError.message)
-      } else {
-        setProtocols(data ?? [])
-      }
-      setIsLoading(false)
-    }
-
-    load()
-
-    return () => {
-      isMounted = false
-    }
-  }, [router])
-
-  const handleSignOut = async () => {
+  const handleSignOut = () => {
     setIsSigningOut(true)
-    await supabase.auth.signOut()
+    removeAuthCookie()
     router.replace("/auth")
   }
 
@@ -86,7 +67,7 @@ export default function AppDashboardPage() {
             <div>
               <CardTitle className="text-2xl">Protocol Builder</CardTitle>
               <CardDescription>
-                {email ? `Signed in as ${email}` : "Your authenticated workspace"}
+                Signed in as {DEV_USER.email}
               </CardDescription>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -99,12 +80,7 @@ export default function AppDashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {error && (
-              <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                {error}
-              </p>
-            )}
-            {!hasProtocols && !error && (
+            {protocols.length === 0 && (
               <div className="rounded-lg border border-dashed border-muted px-4 py-6 text-center text-muted-foreground">
                 <p className="text-base font-medium text-foreground">
                   No protocols yet
@@ -114,7 +90,7 @@ export default function AppDashboardPage() {
                 </p>
               </div>
             )}
-            {hasProtocols && (
+            {protocols.length > 0 && (
               <div className="grid gap-4 md:grid-cols-2">
                 {protocols.map((protocol) => (
                   <Card key={protocol.id} className="border-muted/70">
@@ -139,6 +115,11 @@ export default function AppDashboardPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Dev mode indicator */}
+        <div className="rounded-md bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-600 dark:text-amber-400">
+          <strong>Dev Mode:</strong> Data is stored in localStorage. This will be replaced with Supabase in production.
+        </div>
       </div>
     </main>
   )

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -33,8 +33,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { supabase } from "@/lib/supabase/client"
-import { createProtocol } from "@/lib/supabase/protocols"
+import { DEV_USER } from "@/lib/auth/dev-auth"
+import { createProtocol, type ProtocolStatus } from "@/lib/storage/protocols"
 import { protocolSchema, type ProtocolFormValues } from "@/lib/validators/protocol"
 
 const defaultValues: ProtocolFormValues = {
@@ -49,7 +49,6 @@ const defaultValues: ProtocolFormValues = {
 
 export default function NewProtocolPage() {
   const router = useRouter()
-  const [userId, setUserId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -59,44 +58,21 @@ export default function NewProtocolPage() {
     mode: "onTouched",
   })
 
-  useEffect(() => {
-    let isMounted = true
-
-    supabase.auth.getSession().then(({ data }) => {
-      if (!isMounted) return
-      if (!data.session) {
-        router.replace("/auth")
-        return
-      }
-      setUserId(data.session.user.id)
-    })
-
-    return () => {
-      isMounted = false
-    }
-  }, [router])
-
-  const handleSubmit = async (values: ProtocolFormValues) => {
+  const handleSubmit = (values: ProtocolFormValues) => {
     setError(null)
-    if (!userId) {
-      setError("Missing user session. Please sign in again.")
-      return
-    }
-
     setIsSubmitting(true)
-    const { data, error: createError } = await createProtocol({
-      ...values,
-      user_id: userId,
-    })
-    setIsSubmitting(false)
 
-    if (createError) {
-      setError(createError.message)
-      return
-    }
+    try {
+      const newProtocol = createProtocol({
+        ...values,
+        status: values.status as ProtocolStatus,
+        user_id: DEV_USER.id,
+      })
 
-    if (data?.id) {
-      router.push(`/app/${data.id}`)
+      router.push(`/app/${newProtocol.id}`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create protocol")
+      setIsSubmitting(false)
     }
   }
 
