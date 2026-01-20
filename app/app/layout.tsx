@@ -10,7 +10,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { removeAuthCookie, DEV_USER } from "@/lib/auth/dev-auth"
-import { FileText, BookOpen, LogOut } from "lucide-react"
+import { FileText, BookOpen, Database, LogOut } from "lucide-react"
 import { useState } from "react"
 
 export default function AppLayout({
@@ -34,6 +34,12 @@ export default function AppLayout({
       label: "Protocols",
       icon: FileText,
       exact: true,
+    },
+    {
+      href: "/app/datasets",
+      label: "Datasets",
+      icon: Database,
+      exact: false,
     },
     {
       href: "/app/evidence",

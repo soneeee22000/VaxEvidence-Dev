@@ -15,26 +15,28 @@ import {
 } from "@/components/ui/card"
 import { removeAuthCookie, DEV_USER } from "@/lib/auth/dev-auth"
 import {
-  getProtocols,
-  seedSampleProtocols,
-  type Protocol,
-} from "@/lib/storage/protocols"
+  fetchProtocols,
+  type ProtocolRecord,
+} from "@/lib/supabase/protocols"
 import { BookOpen } from "lucide-react"
 
 export default function AppDashboardPage() {
   const router = useRouter()
-  const [protocols, setProtocols] = useState<Protocol[]>([])
+  const [protocols, setProtocols] = useState<ProtocolRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSigningOut, setIsSigningOut] = useState(false)
 
   useEffect(() => {
-    // Seed sample data on first load (for demo)
-    seedSampleProtocols(DEV_USER.id)
+    // Load protocols from Supabase
+    const loadProtocols = async () => {
+      const { data, error } = await fetchProtocols()
+      if (!error && data) {
+        setProtocols(data)
+      }
+      setIsLoading(false)
+    }
     
-    // Load protocols from localStorage
-    const stored = getProtocols()
-    setProtocols(stored)
-    setIsLoading(false)
+    loadProtocols()
   }, [])
 
   const handleSignOut = () => {
@@ -124,8 +126,8 @@ export default function AppDashboardPage() {
         </Card>
 
         {/* Dev mode indicator */}
-        <div className="rounded-md bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-600 dark:text-amber-400">
-          <strong>Dev Mode:</strong> Data is stored in localStorage. This will be replaced with Supabase in production.
+        <div className="rounded-md bg-blue-500/10 border border-blue-500/20 px-4 py-3 text-sm text-blue-600 dark:text-blue-400">
+          <strong>Dev Mode:</strong> Using Supabase database with dev authentication.
         </div>
       </div>
     </main>

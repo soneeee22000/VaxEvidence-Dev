@@ -43,12 +43,11 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import {
-  getProtocolById,
+  fetchProtocolById,
   updateProtocol,
   deleteProtocol,
-  type Protocol,
-  type ProtocolStatus,
-} from "@/lib/storage/protocols"
+  type ProtocolRecord,
+} from "@/lib/supabase/protocols"
 import { protocolSchema, type ProtocolFormValues } from "@/lib/validators/protocol"
 import {
   getLinkedEvidence,
@@ -57,7 +56,16 @@ import {
   unlinkEvidence,
 } from "@/lib/supabase/evidence"
 import type { EvidenceItem } from "@/lib/validators/evidence"
-import { Plus, X, ExternalLink, Search } from "lucide-react"
+import {
+  getLinkedDatasets,
+  fetchDatasets,
+  linkDatasetToProtocol,
+  unlinkDataset,
+  getDatasetFileUrl,
+} from "@/lib/supabase/datasets"
+import type { Dataset } from "@/lib/validators/dataset"
+import { formatFileSize } from "@/lib/validators/dataset"
+import { Plus, X, ExternalLink, Search, Download, Database } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function ProtocolDetailPage() {
@@ -66,7 +74,7 @@ export default function ProtocolDetailPage() {
   const protocolId = params?.id
   const { toast } = useToast()
 
-  const [protocol, setProtocol] = useState<Protocol | null>(null)
+  const [protocol, setProtocol] = useState<ProtocolRecord | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -78,6 +86,13 @@ export default function ProtocolDetailPage() {
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false)
   const [evidenceSearchQuery, setEvidenceSearchQuery] = useState("")
   const [selectedEvidenceIds, setSelectedEvidenceIds] = useState<Set<string>>(new Set())
+
+  // Dataset linking state
+  const [linkedDatasets, setLinkedDatasets] = useState<any[]>([])
+  const [availableDatasets, setAvailableDatasets] = useState<Dataset[]>([])
+  const [isDatasetDialogOpen, setIsDatasetDialogOpen] = useState(false)
+  const [datasetSearchQuery, setDatasetSearchQuery] = useState("")
+  const [selectedDatasetIds, setSelectedDatasetIds] = useState<Set<string>>(new Set())
 
   const form = useForm<ProtocolFormValues>({
     resolver: zodResolver(protocolSchema),
@@ -94,34 +109,38 @@ export default function ProtocolDetailPage() {
   })
 
   useEffect(() => {
-    if (!protocolId || typeof protocolId !== "string") {
-      setError("Missing protocol ID.")
+    const loadProtocol = async () => {
+      if (!protocolId || typeof protocolId !== "string") {
+        setError("Missing protocol ID.")
+        setIsLoading(false)
+        return
+      }
+
+      const { data, error } = await fetchProtocolById(protocolId)
+      
+      if (error || !data) {
+        setError(error?.message || "Protocol not found.")
+        setIsLoading(false)
+        return
+      }
+      
+      setProtocol(data)
+      form.reset({
+        title: data.title,
+        study_question: data.study_question,
+        population: data.population,
+        comparator: data.comparator,
+        outcomes: data.outcomes,
+        design: data.design,
+        status: data.status,
+      })
       setIsLoading(false)
-      return
+
+      // Load linked evidence
+      loadLinkedEvidence()
     }
 
-    const data = getProtocolById(protocolId)
-    
-    if (!data) {
-      setError("Protocol not found.")
-      setIsLoading(false)
-      return
-    }
-    
-    setProtocol(data)
-    form.reset({
-      title: data.title,
-      study_question: data.study_question,
-      population: data.population,
-      comparator: data.comparator,
-      outcomes: data.outcomes,
-      design: data.design,
-      status: data.status,
-    })
-    setIsLoading(false)
-
-    // Load linked evidence
-    loadLinkedEvidence()
+    loadProtocol()
   }, [protocolId, form])
 
   const loadLinkedEvidence = async () => {
@@ -145,6 +164,17 @@ export default function ProtocolDetailPage() {
       }
     } catch (error) {
       console.error("Error loading evidence:", error)
+    }
+  }
+
+  const loadAvailableDatasets = async () => {
+    try {
+      const { data, error } = await fetchDatasets()
+      if (!error && data) {
+        setAvailableDatasets(data)
+      }
+    } catch (error) {
+      console.error("Error loading datasets:", error)
     }
   }
 
@@ -206,6 +236,82 @@ export default function ProtocolDetailPage() {
     setSelectedEvidenceIds(newSelection)
   }
 
+  // Dataset linking handlers
+  const handleLinkDataset = async () => {
+    if (!protocolId || typeof protocolId !== "string" || selectedDatasetIds.size === 0) return
+
+    try {
+      for (const datasetId of selectedDatasetIds) {
+        await linkDatasetToProtocol(protocolId, datasetId)
+      }
+
+      toast({
+        title: "Success",
+        description: `Linked ${selectedDatasetIds.size} dataset(s)`,
+      })
+
+      setSelectedDatasetIds(new Set())
+      setIsDatasetDialogOpen(false)
+      loadLinkedDatasets()
+    } catch (error) {
+      console.error("Error linking dataset:", error)
+      toast({
+        title: "Error",
+        description: "Failed to link dataset",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleUnlinkDataset = async (linkId: string) => {
+    try {
+      const { error } = await unlinkDataset(linkId)
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to unlink dataset",
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "Success",
+        description: "Dataset unlinked successfully",
+      })
+      loadLinkedDatasets()
+    } catch (error) {
+      console.error("Error unlinking dataset:", error)
+    }
+  }
+
+  const handleDownloadDataset = async (storagePath: string) => {
+    try {
+      const { data, error } = await getDatasetFileUrl(storagePath)
+      if (error || !data) {
+        toast({
+          title: "Error",
+          description: "Failed to get download link",
+          variant: "destructive",
+        })
+        return
+      }
+      window.open(data.signedUrl, "_blank")
+    } catch (error) {
+      console.error("Error downloading dataset:", error)
+    }
+  }
+
+  const toggleDatasetSelection = (datasetId: string) => {
+    const newSelection = new Set(selectedDatasetIds)
+    if (newSelection.has(datasetId)) {
+      newSelection.delete(datasetId)
+    } else {
+      newSelection.add(datasetId)
+    }
+    setSelectedDatasetIds(newSelection)
+  }
+
   const filteredAvailableEvidence = availableEvidence.filter((item) => {
     if (!evidenceSearchQuery) return true
     const query = evidenceSearchQuery.toLowerCase()
@@ -216,27 +322,38 @@ export default function ProtocolDetailPage() {
     )
   })
 
-  const handleSave = (values: ProtocolFormValues) => {
+  const filteredAvailableDatasets = availableDatasets.filter((item) => {
+    if (!datasetSearchQuery) return true
+    const query = datasetSearchQuery.toLowerCase()
+    return (
+      item.name.toLowerCase().includes(query) ||
+      item.description.toLowerCase().includes(query) ||
+      item.tags.some((tag) => tag.toLowerCase().includes(query))
+    )
+  })
+
+  const handleSave = async (values: ProtocolFormValues) => {
     if (!protocolId || typeof protocolId !== "string") return
     setError(null)
     setIsSaving(true)
 
     try {
-      const updated = updateProtocol(protocolId, {
-        ...values,
-        status: values.status as ProtocolStatus,
-      })
+      const { data, error } = await updateProtocol(protocolId, values)
 
-      if (updated) {
-        setProtocol(updated)
+      if (error) {
+        throw new Error(error.message || "Failed to save protocol")
+      }
+
+      if (data) {
+        setProtocol(data)
         form.reset({
-          title: updated.title,
-          study_question: updated.study_question,
-          population: updated.population,
-          comparator: updated.comparator,
-          outcomes: updated.outcomes,
-          design: updated.design,
-          status: updated.status,
+          title: data.title,
+          study_question: data.study_question,
+          population: data.population,
+          comparator: data.comparator,
+          outcomes: data.outcomes,
+          design: data.design,
+          status: data.status,
         })
       }
     } catch (err) {
@@ -246,17 +363,22 @@ export default function ProtocolDetailPage() {
     }
   }
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!protocolId || typeof protocolId !== "string") return
     if (!window.confirm("Delete this protocol? This cannot be undone.")) return
     
     setIsDeleting(true)
-    const deleted = deleteProtocol(protocolId)
     
-    if (deleted) {
+    try {
+      const { error } = await deleteProtocol(protocolId)
+      
+      if (error) {
+        throw new Error(error.message || "Failed to delete protocol")
+      }
+      
       router.push("/app")
-    } else {
-      setError("Failed to delete protocol")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete protocol")
       setIsDeleting(false)
     }
   }
@@ -624,6 +746,222 @@ export default function ProtocolDetailPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => handleUnlinkEvidence(link.id)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Linked Datasets Section */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Linked Datasets</CardTitle>
+                <CardDescription>
+                  Data files supporting this protocol ({linkedDatasets.length})
+                </CardDescription>
+              </div>
+              <Dialog open={isDatasetDialogOpen} onOpenChange={setIsDatasetDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" onClick={loadAvailableDatasets}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Dataset
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+                  <DialogHeader>
+                    <DialogTitle>Link Dataset to Protocol</DialogTitle>
+                    <DialogDescription>
+                      Select datasets to link to this protocol
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="flex-1 overflow-hidden flex flex-col space-y-4">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        placeholder="Search datasets..."
+                        value={datasetSearchQuery}
+                        onChange={(e) => setDatasetSearchQuery(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
+                    <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+                      {filteredAvailableDatasets.map((item) => {
+                        const isLinked = linkedDatasets.some(
+                          (link: any) => link.dataset_id === item.id
+                        )
+                        const isSelected = selectedDatasetIds.has(item.id)
+
+                        return (
+                          <div
+                            key={item.id}
+                            className={`rounded-lg border p-3 cursor-pointer transition-colors ${
+                              isLinked
+                                ? "opacity-50 cursor-not-allowed"
+                                : isSelected
+                                  ? "border-primary bg-primary/5"
+                                  : "hover:border-muted-foreground/50"
+                            }`}
+                            onClick={() => !isLinked && toggleDatasetSelection(item.id)}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Database className="h-3 w-3 text-muted-foreground" />
+                                  <Badge variant="outline" className="text-xs capitalize">
+                                    {item.dataset_type.replace("_", " ")}
+                                  </Badge>
+                                  {isLinked && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      Already linked
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="font-medium text-sm line-clamp-1">
+                                  {item.name}
+                                </p>
+                                <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                                  {item.description}
+                                </p>
+                                <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                                  <span>{formatFileSize(item.file_size)}</span>
+                                  {item.row_count && (
+                                    <span>{item.row_count.toLocaleString()} rows</span>
+                                  )}
+                                </div>
+                              </div>
+                              {isSelected && !isLinked && (
+                                <div className="flex-shrink-0 h-5 w-5 rounded-full bg-primary flex items-center justify-center">
+                                  <svg
+                                    className="h-3 w-3 text-primary-foreground"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M5 13l4 4L19 7"
+                                    />
+                                  </svg>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                      {filteredAvailableDatasets.length === 0 && (
+                        <p className="text-center text-sm text-muted-foreground py-8">
+                          No datasets found
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setIsDatasetDialogOpen(false)
+                        setSelectedDatasetIds(new Set())
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleLinkDataset}
+                      disabled={selectedDatasetIds.size === 0}
+                    >
+                      Link {selectedDatasetIds.size > 0 && `(${selectedDatasetIds.size})`}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {linkedDatasets.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-8 text-center">
+                <p className="text-sm text-muted-foreground">
+                  No datasets linked yet. Click "Add Dataset" to link supporting data files.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {linkedDatasets.map((link: any) => (
+                  <div
+                    key={link.id}
+                    className="flex items-start justify-between gap-4 rounded-lg border p-4"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Database className="h-4 w-4 text-muted-foreground" />
+                        <Badge variant="outline" className="text-xs capitalize">
+                          {link.datasets.dataset_type.replace("_", " ")}
+                        </Badge>
+                        {link.datasets.status === "validated" && (
+                          <Badge variant="default" className="text-xs">
+                            Validated
+                          </Badge>
+                        )}
+                      </div>
+                      <h4 className="font-medium mb-1">{link.datasets.name}</h4>
+                      <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                        {link.datasets.description}
+                      </p>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
+                        <span>{formatFileSize(link.datasets.file_size)}</span>
+                        {link.datasets.row_count && (
+                          <span>
+                            {link.datasets.row_count.toLocaleString()} rows × {link.datasets.column_count} cols
+                          </span>
+                        )}
+                      </div>
+                      {link.note && (
+                        <div className="mt-2 rounded-md bg-muted/50 p-2">
+                          <p className="text-xs text-muted-foreground">
+                            <strong>Note:</strong> {link.note}
+                          </p>
+                        </div>
+                      )}
+                      {link.datasets.tags && link.datasets.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {link.datasets.tags.slice(0, 3).map((tag: string) => (
+                            <Badge key={tag} variant="secondary" className="text-xs">
+                              {tag}
+                            </Badge>
+                          ))}
+                          {link.datasets.tags.length > 3 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{link.datasets.tags.length - 3}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDownloadDataset(link.datasets.storage_path)}
+                      >
+                        <Download className="h-3 w-3" />
+                      </Button>
+                      <Button variant="outline" size="sm" asChild>
+                        <Link href={`/app/datasets/${link.dataset_id}`}>
+                          <ExternalLink className="h-3 w-3" />
+                        </Link>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleUnlinkDataset(link.id)}
                       >
                         <X className="h-3 w-3" />
                       </Button>
