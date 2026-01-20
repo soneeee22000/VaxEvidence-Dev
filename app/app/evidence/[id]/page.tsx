@@ -46,9 +46,14 @@ import {
   evidenceStatuses,
   suggestedTags,
 } from "@/lib/validators/evidence"
-import { ArrowLeft, Edit, Save, Trash2, ExternalLink } from "lucide-react"
+import { ArrowLeft, Edit, Save, Trash2, ExternalLink, MessageSquare } from "lucide-react"
 import { DEV_USER } from "@/lib/auth/dev-auth"
 import { useToast } from "@/hooks/use-toast"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { CommentThread } from "@/components/collaboration/comment-thread"
+import { CommentInput } from "@/components/collaboration/comment-input"
+import { fetchComments, createComment, updateComment, deleteComment } from "@/lib/supabase/comments"
+import { buildCommentThreads, type CommentWithUser } from "@/lib/validators/comment"
 
 export default function EvidenceDetailPage() {
   const params = useParams()
@@ -60,6 +65,11 @@ export default function EvidenceDetailPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+
+  // Comments state
+  const [comments, setComments] = useState<CommentWithUser[]>([])
+  const [isLoadingComments, setIsLoadingComments] = useState(false)
+  const [commentCount, setCommentCount] = useState(0)
 
   // Form state
   const [formData, setFormData] = useState<Partial<EvidenceItem>>({})
@@ -91,6 +101,9 @@ export default function EvidenceDetailPage() {
         if (linksData) {
           setLinkedProtocols(linksData)
         }
+
+        // Load comments
+        loadComments()
       } catch (error) {
         console.error("Error loading evidence:", error)
       } finally {
@@ -100,6 +113,132 @@ export default function EvidenceDetailPage() {
 
     loadEvidence()
   }, [params.id, router, toast])
+
+  const loadComments = async () => {
+    if (!params.id || typeof params.id !== "string") return
+
+    setIsLoadingComments(true)
+    try {
+      const { data, error } = await fetchComments("evidence_item", params.id)
+      if (!error && data) {
+        setComments(data as CommentWithUser[])
+        setCommentCount(data.length)
+      }
+    } catch (error) {
+      console.error("Error loading comments:", error)
+    } finally {
+      setIsLoadingComments(false)
+    }
+  }
+
+  const handleCreateComment = async (content: string) => {
+    if (!params.id || typeof params.id !== "string") return
+
+    try {
+      const { data, error } = await createComment({
+        user_id: DEV_USER.id,
+        resource_type: "evidence_item",
+        resource_id: params.id,
+        content,
+        mentions: [],
+      })
+
+      if (error || !data) {
+        toast({
+          title: "Error",
+          description: "Failed to post comment",
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "Success",
+        description: "Comment posted successfully",
+      })
+      loadComments()
+    } catch (error) {
+      console.error("Error creating comment:", error)
+    }
+  }
+
+  const handleReplyComment = async (parentId: string, content: string) => {
+    if (!params.id || typeof params.id !== "string") return
+
+    try {
+      const { data, error } = await createComment({
+        user_id: DEV_USER.id,
+        resource_type: "evidence_item",
+        resource_id: params.id,
+        content,
+        parent_id: parentId,
+        mentions: [],
+      })
+
+      if (error || !data) {
+        toast({
+          title: "Error",
+          description: "Failed to post reply",
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "Success",
+        description: "Reply posted successfully",
+      })
+      loadComments()
+    } catch (error) {
+      console.error("Error replying to comment:", error)
+    }
+  }
+
+  const handleEditComment = async (commentId: string, content: string) => {
+    try {
+      const { error } = await updateComment(commentId, { content })
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to update comment",
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "Success",
+        description: "Comment updated successfully",
+      })
+      loadComments()
+    } catch (error) {
+      console.error("Error updating comment:", error)
+    }
+  }
+
+  const handleDeleteComment = async (commentId: string) => {
+    try {
+      const { error } = await deleteComment(commentId)
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete comment",
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "Success",
+        description: "Comment deleted successfully",
+      })
+      loadComments()
+    } catch (error) {
+      console.error("Error deleting comment:", error)
+    }
+  }
 
   const handleSave = async () => {
     if (!evidence || !params.id || typeof params.id !== "string") return
@@ -557,39 +696,74 @@ export default function EvidenceDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Linked Protocols */}
-        {linkedProtocols.length > 0 && (
-          <Card>
+        {/* Tabs: Linked Protocols & Comments */}
+        <Card>
+          <Tabs defaultValue="protocols" className="w-full">
             <CardHeader>
-              <CardTitle>Linked Protocols</CardTitle>
-              <CardDescription>
-                This evidence is linked to {linkedProtocols.length} protocol(s)
-              </CardDescription>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="protocols">
+                  Linked Protocols ({linkedProtocols.length})
+                </TabsTrigger>
+                <TabsTrigger value="comments">
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  Comments ({commentCount})
+                </TabsTrigger>
+              </TabsList>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {linkedProtocols.map((link: any) => (
-                  <div
-                    key={link.id}
-                    className="flex items-center justify-between rounded-lg border p-3"
-                  >
-                    <div>
-                      <p className="font-medium">{link.protocols.title}</p>
-                      {link.note && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {link.note}
-                        </p>
-                      )}
-                    </div>
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href={`/app/${link.protocol_id}`}>View</Link>
-                    </Button>
+              <TabsContent value="protocols" className="mt-0">
+                {linkedProtocols.length === 0 ? (
+                  <div className="rounded-lg border border-dashed p-8 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      This evidence is not linked to any protocols yet.
+                    </p>
                   </div>
-                ))}
-              </div>
+                ) : (
+                  <div className="space-y-3">
+                    {linkedProtocols.map((link: any) => (
+                      <div
+                        key={link.id}
+                        className="flex items-center justify-between rounded-lg border p-3"
+                      >
+                        <div>
+                          <p className="font-medium">{link.protocols.title}</p>
+                          {link.note && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {link.note}
+                            </p>
+                          )}
+                        </div>
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={`/app/${link.protocol_id}`}>View</Link>
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+              <TabsContent value="comments" className="mt-0 space-y-6">
+                <CommentInput
+                  onSubmit={handleCreateComment}
+                  placeholder="Share your thoughts about this evidence..."
+                />
+                
+                {isLoadingComments ? (
+                  <div className="text-center py-8 text-sm text-muted-foreground">
+                    Loading comments...
+                  </div>
+                ) : (
+                  <CommentThread
+                    comments={buildCommentThreads(comments)}
+                    currentUserId={DEV_USER.id}
+                    onReply={handleReplyComment}
+                    onEdit={handleEditComment}
+                    onDelete={handleDeleteComment}
+                  />
+                )}
+              </TabsContent>
             </CardContent>
-          </Card>
-        )}
+          </Tabs>
+        </Card>
       </div>
     </main>
   )

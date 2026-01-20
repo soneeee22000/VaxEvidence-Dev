@@ -67,6 +67,14 @@ import type { Dataset } from "@/lib/validators/dataset"
 import { formatFileSize } from "@/lib/validators/dataset"
 import { Plus, X, ExternalLink, Search, Download, Database } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { CommentThread } from "@/components/collaboration/comment-thread"
+import { CommentInput } from "@/components/collaboration/comment-input"
+import { ReviewPanel } from "@/components/collaboration/review-panel"
+import { fetchComments, createComment, updateComment, deleteComment } from "@/lib/supabase/comments"
+import { fetchReviews, requestReview, submitReviewDecision, cancelReview } from "@/lib/supabase/reviews"
+import { buildCommentThreads, type CommentWithUser } from "@/lib/validators/comment"
+import type { ReviewWithDetails, ReviewStatus } from "@/lib/validators/review"
+import { DEV_USER } from "@/lib/auth/dev-auth"
 
 export default function ProtocolDetailPage() {
   const router = useRouter()
@@ -93,6 +101,12 @@ export default function ProtocolDetailPage() {
   const [isDatasetDialogOpen, setIsDatasetDialogOpen] = useState(false)
   const [datasetSearchQuery, setDatasetSearchQuery] = useState("")
   const [selectedDatasetIds, setSelectedDatasetIds] = useState<Set<string>>(new Set())
+
+  // Collaboration state
+  const [comments, setComments] = useState<CommentWithUser[]>([])
+  const [reviews, setReviews] = useState<ReviewWithDetails[]>([])
+  const [isLoadingComments, setIsLoadingComments] = useState(false)
+  const [isLoadingReviews, setIsLoadingReviews] = useState(false)
 
   const form = useForm<ProtocolFormValues>({
     resolver: zodResolver(protocolSchema),
@@ -136,8 +150,11 @@ export default function ProtocolDetailPage() {
       })
       setIsLoading(false)
 
-      // Load linked evidence
+      // Load linked evidence and datasets
       loadLinkedEvidence()
+      loadLinkedDatasets()
+      loadComments()
+      loadReviews()
     }
 
     loadProtocol()
@@ -153,6 +170,19 @@ export default function ProtocolDetailPage() {
       }
     } catch (error) {
       console.error("Error loading linked evidence:", error)
+    }
+  }
+
+  const loadLinkedDatasets = async () => {
+    if (!protocolId || typeof protocolId !== "string") return
+
+    try {
+      const { data, error } = await getLinkedDatasets(protocolId)
+      if (!error && data) {
+        setLinkedDatasets(data)
+      }
+    } catch (error) {
+      console.error("Error loading linked datasets:", error)
     }
   }
 
@@ -175,6 +205,226 @@ export default function ProtocolDetailPage() {
       }
     } catch (error) {
       console.error("Error loading datasets:", error)
+    }
+  }
+
+  const loadComments = async () => {
+    if (!protocolId || typeof protocolId !== "string") return
+
+    setIsLoadingComments(true)
+    try {
+      const { data, error } = await fetchComments("protocol", protocolId)
+      if (!error && data) {
+        setComments(data as CommentWithUser[])
+      }
+    } catch (error) {
+      console.error("Error loading comments:", error)
+    } finally {
+      setIsLoadingComments(false)
+    }
+  }
+
+  const loadReviews = async () => {
+    if (!protocolId || typeof protocolId !== "string") return
+
+    setIsLoadingReviews(true)
+    try {
+      const { data, error } = await fetchReviews(protocolId)
+      if (!error && data) {
+        setReviews(data as ReviewWithDetails[])
+      }
+    } catch (error) {
+      console.error("Error loading reviews:", error)
+    } finally {
+      setIsLoadingReviews(false)
+    }
+  }
+
+  const handleCreateComment = async (content: string) => {
+    if (!protocolId || typeof protocolId !== "string") return
+
+    try {
+      const { data, error } = await createComment({
+        user_id: DEV_USER.id,
+        resource_type: "protocol",
+        resource_id: protocolId,
+        content,
+        mentions: [],
+      })
+
+      if (error || !data) {
+        toast({
+          title: "Error",
+          description: "Failed to post comment",
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "Success",
+        description: "Comment posted successfully",
+      })
+      loadComments()
+    } catch (error) {
+      console.error("Error creating comment:", error)
+    }
+  }
+
+  const handleReplyComment = async (parentId: string, content: string) => {
+    if (!protocolId || typeof protocolId !== "string") return
+
+    try {
+      const { data, error } = await createComment({
+        user_id: DEV_USER.id,
+        resource_type: "protocol",
+        resource_id: protocolId,
+        content,
+        parent_id: parentId,
+        mentions: [],
+      })
+
+      if (error || !data) {
+        toast({
+          title: "Error",
+          description: "Failed to post reply",
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "Success",
+        description: "Reply posted successfully",
+      })
+      loadComments()
+    } catch (error) {
+      console.error("Error replying to comment:", error)
+    }
+  }
+
+  const handleEditComment = async (commentId: string, content: string) => {
+    try {
+      const { error } = await updateComment(commentId, { content })
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to update comment",
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "Success",
+        description: "Comment updated successfully",
+      })
+      loadComments()
+    } catch (error) {
+      console.error("Error updating comment:", error)
+    }
+  }
+
+  const handleDeleteComment = async (commentId: string) => {
+    try {
+      const { error } = await deleteComment(commentId)
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete comment",
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "Success",
+        description: "Comment deleted successfully",
+      })
+      loadComments()
+    } catch (error) {
+      console.error("Error deleting comment:", error)
+    }
+  }
+
+  const handleRequestReview = async (reviewerId: string) => {
+    if (!protocolId || typeof protocolId !== "string") return
+
+    try {
+      const { data, error } = await requestReview({
+        protocol_id: protocolId,
+        reviewer_id: reviewerId,
+        requester_id: DEV_USER.id,
+      })
+
+      if (error || !data) {
+        toast({
+          title: "Error",
+          description: "Failed to request review",
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "Success",
+        description: "Review requested successfully",
+      })
+      loadReviews()
+    } catch (error) {
+      console.error("Error requesting review:", error)
+    }
+  }
+
+  const handleSubmitReviewDecision = async (
+    reviewId: string,
+    status: ReviewStatus,
+    decision: string
+  ) => {
+    try {
+      const { error } = await submitReviewDecision(reviewId, { status, decision })
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to submit review",
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "Success",
+        description: "Review submitted successfully",
+      })
+      loadReviews()
+    } catch (error) {
+      console.error("Error submitting review:", error)
+    }
+  }
+
+  const handleCancelReview = async (reviewId: string) => {
+    try {
+      const { error } = await cancelReview(reviewId)
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to cancel review",
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "Success",
+        description: "Review cancelled successfully",
+      })
+      loadReviews()
+    } catch (error) {
+      console.error("Error cancelling review:", error)
     }
   }
 
@@ -969,6 +1219,46 @@ export default function ProtocolDetailPage() {
                   </div>
                 ))}
               </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Reviews Section */}
+        <ReviewPanel
+          reviews={reviews}
+          currentUserId={DEV_USER.id}
+          protocolId={protocolId}
+          onRequestReview={handleRequestReview}
+          onSubmitDecision={handleSubmitReviewDecision}
+          onCancelReview={handleCancelReview}
+        />
+
+        {/* Comments Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Comments</CardTitle>
+            <CardDescription>
+              Discuss this protocol with your team
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <CommentInput
+              onSubmit={handleCreateComment}
+              placeholder="Share your thoughts about this protocol..."
+            />
+            
+            {isLoadingComments ? (
+              <div className="text-center py-8 text-sm text-muted-foreground">
+                Loading comments...
+              </div>
+            ) : (
+              <CommentThread
+                comments={buildCommentThreads(comments)}
+                currentUserId={DEV_USER.id}
+                onReply={handleReplyComment}
+                onEdit={handleEditComment}
+                onDelete={handleDeleteComment}
+              />
             )}
           </CardContent>
         </Card>

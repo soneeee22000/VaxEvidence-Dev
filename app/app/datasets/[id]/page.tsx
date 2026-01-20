@@ -54,6 +54,11 @@ import {
   type DatasetFormValues,
 } from "@/lib/validators/dataset"
 import { useToast } from "@/hooks/use-toast"
+import { CommentThread } from "@/components/collaboration/comment-thread"
+import { CommentInput } from "@/components/collaboration/comment-input"
+import { fetchComments, createComment, updateComment, deleteComment } from "@/lib/supabase/comments"
+import { buildCommentThreads, type CommentWithUser } from "@/lib/validators/comment"
+import { DEV_USER } from "@/lib/auth/dev-auth"
 import {
   Edit,
   Save,
@@ -84,6 +89,11 @@ export default function DatasetDetailPage() {
   } | null>(null)
   const [linkedProtocols, setLinkedProtocols] = useState<any[]>([])
 
+  // Comments state
+  const [comments, setComments] = useState<CommentWithUser[]>([])
+  const [isLoadingComments, setIsLoadingComments] = useState(false)
+  const [commentCount, setCommentCount] = useState(0)
+
   const form = useForm<DatasetFormValues>({
     resolver: zodResolver(datasetSchema),
     defaultValues: {
@@ -99,6 +109,7 @@ export default function DatasetDetailPage() {
     if (datasetId) {
       loadDataset()
       loadLinkedProtocols()
+      loadComments()
     }
   }, [datasetId])
 
@@ -136,6 +147,132 @@ export default function DatasetDetailPage() {
     const { data } = await getLinkedProtocols(datasetId)
     if (data) {
       setLinkedProtocols(data)
+    }
+  }
+
+  const loadComments = async () => {
+    if (!datasetId) return
+
+    setIsLoadingComments(true)
+    try {
+      const { data, error } = await fetchComments("dataset", datasetId)
+      if (!error && data) {
+        setComments(data as CommentWithUser[])
+        setCommentCount(data.length)
+      }
+    } catch (error) {
+      console.error("Error loading comments:", error)
+    } finally {
+      setIsLoadingComments(false)
+    }
+  }
+
+  const handleCreateComment = async (content: string) => {
+    if (!datasetId) return
+
+    try {
+      const { data, error } = await createComment({
+        user_id: DEV_USER.id,
+        resource_type: "dataset",
+        resource_id: datasetId,
+        content,
+        mentions: [],
+      })
+
+      if (error || !data) {
+        toast({
+          title: "Error",
+          description: "Failed to post comment",
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "Success",
+        description: "Comment posted successfully",
+      })
+      loadComments()
+    } catch (error) {
+      console.error("Error creating comment:", error)
+    }
+  }
+
+  const handleReplyComment = async (parentId: string, content: string) => {
+    if (!datasetId) return
+
+    try {
+      const { data, error } = await createComment({
+        user_id: DEV_USER.id,
+        resource_type: "dataset",
+        resource_id: datasetId,
+        content,
+        parent_id: parentId,
+        mentions: [],
+      })
+
+      if (error || !data) {
+        toast({
+          title: "Error",
+          description: "Failed to post reply",
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "Success",
+        description: "Reply posted successfully",
+      })
+      loadComments()
+    } catch (error) {
+      console.error("Error replying to comment:", error)
+    }
+  }
+
+  const handleEditComment = async (commentId: string, content: string) => {
+    try {
+      const { error } = await updateComment(commentId, { content })
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to update comment",
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "Success",
+        description: "Comment updated successfully",
+      })
+      loadComments()
+    } catch (error) {
+      console.error("Error updating comment:", error)
+    }
+  }
+
+  const handleDeleteComment = async (commentId: string) => {
+    try {
+      const { error } = await deleteComment(commentId)
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete comment",
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "Success",
+        description: "Comment deleted successfully",
+      })
+      loadComments()
+    } catch (error) {
+      console.error("Error deleting comment:", error)
     }
   }
 
@@ -365,6 +502,9 @@ export default function DatasetDetailPage() {
             </TabsTrigger>
             <TabsTrigger value="protocols">
               Linked Protocols ({linkedProtocols.length})
+            </TabsTrigger>
+            <TabsTrigger value="comments">
+              Comments ({commentCount})
             </TabsTrigger>
           </TabsList>
 
@@ -683,6 +823,38 @@ export default function DatasetDetailPage() {
                       </div>
                     ))}
                   </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Comments Tab */}
+          <TabsContent value="comments">
+            <Card>
+              <CardHeader>
+                <CardTitle>Comments</CardTitle>
+                <CardDescription>
+                  Discuss this dataset with your team
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <CommentInput
+                  onSubmit={handleCreateComment}
+                  placeholder="Share your thoughts about this dataset..."
+                />
+                
+                {isLoadingComments ? (
+                  <div className="text-center py-8 text-sm text-muted-foreground">
+                    Loading comments...
+                  </div>
+                ) : (
+                  <CommentThread
+                    comments={buildCommentThreads(comments)}
+                    currentUserId={DEV_USER.id}
+                    onReply={handleReplyComment}
+                    onEdit={handleEditComment}
+                    onDelete={handleDeleteComment}
+                  />
                 )}
               </CardContent>
             </Card>

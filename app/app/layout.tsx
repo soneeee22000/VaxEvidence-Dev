@@ -9,9 +9,11 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { removeAuthCookie, DEV_USER } from "@/lib/auth/dev-auth"
-import { FileText, BookOpen, Database, LogOut } from "lucide-react"
-import { useState } from "react"
+import { FileText, BookOpen, Database, LogOut, Activity } from "lucide-react"
+import { useState, useEffect } from "react"
+import { fetchPendingReviewCount } from "@/lib/supabase/reviews"
 
 export default function AppLayout({
   children,
@@ -21,6 +23,20 @@ export default function AppLayout({
   const pathname = usePathname()
   const router = useRouter()
   const [isSigningOut, setIsSigningOut] = useState(false)
+  const [pendingReviewCount, setPendingReviewCount] = useState(0)
+
+  useEffect(() => {
+    const loadPendingReviews = async () => {
+      const { data } = await fetchPendingReviewCount(DEV_USER.id)
+      if (data !== null) {
+        setPendingReviewCount(data)
+      }
+    }
+    loadPendingReviews()
+    // Refresh every 30 seconds
+    const interval = setInterval(loadPendingReviews, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   const handleSignOut = () => {
     setIsSigningOut(true)
@@ -46,6 +62,13 @@ export default function AppLayout({
       label: "Evidence Library",
       icon: BookOpen,
       exact: false,
+    },
+    {
+      href: "/app/activity",
+      label: "Activity",
+      icon: Activity,
+      exact: false,
+      badge: pendingReviewCount > 0 ? pendingReviewCount : undefined,
     },
   ]
 
@@ -74,12 +97,17 @@ export default function AppLayout({
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary ${
+                  className={`flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary relative ${
                     active ? "text-foreground" : "text-muted-foreground"
                   }`}
                 >
                   <Icon className="h-4 w-4" />
                   {link.label}
+                  {link.badge && (
+                    <Badge variant="destructive" className="ml-1 px-1.5 py-0 text-xs">
+                      {link.badge}
+                    </Badge>
+                  )}
                 </Link>
               )
             })}
