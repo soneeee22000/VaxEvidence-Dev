@@ -30,7 +30,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   let body: { pmid?: string }
   try {
+    console.log("API /import/pmid called")
     body = await request.json()
+    console.log("Request body:", body)
   } catch {
     return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 })
   }
@@ -43,13 +45,20 @@ export async function POST(request: NextRequest) {
   let supabaseAdmin
   try {
     supabaseAdmin = getSupabaseAdmin()
+    console.log("Supabase admin client created")
   } catch (error) {
     const message = error instanceof Error ? error.message : "Missing Supabase configuration."
+    console.error("Supabase admin init failed:", message)
     return NextResponse.json({ error: message }, { status: 500 })
   }
 
   try {
     const article = await fetchPubMedArticle(pmid)
+    console.log("Fetched PubMed article:", {
+      pmid: article.pmid,
+      title: article.title,
+      doi: article.doi,
+    })
     const tags = autoTagEvidence([
       article.title,
       article.abstract ?? "",
@@ -64,6 +73,7 @@ export async function POST(request: NextRequest) {
         .eq("doi", article.doi)
         .limit(1)
       if (existing && existing.length > 0) {
+        console.log("PubMed article already exists (DOI match)", article.doi)
         return NextResponse.json({ evidence: existing[0], existing: true })
       }
     } else {
@@ -73,6 +83,7 @@ export async function POST(request: NextRequest) {
         .eq("title", article.title)
         .limit(1)
       if (existing && existing.length > 0) {
+        console.log("PubMed article already exists (title match)", article.title)
         return NextResponse.json({ evidence: existing[0], existing: true })
       }
     }
@@ -94,7 +105,19 @@ export async function POST(request: NextRequest) {
       imported_at: new Date().toISOString(),
     }
 
+    console.log("Prepared payload:", {
+      title: payload.title,
+      doi: payload.doi,
+      journal: payload.journal,
+      external_id: payload.external_id,
+    })
     const { data, error } = await insertEvidenceWithFallback(supabaseAdmin, payload)
+
+    console.log(
+      "Insert attempt",
+      data ? "success" : "failure",
+      error ? error.message : undefined
+    )
 
     if (error || !data) {
       return NextResponse.json({ error: "Failed to import PMID" }, { status: 500 })
