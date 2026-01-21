@@ -38,6 +38,7 @@ export function TrialSearch({ onImported }: TrialSearchProps) {
   const [isSearching, setIsSearching] = useState(false)
   const [importing, setImporting] = useState<Record<string, boolean>>({})
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  const [imported, setImported] = useState<Record<string, boolean>>({})
 
   const handleSearch = async () => {
     if (!query.trim()) return
@@ -86,6 +87,7 @@ export function TrialSearch({ onImported }: TrialSearchProps) {
           : "Clinical trial imported successfully.",
       })
 
+      setImported((prev) => ({ ...prev, [trial.nctId]: true }))
       onImported?.(data.evidence)
     } catch (error) {
       console.error("ClinicalTrials import failed:", error)
@@ -160,7 +162,11 @@ export function TrialSearch({ onImported }: TrialSearchProps) {
                       onClick={(event) => handleImport(trial, event)}
                       disabled={importing[trial.nctId]}
                     >
-                      {importing[trial.nctId] ? "Importing..." : "Import"}
+                      {importing[trial.nctId]
+                        ? "Importing..."
+                        : imported[trial.nctId]
+                          ? "Imported"
+                          : "Import"}
                     </Button>
                   </div>
                   {expanded[trial.nctId] && (

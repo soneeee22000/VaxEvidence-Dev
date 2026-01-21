@@ -35,6 +35,7 @@ export function PubMedSearch({ onImported }: PubMedSearchProps) {
   const [abstracts, setAbstracts] = useState<Record<string, string>>({})
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [importing, setImporting] = useState<Record<string, boolean>>({})
+  const [imported, setImported] = useState<Record<string, boolean>>({})
 
   const handleSearch = async () => {
     if (!query.trim()) return
@@ -96,6 +97,7 @@ export function PubMedSearch({ onImported }: PubMedSearchProps) {
           : "PubMed article imported successfully.",
       })
 
+      setImported((prev) => ({ ...prev, [pmid]: true }))
       onImported?.(data.evidence)
     } catch (error) {
       console.error("PubMed import failed:", error)
@@ -166,7 +168,11 @@ export function PubMedSearch({ onImported }: PubMedSearchProps) {
                       onClick={(event) => handleImport(article.pmid, event)}
                       disabled={importing[article.pmid]}
                     >
-                      {importing[article.pmid] ? "Importing..." : "Import"}
+                      {importing[article.pmid]
+                        ? "Importing..."
+                        : imported[article.pmid]
+                          ? "Imported"
+                          : "Import"}
                     </Button>
                   </div>
                   {expanded[article.pmid] && (
