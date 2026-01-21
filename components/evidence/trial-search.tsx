@@ -99,7 +99,7 @@ export function TrialSearch({ onImported }: TrialSearchProps) {
 
   return (
     <>
-      <Button variant="outline" onClick={() => setOpen(true)}>
+      <Button variant="outline" type="button" onClick={() => setOpen(true)}>
         Search Clinical Trials
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
@@ -115,7 +115,7 @@ export function TrialSearch({ onImported }: TrialSearchProps) {
                 placeholder="COVID-19 vaccine Phase 3..."
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               />
-              <Button onClick={handleSearch} disabled={isSearching}>
+              <Button type="button" onClick={handleSearch} disabled={isSearching}>
                 {isSearching ? "Searching..." : "Search"}
               </Button>
             </div>
@@ -142,6 +142,7 @@ export function TrialSearch({ onImported }: TrialSearchProps) {
                     <Button
                       size="sm"
                       variant="outline"
+                      type="button"
                       onClick={() =>
                         setExpanded((prev) => ({
                           ...prev,
@@ -153,6 +154,7 @@ export function TrialSearch({ onImported }: TrialSearchProps) {
                     </Button>
                     <Button
                       size="sm"
+                      type="button"
                       onClick={() => handleImport(trial)}
                       disabled={importing[trial.nctId]}
                     >

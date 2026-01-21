@@ -112,7 +112,7 @@ export function PubMedSearch({ onImported }: PubMedSearchProps) {
 
   return (
     <>
-      <Button variant="outline" onClick={() => setOpen(true)}>
+      <Button variant="outline" type="button" onClick={() => setOpen(true)}>
         Search PubMed
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
@@ -128,7 +128,7 @@ export function PubMedSearch({ onImported }: PubMedSearchProps) {
                 placeholder="mRNA vaccine efficacy..."
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               />
-              <Button onClick={handleSearch} disabled={isSearching}>
+              <Button type="button" onClick={handleSearch} disabled={isSearching}>
                 {isSearching ? "Searching..." : "Search"}
               </Button>
             </div>
@@ -156,12 +156,14 @@ export function PubMedSearch({ onImported }: PubMedSearchProps) {
                     <Button
                       size="sm"
                       variant="outline"
+                      type="button"
                       onClick={() => toggleAbstract(article.pmid)}
                     >
                       {expanded[article.pmid] ? "Hide Abstract" : "View Abstract"}
                     </Button>
                     <Button
                       size="sm"
+                      type="button"
                       onClick={() => handleImport(article.pmid)}
                       disabled={importing[article.pmid]}
                     >

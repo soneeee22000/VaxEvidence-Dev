@@ -12,6 +12,62 @@ const buildDescription = (article: { abstract?: string; pmid: string }) => {
   return `Imported from PubMed (PMID: ${article.pmid}).`
 }
 
+const MONTH_LOOKUP: Record<string, number> = {
+  jan: 1,
+  january: 1,
+  feb: 2,
+  february: 2,
+  mar: 3,
+  march: 3,
+  apr: 4,
+  april: 4,
+  may: 5,
+  jun: 6,
+  june: 6,
+  jul: 7,
+  july: 7,
+  aug: 8,
+  august: 8,
+  sep: 9,
+  sept: 9,
+  september: 9,
+  oct: 10,
+  october: 10,
+  nov: 11,
+  november: 11,
+  dec: 12,
+  december: 12,
+}
+
+const normalizePubMedDate = (pubDate?: string) => {
+  if (!pubDate) return null
+  const trimmed = pubDate.trim()
+  if (!trimmed) return null
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed
+  if (/^\d{4}-\d{2}$/.test(trimmed)) return `${trimmed}-01`
+  if (/^\d{4}$/.test(trimmed)) return `${trimmed}-01-01`
+
+  const monthMatch = trimmed.match(/^(\d{4})\s+([A-Za-z]+)(?:\s+(\d{1,2}))?$/)
+  if (monthMatch) {
+    const year = monthMatch[1]
+    const monthKey = monthMatch[2]?.toLowerCase()
+    const dayValue = monthMatch[3] ? Number(monthMatch[3]) : 1
+    const month = monthKey ? MONTH_LOOKUP[monthKey] : undefined
+    if (month) {
+      const day = String(Math.min(Math.max(dayValue, 1), 31)).padStart(2, "0")
+      return `${year}-${String(month).padStart(2, "0")}-${day}`
+    }
+  }
+
+  const parsed = new Date(trimmed)
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toISOString().slice(0, 10)
+  }
+
+  return null
+}
+
 export async function GET(request: NextRequest) {
   const pmid = request.nextUrl.searchParams.get("pmid")
   if (!pmid || !PMID_REGEX.test(pmid)) {
@@ -98,7 +154,7 @@ export async function POST(request: NextRequest) {
       journal: article.journal || null,
       doi: article.doi ?? null,
       source_url: article.sourceUrl,
-      publication_date: article.pubDate || null,
+      publication_date: normalizePubMedDate(article.pubDate),
       tags,
       external_id: article.pmid,
       external_source: "pubmed",
