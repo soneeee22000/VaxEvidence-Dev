@@ -44,7 +44,7 @@ export default function AppLayout({
     // #endregion
     setIsSigningOut(true)
     removeAuthCookie()
-    router.replace("/auth")
+    router.replace("/")
   }
 
   const navLinks = [

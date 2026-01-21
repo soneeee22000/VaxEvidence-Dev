@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -101,10 +102,16 @@ export default function AuthPage() {
                 <strong>Dev credentials:</strong> admin / 12345
               </div>
             </CardContent>
-            <CardFooter>
+            <CardFooter className="flex flex-col gap-3">
               <Button type="submit" className="w-full" disabled={isSubmitting}>
                 {isSubmitting ? "Signing in..." : "Sign in"}
               </Button>
+              <Link 
+                href="/" 
+                className="text-sm text-center text-muted-foreground hover:text-foreground transition-colors"
+              >
+                ← Back to home
+              </Link>
             </CardFooter>
           </form>
         </Card>

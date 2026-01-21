@@ -46,7 +46,7 @@ export default function AppDashboardPage() {
     // #endregion
     setIsSigningOut(true)
     removeAuthCookie()
-    router.replace("/auth")
+    router.replace("/")
   }
 
   const formatDate = (value: string) => new Date(value).toLocaleDateString()
