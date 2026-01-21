@@ -86,7 +86,7 @@ export const fetchEvidenceById = async (id: string) => {
     return { data: null, error: { message: "Supabase not configured" } }
   }
 
-  return supabase.from("evidence_items").select("*").eq("id", id).single()
+  return supabase.from("evidence_items").select("*").eq("id", id).maybeSingle()
 }
 
 /**

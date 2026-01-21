@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -62,6 +62,7 @@ export default function EvidenceDetailPage() {
   const [evidence, setEvidence] = useState<EvidenceItem | null>(null)
   const [linkedProtocols, setLinkedProtocols] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -75,44 +76,52 @@ export default function EvidenceDetailPage() {
   const [formData, setFormData] = useState<Partial<EvidenceItem>>({})
   const [tagInput, setTagInput] = useState("")
 
-  useEffect(() => {
-    async function loadEvidence() {
-      if (!params.id || typeof params.id !== "string") return
+  const loadEvidence = useCallback(async () => {
+    if (!params.id || typeof params.id !== "string") return
 
-      setIsLoading(true)
-      try {
-        const { data, error } = await fetchEvidenceById(params.id)
+    setIsLoading(true)
+    setLoadError(null)
+    try {
+      const { data, error } = await fetchEvidenceById(params.id)
 
-        if (error || !data) {
-          toast({
-            title: "Error",
-            description: "Evidence not found",
-            variant: "destructive",
-          })
-          router.push("/app/evidence")
-          return
-        }
-
-        setEvidence(data)
-        setFormData(data)
-
-        // Load linked protocols
-        const { data: linksData } = await getLinkedProtocols(params.id)
-        if (linksData) {
-          setLinkedProtocols(linksData)
-        }
-
-        // Load comments
-        loadComments()
-      } catch (error) {
-        console.error("Error loading evidence:", error)
-      } finally {
-        setIsLoading(false)
+      if (error || !data) {
+        const message = error?.message || "Evidence not found"
+        setEvidence(null)
+        setFormData({})
+        setLinkedProtocols([])
+        setComments([])
+        setCommentCount(0)
+        setLoadError(message)
+        toast({
+          title: "Error",
+          description: "Evidence not found",
+          variant: "destructive",
+        })
+        return
       }
-    }
 
+      setEvidence(data)
+      setFormData(data)
+
+      // Load linked protocols
+      const { data: linksData } = await getLinkedProtocols(params.id)
+      if (linksData) {
+        setLinkedProtocols(linksData)
+      }
+
+      // Load comments
+      loadComments()
+    } catch (error) {
+      console.error("Error loading evidence:", error)
+      setLoadError("Failed to load evidence.")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [params.id, toast])
+
+  useEffect(() => {
     loadEvidence()
-  }, [params.id, router, toast])
+  }, [loadEvidence])
 
   const loadComments = async () => {
     if (!params.id || typeof params.id !== "string") return
@@ -333,6 +342,29 @@ export default function EvidenceDetailPage() {
             <CardHeader>
               <CardTitle>Loading...</CardTitle>
             </CardHeader>
+          </Card>
+        </div>
+      </main>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <main className="min-h-screen bg-background px-4 py-8">
+        <div className="mx-auto w-full max-w-4xl space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Evidence unavailable</CardTitle>
+              <CardDescription>{loadError}</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" onClick={loadEvidence}>
+                Retry
+              </Button>
+              <Button type="button" asChild>
+                <Link href="/app/evidence">Back to Library</Link>
+              </Button>
+            </CardContent>
           </Card>
         </div>
       </main>
