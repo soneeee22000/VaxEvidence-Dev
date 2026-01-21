@@ -39,6 +39,9 @@ export default function AppLayout({
   }, [])
 
   const handleSignOut = () => {
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/e605cce5-96c8-48d9-ac3a-0c2be5d3a457',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/app/layout.tsx:handleSignOut',message:'Sign out initiated from layout',data:{pathname},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     setIsSigningOut(true)
     removeAuthCookie()
     router.replace("/auth")

@@ -33,6 +33,27 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 
 type SortOption = "newest" | "oldest" | "title-asc" | "title-desc"
 
+const DEBUG_LOG_ENDPOINT =
+  "http://127.0.0.1:7243/ingest/e605cce5-96c8-48d9-ac3a-0c2be5d3a457"
+
+const sendDebugLog = (payload: {
+  hypothesisId: string
+  location: string
+  message: string
+  data?: Record<string, unknown>
+}) => {
+  fetch(DEBUG_LOG_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      sessionId: "debug-session",
+      runId: "debug1",
+      ...payload,
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {})
+}
+
 export default function EvidenceLibraryPage() {
   const [evidence, setEvidence] = useState<EvidenceItem[]>([])
   const [filteredEvidence, setFilteredEvidence] = useState<EvidenceItem[]>([])
@@ -49,6 +70,14 @@ export default function EvidenceLibraryPage() {
   })
 
   const handleImportedEvidence = (item: EvidenceItem) => {
+    // #region agent log
+    sendDebugLog({
+      hypothesisId: "H1",
+      location: "EvidenceLibraryPage:handleImportedEvidence",
+      message: "handleImportedEvidence invoked",
+      data: { importedId: item.id },
+    })
+    // #endregion
     setEvidence((prev) => {
       if (prev.some((existing) => existing.id === item.id)) return prev
       return [item, ...prev]
@@ -56,6 +85,14 @@ export default function EvidenceLibraryPage() {
     if (item.tags && item.tags.length > 0) {
       setAvailableTags((prev) => Array.from(new Set([...prev, ...item.tags])).sort())
     }
+    // #region agent log
+    sendDebugLog({
+      hypothesisId: "H1",
+      location: "EvidenceLibraryPage:handleImportedEvidence",
+      message: "State updated after import",
+      data: { totalItems: evidence.length + 1 },
+    })
+    // #endregion
   }
 
   // Load evidence and tags
@@ -70,8 +107,27 @@ export default function EvidenceLibraryPage() {
         if (evidenceError) {
           console.error("Error fetching evidence:", evidenceError)
           setEvidence([])
+          // #region agent log
+          sendDebugLog({
+            hypothesisId: "H2",
+            location: "EvidenceLibraryPage:loadData",
+            message: "Evidence fetch errored",
+            data: { error: evidenceError.message },
+          })
+          // #endregion
         } else {
           setEvidence(evidenceData || [])
+          // #region agent log
+          sendDebugLog({
+            hypothesisId: "H2",
+            location: "EvidenceLibraryPage:loadData",
+            message: "Evidence fetch succeeded",
+            data: {
+              count: (evidenceData ?? []).length,
+              preview: (evidenceData ?? []).slice(0, 3).map((e) => e.id),
+            },
+          })
+          // #endregion
         }
 
         // Fetch unique tags
@@ -159,6 +215,17 @@ export default function EvidenceLibraryPage() {
         break
     }
 
+    // #region agent log
+    sendDebugLog({
+      hypothesisId: "H3",
+      location: "EvidenceLibraryPage:filtersEffect",
+      message: "Filters applied",
+      data: {
+        filteredCount: result.length,
+        preview: result.slice(0, 3).map((item) => item.id),
+      },
+    })
+    // #endregion
     setFilteredEvidence(result)
   }, [evidence, filters, searchQuery, sortBy])
 

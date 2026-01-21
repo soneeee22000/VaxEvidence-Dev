@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -16,6 +16,11 @@ import { Input } from "@/components/ui/input"
 import { validateCredentials, setAuthCookie } from "@/lib/auth/dev-auth"
 
 export default function AuthPage() {
+  // #region agent log
+  useEffect(() => {
+    fetch('http://127.0.0.1:7243/ingest/e605cce5-96c8-48d9-ac3a-0c2be5d3a457',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/auth/page.tsx',message:'AuthPage mounted',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
+  }, []);
+  // #endregion
   const router = useRouter()
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
