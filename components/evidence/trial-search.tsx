@@ -1,7 +1,6 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, type MouseEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -32,7 +31,6 @@ interface TrialSearchProps {
 }
 
 export function TrialSearch({ onImported }: TrialSearchProps) {
-  const router = useRouter()
   const { toast } = useToast()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
@@ -62,7 +60,12 @@ export function TrialSearch({ onImported }: TrialSearchProps) {
     }
   }
 
-  const handleImport = async (trial: ClinicalTrial) => {
+  const handleImport = async (
+    trial: ClinicalTrial,
+    event?: MouseEvent<HTMLButtonElement>
+  ) => {
+    event?.preventDefault()
+    event?.stopPropagation()
     setImporting((prev) => ({ ...prev, [trial.nctId]: true }))
     try {
       const response = await fetch("/api/import/clinicaltrials", {
@@ -84,7 +87,6 @@ export function TrialSearch({ onImported }: TrialSearchProps) {
       })
 
       onImported?.(data.evidence)
-      router.push(`/app/evidence/${data.evidence.id}`)
     } catch (error) {
       console.error("ClinicalTrials import failed:", error)
       toast({
@@ -155,7 +157,7 @@ export function TrialSearch({ onImported }: TrialSearchProps) {
                     <Button
                       size="sm"
                       type="button"
-                      onClick={() => handleImport(trial)}
+                      onClick={(event) => handleImport(trial, event)}
                       disabled={importing[trial.nctId]}
                     >
                       {importing[trial.nctId] ? "Importing..." : "Import"}

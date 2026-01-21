@@ -1,7 +1,6 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, type MouseEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -28,7 +27,6 @@ interface PubMedSearchProps {
 }
 
 export function PubMedSearch({ onImported }: PubMedSearchProps) {
-  const router = useRouter()
   const { toast } = useToast()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
@@ -75,7 +73,9 @@ export function PubMedSearch({ onImported }: PubMedSearchProps) {
     }
   }
 
-  const handleImport = async (pmid: string) => {
+  const handleImport = async (pmid: string, event?: MouseEvent<HTMLButtonElement>) => {
+    event?.preventDefault()
+    event?.stopPropagation()
     setImporting((prev) => ({ ...prev, [pmid]: true }))
     try {
       const response = await fetch("/api/import/pmid", {
@@ -97,7 +97,6 @@ export function PubMedSearch({ onImported }: PubMedSearchProps) {
       })
 
       onImported?.(data.evidence)
-      router.push(`/app/evidence/${data.evidence.id}`)
     } catch (error) {
       console.error("PubMed import failed:", error)
       toast({
@@ -164,7 +163,7 @@ export function PubMedSearch({ onImported }: PubMedSearchProps) {
                     <Button
                       size="sm"
                       type="button"
-                      onClick={() => handleImport(article.pmid)}
+                      onClick={(event) => handleImport(article.pmid, event)}
                       disabled={importing[article.pmid]}
                     >
                       {importing[article.pmid] ? "Importing..." : "Import"}
