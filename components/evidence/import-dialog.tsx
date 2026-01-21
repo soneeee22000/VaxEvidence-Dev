@@ -67,9 +67,12 @@ export function ImportDialog({
 
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline">Cancel</Button>
+            <Button type="button" variant="outline">
+              Cancel
+            </Button>
           </DialogClose>
           <Button
+            type="button"
             onClick={onConfirm}
             disabled={confirmDisabled || isConfirming}
           >
