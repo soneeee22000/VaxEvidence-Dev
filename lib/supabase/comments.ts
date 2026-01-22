@@ -1,208 +1,134 @@
-import { supabase } from "@/lib/supabase/client"
-import type {
-  CommentCreateValues,
-  CommentUpdateValues,
-  Comment,
-  CommentWithUser,
-  CommentResourceType,
-} from "@/lib/validators/comment"
+import { supabase, isSupabaseConfigured } from "@/lib/supabase/client"
+import { DEV_USER } from "@/lib/auth/dev-auth"
+import type { CommentCreateValues, CommentResourceType, CommentWithUser, CommentUpdateValues } from "@/lib/validators/comment"
 
-// =============================================================================
-// COMMENT SUPABASE QUERIES
-// =============================================================================
-// Query functions for comments with threading support
-// =============================================================================
+type SupabaseResult<T> = Promise<{ data: T | null; error: { message: string } | null }>
+
+const notConfigured = <T>(message = "Supabase is not configured."): { data: T | null; error: { message: string } } => {
+  return { data: null, error: { message } }
+}
+
+const safeCall = async <T>(fn: () => Promise<{ data: T | null; error: any }>): SupabaseResult<T> => {
+  try {
+    const { data, error } = await fn()
+    return { data: (data ?? null) as T | null, error: error ? { message: error.message ?? String(error) } : null }
+  } catch (err) {
+    return { data: null, error: { message: err instanceof Error ? err.message : String(err) } }
+  }
+}
+
+const isResourceType = (value: unknown): value is CommentResourceType => {
+  return value === "protocol" || value === "evidence_item" || value === "dataset"
+}
+
+const looksLikeUuid = (value: unknown): value is string => {
+  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+}
+
+const withUser = (rows: any[] | null): CommentWithUser[] => {
+  const list = rows ?? []
+  return list.map((row) => ({
+    ...row,
+    user: {
+      id: row.user_id,
+      email: row.user_id === DEV_USER.id ? DEV_USER.email : "user@unknown.local",
+    },
+  }))
+}
 
 /**
- * Fetch all comments for a resource (with user details)
+ * Fetch comments for a resource.
+ *
+ * Supports both call signatures used in this repo:
+ * - fetchComments(resourceType, resourceId)
+ * - fetchComments(resourceId, resourceType)
  */
 export const fetchComments = async (
-  resourceType: CommentResourceType,
-  resourceId: string
-) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
+  a: CommentResourceType | string,
+  b: string | CommentResourceType
+): SupabaseResult<CommentWithUser[]> => {
+  if (!isSupabaseConfigured() || !supabase) return notConfigured<CommentWithUser[]>()
+
+  let resourceType: CommentResourceType | null = null
+  let resourceId: string | null = null
+
+  if (isResourceType(a) && typeof b === "string") {
+    resourceType = a
+    resourceId = b
+  } else if (typeof a === "string" && isResourceType(b)) {
+    resourceType = b
+    resourceId = a
   }
 
-  return supabase
-    .from("comments")
-    .select(`
-      *,
-      user:user_id (
-        id,
-        email
-      )
-    `)
-    .eq("resource_type", resourceType)
-    .eq("resource_id", resourceId)
-    .eq("is_deleted", false)
-    .order("created_at", { ascending: true })
-}
-
-/**
- * Fetch a single comment by ID
- */
-export const fetchCommentById = async (id: string) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
+  if (!resourceType || !resourceId || !looksLikeUuid(resourceId)) {
+    return { data: [], error: null }
   }
 
-  return supabase
-    .from("comments")
-    .select(`
-      *,
-      user:user_id (
-        id,
-        email
-      )
-    `)
-    .eq("id", id)
-    .single()
+  const { data, error } = await safeCall(() =>
+    supabase
+      .from("comments")
+      .select("*")
+      .eq("resource_type", resourceType)
+      .eq("resource_id", resourceId)
+      .order("created_at", { ascending: true })
+  )
+
+  if (error) return { data: null, error }
+  return { data: withUser((data as any[]) ?? []), error: null }
 }
 
-/**
- * Create a new comment
- */
 export const createComment = async (
   payload: CommentCreateValues & { user_id: string }
-) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
+): SupabaseResult<CommentWithUser> => {
+  if (!isSupabaseConfigured() || !supabase) return notConfigured<CommentWithUser>()
 
-  return supabase
-    .from("comments")
-    .insert(payload)
-    .select(`
-      *,
-      user:user_id (
-        id,
-        email
-      )
-    `)
-    .single()
+  const { data, error } = await safeCall(() =>
+    supabase
+      .from("comments")
+      .insert({
+        ...payload,
+        parent_id: payload.parent_id ?? null,
+        mentions: payload.mentions ?? [],
+      })
+      .select("*")
+      .single()
+  )
+
+  if (error || !data) return { data: null, error }
+  const row = data as any
+  return {
+    data: {
+      ...(row as any),
+      user: { id: row.user_id, email: row.user_id === DEV_USER.id ? DEV_USER.email : "user@unknown.local" },
+    },
+    error: null,
+  }
 }
 
-/**
- * Update a comment (edit)
- */
-export const updateComment = async (
-  id: string,
-  payload: CommentUpdateValues
-) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
+export const updateComment = async (commentId: string, payload: CommentUpdateValues): SupabaseResult<CommentWithUser> => {
+  if (!isSupabaseConfigured() || !supabase) return notConfigured<CommentWithUser>()
 
-  return supabase
-    .from("comments")
-    .update({
-      ...payload,
-      is_edited: true,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", id)
-    .select(`
-      *,
-      user:user_id (
-        id,
-        email
-      )
-    `)
-    .single()
+  const { data, error } = await safeCall(() =>
+    supabase
+      .from("comments")
+      .update({ ...payload, is_edited: true, updated_at: new Date().toISOString() })
+      .eq("id", commentId)
+      .select("*")
+      .single()
+  )
+
+  if (error || !data) return { data: null, error }
+  const row = data as any
+  return {
+    data: {
+      ...(row as any),
+      user: { id: row.user_id, email: row.user_id === DEV_USER.id ? DEV_USER.email : "user@unknown.local" },
+    },
+    error: null,
+  }
 }
 
-/**
- * Delete a comment (soft delete)
- */
-export const deleteComment = async (id: string) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
-
-  // Soft delete: mark as deleted but keep in database
-  return supabase
-    .from("comments")
-    .update({
-      is_deleted: true,
-      content: "[deleted]",
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", id)
-}
-
-/**
- * Hard delete a comment (permanently remove)
- */
-export const hardDeleteComment = async (id: string) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
-
-  return supabase.from("comments").delete().eq("id", id)
-}
-
-/**
- * Get comments where user is mentioned
- */
-export const getUserMentions = async (userId: string) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
-
-  return supabase
-    .from("comments")
-    .select(`
-      *,
-      user:user_id (
-        id,
-        email
-      )
-    `)
-    .contains("mentions", [userId])
-    .eq("is_deleted", false)
-    .order("created_at", { ascending: false })
-}
-
-/**
- * Get comment count for a resource
- */
-export const getCommentCount = async (
-  resourceType: CommentResourceType,
-  resourceId: string
-) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
-
-  const { count, error } = await supabase
-    .from("comments")
-    .select("*", { count: "exact", head: true })
-    .eq("resource_type", resourceType)
-    .eq("resource_id", resourceId)
-    .eq("is_deleted", false)
-
-  return { data: count, error }
-}
-
-/**
- * Get recent comments across all resources (for activity feed)
- */
-export const getRecentComments = async (limit: number = 50) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
-
-  return supabase
-    .from("comments")
-    .select(`
-      *,
-      user:user_id (
-        id,
-        email
-      )
-    `)
-    .eq("is_deleted", false)
-    .order("created_at", { ascending: false })
-    .limit(limit)
+export const deleteComment = async (commentId: string): SupabaseResult<null> => {
+  if (!isSupabaseConfigured() || !supabase) return notConfigured<null>()
+  return safeCall(() => supabase.from("comments").delete().eq("id", commentId))
 }

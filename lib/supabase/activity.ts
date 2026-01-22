@@ -1,228 +1,54 @@
-import { supabase } from "@/lib/supabase/client"
-import type {
-  ActivityLogValues,
-  ActivityLog,
-  ActivityLogWithUser,
-  ActivityFilters,
-  ActivityActionType,
-  ActivityResourceType,
-} from "@/lib/validators/activity"
+import { supabase, isSupabaseConfigured } from "@/lib/supabase/client"
+import { DEV_USER } from "@/lib/auth/dev-auth"
+import type { ActivityFilters, ActivityLogWithUser } from "@/lib/validators/activity"
 
-// =============================================================================
-// ACTIVITY LOG SUPABASE QUERIES
-// =============================================================================
-// Query functions for activity tracking and logging
-// =============================================================================
+type SupabaseResult<T> = Promise<{ data: T | null; error: { message: string } | null }>
 
-/**
- * Fetch activity log with optional filters
- */
-export const fetchActivityLog = async (filters?: ActivityFilters) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
-
-  let query = supabase
-    .from("activity_log")
-    .select(`
-      *,
-      user:user_id (
-        id,
-        email
-      )
-    `)
-
-  // Apply filters
-  if (filters?.user_id) {
-    query = query.eq("user_id", filters.user_id)
-  }
-
-  if (filters?.action_type && filters.action_type.length > 0) {
-    query = query.in("action_type", filters.action_type)
-  }
-
-  if (filters?.resource_type && filters.resource_type.length > 0) {
-    query = query.in("resource_type", filters.resource_type)
-  }
-
-  if (filters?.from_date) {
-    query = query.gte("created_at", filters.from_date)
-  }
-
-  if (filters?.to_date) {
-    query = query.lte("created_at", filters.to_date)
-  }
-
-  // Apply sorting and pagination
-  query = query.order("created_at", { ascending: false })
-
-  if (filters?.limit) {
-    query = query.limit(filters.limit)
-  }
-
-  if (filters?.offset) {
-    query = query.range(
-      filters.offset,
-      filters.offset + (filters.limit || 50) - 1
-    )
-  }
-
-  return query
+const notConfigured = <T>(message = "Supabase is not configured."): { data: T | null; error: { message: string } } => {
+  return { data: null, error: { message } }
 }
 
-/**
- * Get activity for a specific resource
- */
-export const getResourceActivity = async (
-  resourceType: ActivityResourceType,
-  resourceId: string,
-  limit: number = 50
-) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
+const safeCall = async <T>(fn: () => Promise<{ data: T | null; error: any }>): SupabaseResult<T> => {
+  try {
+    const { data, error } = await fn()
+    return { data: (data ?? null) as T | null, error: error ? { message: error.message ?? String(error) } : null }
+  } catch (err) {
+    return { data: null, error: { message: err instanceof Error ? err.message : String(err) } }
   }
-
-  return supabase
-    .from("activity_log")
-    .select(`
-      *,
-      user:user_id (
-        id,
-        email
-      )
-    `)
-    .eq("resource_type", resourceType)
-    .eq("resource_id", resourceId)
-    .order("created_at", { ascending: false })
-    .limit(limit)
 }
 
-/**
- * Log a new activity manually
- */
-export const logActivity = async (
-  payload: ActivityLogValues & { user_id: string }
-) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
-
-  return supabase
-    .from("activity_log")
-    .insert(payload)
-    .select(`
-      *,
-      user:user_id (
-        id,
-        email
-      )
-    `)
-    .single()
+const withUser = (rows: any[] | null): ActivityLogWithUser[] => {
+  const list = rows ?? []
+  return list.map((row) => ({
+    ...row,
+    user: {
+      id: row.user_id,
+      email: row.user_id === DEV_USER.id ? DEV_USER.email : "user@unknown.local",
+    },
+  }))
 }
 
-/**
- * Get activity count for a user
- */
-export const getActivityCount = async (userId?: string) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
+export const fetchActivityLog = async (filters: ActivityFilters = {}): SupabaseResult<ActivityLogWithUser[]> => {
+  if (!isSupabaseConfigured() || !supabase) return notConfigured<ActivityLogWithUser[]>()
 
-  let query = supabase
-    .from("activity_log")
-    .select("*", { count: "exact", head: true })
+  const limit = filters.limit ?? 50
+  const offset = filters.offset ?? 0
 
-  if (userId) {
-    query = query.eq("user_id", userId)
-  }
+  const { data, error } = await safeCall(async () => {
+    let query = supabase.from("activity_logs").select("*").order("created_at", { ascending: false })
 
-  const { count, error } = await query
+    if (filters.user_id) query = query.eq("user_id", filters.user_id)
+    if (filters.action_type && filters.action_type.length > 0) query = query.in("action_type", filters.action_type as any)
+    if (filters.resource_type && filters.resource_type.length > 0) query = query.in("resource_type", filters.resource_type as any)
+    if (filters.from_date) query = query.gte("created_at", filters.from_date)
+    if (filters.to_date) query = query.lte("created_at", filters.to_date)
 
-  return { data: count, error }
-}
+    query = query.range(offset, offset + limit - 1)
 
-/**
- * Get recent activity for dashboard
- */
-export const getRecentActivity = async (limit: number = 20) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
+    const res = await query
+    return { data: (res.data as any) ?? null, error: res.error }
+  })
 
-  return supabase
-    .from("activity_log")
-    .select(`
-      *,
-      user:user_id (
-        id,
-        email
-      )
-    `)
-    .order("created_at", { ascending: false })
-    .limit(limit)
-}
-
-/**
- * Get activity by action type
- */
-export const getActivityByType = async (
-  actionType: ActivityActionType,
-  limit: number = 50
-) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
-
-  return supabase
-    .from("activity_log")
-    .select(`
-      *,
-      user:user_id (
-        id,
-        email
-      )
-    `)
-    .eq("action_type", actionType)
-    .order("created_at", { ascending: false })
-    .limit(limit)
-}
-
-/**
- * Get user mentions in activity
- */
-export const getUserActivityMentions = async (userId: string) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
-
-  // Get comments where user is mentioned
-  return supabase
-    .from("activity_log")
-    .select(`
-      *,
-      user:user_id (
-        id,
-        email
-      )
-    `)
-    .eq("action_type", "comment")
-    .contains("metadata", { mentions: [userId] })
-    .order("created_at", { ascending: false })
-}
-
-/**
- * Delete old activity logs (for cleanup)
- */
-export const deleteOldActivityLogs = async (daysOld: number = 90) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
-
-  const cutoffDate = new Date()
-  cutoffDate.setDate(cutoffDate.getDate() - daysOld)
-
-  return supabase
-    .from("activity_log")
-    .delete()
-    .lt("created_at", cutoffDate.toISOString())
+  if (error) return { data: null, error }
+  return { data: withUser((data as any[]) ?? []), error: null }
 }

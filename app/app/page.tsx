@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
@@ -13,40 +13,53 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { WorkspaceExportButton } from "@/components/export/workspace-export-button"
-import { removeAuthCookie, DEV_USER } from "@/lib/auth/dev-auth"
-import {
-  fetchProtocols,
-  type ProtocolRecord,
-} from "@/lib/supabase/protocols"
-import { BookOpen } from "lucide-react"
+import { fetchProtocols, type ProtocolRecord } from "@/lib/supabase/protocols"
+import { DEV_USER, isAuthenticatedClient, removeAuthCookie } from "@/lib/auth/dev-auth"
 
 export default function AppDashboardPage() {
   const router = useRouter()
+  const [email, setEmail] = useState<string | null>(null)
   const [protocols, setProtocols] = useState<ProtocolRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [isSigningOut, setIsSigningOut] = useState(false)
 
+  const hasProtocols = useMemo(() => protocols.length > 0, [protocols.length])
+
   useEffect(() => {
-    // Load protocols from Supabase
-    const loadProtocols = async () => {
-      const { data, error } = await fetchProtocols()
-      if (!error && data) {
-        setProtocols(data)
+    let isMounted = true
+
+    const load = async () => {
+      // Dev-mode auth is cookie-based (see `middleware.ts` + `lib/auth/dev-auth.ts`)
+      // We don’t require a Supabase Auth session in local development.
+      if (!isMounted) return
+      if (!isAuthenticatedClient()) {
+        router.replace("/auth")
+        return
+      }
+      setEmail(DEV_USER.email)
+
+      const { data, error: fetchError } = await fetchProtocols()
+      if (!isMounted) return
+      if (fetchError) {
+        setError(fetchError.message)
+      } else {
+        setProtocols(data ?? [])
       }
       setIsLoading(false)
     }
-    
-    loadProtocols()
-  }, [])
 
-  const handleSignOut = () => {
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e605cce5-96c8-48d9-ac3a-0c2be5d3a457',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/app/page.tsx:handleSignOut',message:'Sign out initiated from page',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
+    load()
+
+    return () => {
+      isMounted = false
+    }
+  }, [router])
+
+  const handleSignOut = async () => {
     setIsSigningOut(true)
     removeAuthCookie()
-    router.replace("/")
+    router.replace("/auth")
   }
 
   const formatDate = (value: string) => new Date(value).toLocaleDateString()
@@ -74,17 +87,10 @@ export default function AppDashboardPage() {
             <div>
               <CardTitle className="text-2xl">Protocol Builder</CardTitle>
               <CardDescription>
-                Signed in as {DEV_USER.email}
+                {email ? `Signed in as ${email}` : "Your authenticated workspace"}
               </CardDescription>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button asChild variant="outline">
-                <Link href="/app/evidence">
-                  <BookOpen className="mr-2 h-4 w-4" />
-                  Evidence Library
-                </Link>
-              </Button>
-              <WorkspaceExportButton />
               <Button asChild>
                 <Link href="/app/new">New protocol</Link>
               </Button>
@@ -94,7 +100,12 @@ export default function AppDashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {protocols.length === 0 && (
+            {error && (
+              <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {error}
+              </p>
+            )}
+            {!hasProtocols && !error && (
               <div className="rounded-lg border border-dashed border-muted px-4 py-6 text-center text-muted-foreground">
                 <p className="text-base font-medium text-foreground">
                   No protocols yet
@@ -104,7 +115,7 @@ export default function AppDashboardPage() {
                 </p>
               </div>
             )}
-            {protocols.length > 0 && (
+            {hasProtocols && (
               <div className="grid gap-4 md:grid-cols-2">
                 {protocols.map((protocol) => (
                   <Card key={protocol.id} className="border-muted/70">
@@ -129,11 +140,6 @@ export default function AppDashboardPage() {
             )}
           </CardContent>
         </Card>
-
-        {/* Dev mode indicator */}
-        <div className="rounded-md bg-blue-500/10 border border-blue-500/20 px-4 py-3 text-sm text-blue-600 dark:text-blue-400">
-          <strong>Dev Mode:</strong> Using Supabase database with dev authentication.
-        </div>
       </div>
     </main>
   )

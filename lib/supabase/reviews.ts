@@ -1,257 +1,129 @@
-import { supabase } from "@/lib/supabase/client"
-import type {
-  ReviewRequestValues,
-  ReviewDecisionValues,
-  Review,
-  ReviewWithDetails,
-  ReviewStatus,
-} from "@/lib/validators/review"
+import { supabase, isSupabaseConfigured } from "@/lib/supabase/client"
+import { DEV_USER } from "@/lib/auth/dev-auth"
+import type { ReviewDecisionValues, ReviewStatus, ReviewWithDetails } from "@/lib/validators/review"
 
-// =============================================================================
-// REVIEW SUPABASE QUERIES
-// =============================================================================
-// Query functions for protocol review workflows
-// =============================================================================
+type SupabaseResult<T> = Promise<{ data: T | null; error: { message: string } | null }>
 
-/**
- * Fetch all reviews for a protocol
- */
-export const fetchReviews = async (protocolId: string) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
-
-  return supabase
-    .from("reviews")
-    .select(`
-      *,
-      reviewer:reviewer_id (
-        id,
-        email
-      ),
-      requester:requester_id (
-        id,
-        email
-      ),
-      protocol:protocol_id (
-        id,
-        title,
-        status
-      )
-    `)
-    .eq("protocol_id", protocolId)
-    .order("requested_at", { ascending: false })
+const notConfigured = <T>(message = "Supabase is not configured."): { data: T | null; error: { message: string } } => {
+  return { data: null, error: { message } }
 }
 
-/**
- * Fetch pending reviews assigned to a user
- */
-export const fetchPendingReviews = async (userId: string) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
+const safeCall = async <T>(fn: () => Promise<{ data: T | null; error: any }>): SupabaseResult<T> => {
+  try {
+    const { data, error } = await fn()
+    return { data: (data ?? null) as T | null, error: error ? { message: error.message ?? String(error) } : null }
+  } catch (err) {
+    return { data: null, error: { message: err instanceof Error ? err.message : String(err) } }
   }
-
-  return supabase
-    .from("reviews")
-    .select(`
-      *,
-      reviewer:reviewer_id (
-        id,
-        email
-      ),
-      requester:requester_id (
-        id,
-        email
-      ),
-      protocol:protocol_id (
-        id,
-        title,
-        status
-      )
-    `)
-    .eq("reviewer_id", userId)
-    .eq("status", "pending")
-    .order("requested_at", { ascending: false })
 }
 
-/**
- * Fetch review count for a user
- */
-export const fetchPendingReviewCount = async (userId: string) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
+const userEmail = (userId: string) => (userId === DEV_USER.id ? DEV_USER.email : "user@unknown.local")
 
-  const { count, error } = await supabase
-    .from("reviews")
-    .select("*", { count: "exact", head: true })
-    .eq("reviewer_id", userId)
-    .eq("status", "pending")
-
-  return { data: count, error }
+const toWithDetails = (rows: any[] | null): ReviewWithDetails[] => {
+  const list = rows ?? []
+  return list.map((row) => ({
+    ...row,
+    reviewer: { id: row.reviewer_id, email: userEmail(row.reviewer_id) },
+    requester: { id: row.requester_id, email: userEmail(row.requester_id) },
+    protocol: {
+      id: row.protocol_id,
+      title: row.protocol_title ?? "Protocol",
+      status: row.protocol_status ?? "unknown",
+    },
+  }))
 }
 
-/**
- * Request a review from a user
- */
-export const requestReview = async (
-  payload: ReviewRequestValues & { requester_id: string }
-) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
+export const fetchPendingReviewCount = async (userId: string): SupabaseResult<number> => {
+  if (!isSupabaseConfigured() || !supabase) return notConfigured<number>()
 
-  return supabase
-    .from("reviews")
-    .insert({
-      protocol_id: payload.protocol_id,
-      reviewer_id: payload.reviewer_id,
-      requester_id: payload.requester_id,
-      status: "pending",
-    })
-    .select(`
-      *,
-      reviewer:reviewer_id (
-        id,
-        email
-      ),
-      requester:requester_id (
-        id,
-        email
-      ),
-      protocol:protocol_id (
-        id,
-        title,
-        status
-      )
-    `)
-    .single()
+  // Best-effort count; if your schema differs, we’ll adjust.
+  const { data, error } = await safeCall(async () => {
+    const res = await supabase
+      .from("reviews")
+      .select("*", { count: "exact", head: true })
+      .eq("reviewer_id", userId)
+      .eq("status", "pending")
+
+    return { data: (res.count ?? 0) as any, error: res.error }
+  })
+
+  return { data, error }
 }
 
-/**
- * Submit a review decision
- */
+export const fetchReviews = async (protocolId: string): SupabaseResult<ReviewWithDetails[]> => {
+  if (!isSupabaseConfigured() || !supabase) return notConfigured<ReviewWithDetails[]>()
+
+  const { data, error } = await safeCall(() =>
+    supabase
+      .from("reviews")
+      .select("*")
+      .eq("protocol_id", protocolId)
+      .order("requested_at", { ascending: false })
+  )
+
+  if (error) return { data: null, error }
+  return { data: toWithDetails((data as any[]) ?? []), error: null }
+}
+
+export const requestReview = async (payload: {
+  protocol_id: string
+  reviewer_id: string
+  requester_id: string
+  message?: string
+}): SupabaseResult<ReviewWithDetails> => {
+  if (!isSupabaseConfigured() || !supabase) return notConfigured<ReviewWithDetails>()
+
+  const now = new Date().toISOString()
+  const { data, error } = await safeCall(() =>
+    supabase
+      .from("reviews")
+      .insert({
+        protocol_id: payload.protocol_id,
+        reviewer_id: payload.reviewer_id,
+        requester_id: payload.requester_id,
+        status: "pending",
+        decision: null,
+        decision_at: null,
+        requested_at: now,
+        updated_at: now,
+        message: payload.message ?? null,
+      })
+      .select("*")
+      .single()
+  )
+
+  if (error || !data) return { data: null, error }
+  const [withDetails] = toWithDetails([data])
+  return { data: withDetails ?? null, error: null }
+}
+
 export const submitReviewDecision = async (
   reviewId: string,
   payload: ReviewDecisionValues
-) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
+): SupabaseResult<ReviewWithDetails> => {
+  if (!isSupabaseConfigured() || !supabase) return notConfigured<ReviewWithDetails>()
 
-  return supabase
-    .from("reviews")
-    .update({
-      status: payload.status,
-      decision: payload.decision,
-      decision_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", reviewId)
-    .select(`
-      *,
-      reviewer:reviewer_id (
-        id,
-        email
-      ),
-      requester:requester_id (
-        id,
-        email
-      ),
-      protocol:protocol_id (
-        id,
-        title,
-        status
-      )
-    `)
-    .single()
+  const now = new Date().toISOString()
+  const { data, error } = await safeCall(() =>
+    supabase
+      .from("reviews")
+      .update({
+        status: payload.status as ReviewStatus,
+        decision: payload.decision,
+        decision_at: now,
+        updated_at: now,
+      })
+      .eq("id", reviewId)
+      .select("*")
+      .single()
+  )
+
+  if (error || !data) return { data: null, error }
+  const [withDetails] = toWithDetails([data])
+  return { data: withDetails ?? null, error: null }
 }
 
-/**
- * Cancel a review request
- */
-export const cancelReview = async (reviewId: string) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
-
-  return supabase.from("reviews").delete().eq("id", reviewId)
-}
-
-/**
- * Get review by ID
- */
-export const fetchReviewById = async (reviewId: string) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
-
-  return supabase
-    .from("reviews")
-    .select(`
-      *,
-      reviewer:reviewer_id (
-        id,
-        email
-      ),
-      requester:requester_id (
-        id,
-        email
-      ),
-      protocol:protocol_id (
-        id,
-        title,
-        status
-      )
-    `)
-    .eq("id", reviewId)
-    .single()
-}
-
-/**
- * Check if user can review a protocol
- */
-export const canUserReview = async (protocolId: string, userId: string) => {
-  if (!supabase) {
-    return { data: false, error: { message: "Supabase not configured" } }
-  }
-
-  const { data, error } = await supabase
-    .from("reviews")
-    .select("id")
-    .eq("protocol_id", protocolId)
-    .eq("reviewer_id", userId)
-    .single()
-
-  return { data: !!data, error }
-}
-
-/**
- * Get all reviews requested by a user
- */
-export const fetchRequestedReviews = async (userId: string) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
-
-  return supabase
-    .from("reviews")
-    .select(`
-      *,
-      reviewer:reviewer_id (
-        id,
-        email
-      ),
-      requester:requester_id (
-        id,
-        email
-      ),
-      protocol:protocol_id (
-        id,
-        title,
-        status
-      )
-    `)
-    .eq("requester_id", userId)
-    .order("requested_at", { ascending: false })
+export const cancelReview = async (reviewId: string): SupabaseResult<null> => {
+  if (!isSupabaseConfigured() || !supabase) return notConfigured<null>()
+  return safeCall(() => supabase.from("reviews").delete().eq("id", reviewId))
 }

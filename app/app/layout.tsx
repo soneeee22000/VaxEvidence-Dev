@@ -15,6 +15,26 @@ import { FileText, BookOpen, Database, LogOut, Activity } from "lucide-react"
 import { useState, useEffect } from "react"
 import { fetchPendingReviewCount } from "@/lib/supabase/reviews"
 
+const DEBUG_LOG_ENDPOINT = process.env.NEXT_PUBLIC_DEBUG_LOG_ENDPOINT
+
+const sendDebugLog = (payload: {
+  hypothesisId?: string
+  location: string
+  message: string
+  data?: Record<string, unknown>
+}) => {
+  if (!DEBUG_LOG_ENDPOINT) return
+  fetch(DEBUG_LOG_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      sessionId: "debug-session",
+      ...payload,
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {})
+}
+
 export default function AppLayout({
   children,
 }: {
@@ -39,9 +59,12 @@ export default function AppLayout({
   }, [])
 
   const handleSignOut = () => {
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e605cce5-96c8-48d9-ac3a-0c2be5d3a457',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/app/layout.tsx:handleSignOut',message:'Sign out initiated from layout',data:{pathname},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
+    sendDebugLog({
+      hypothesisId: "A",
+      location: "app/app/layout.tsx:handleSignOut",
+      message: "Sign out initiated from layout",
+      data: { pathname },
+    })
     setIsSigningOut(true)
     removeAuthCookie()
     router.replace("/")
@@ -86,10 +109,15 @@ export default function AppLayout({
     <div className="min-h-screen bg-background">
       {/* Navigation Bar */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center">
-          <div className="mr-4 flex">
-            <Link href="/app" className="mr-6 flex items-center space-x-2">
-              <span className="font-bold text-xl">VaxEvidence</span>
+        <div className="container flex h-14 items-center px-4 sm:px-6 lg:px-8">
+          <div className="mr-6 flex items-center">
+            <Link href="/app" className="flex items-center gap-2.5" aria-label="VaxEvidence Home">
+              <img
+                src="/logo-final.svg"
+                alt="VaxEvidence Logo"
+                className="h-8 w-8 shrink-0"
+              />
+              <span className="font-bold text-xl tracking-tight">VaxEvidence</span>
             </Link>
           </div>
           <nav className="flex items-center gap-6 flex-1">

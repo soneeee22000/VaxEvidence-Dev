@@ -33,8 +33,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 
 type SortOption = "newest" | "oldest" | "title-asc" | "title-desc"
 
-const DEBUG_LOG_ENDPOINT =
-  "http://127.0.0.1:7243/ingest/e605cce5-96c8-48d9-ac3a-0c2be5d3a457"
+const DEBUG_LOG_ENDPOINT = process.env.NEXT_PUBLIC_DEBUG_LOG_ENDPOINT
 
 const sendDebugLog = (payload: {
   hypothesisId: string
@@ -42,6 +41,7 @@ const sendDebugLog = (payload: {
   message: string
   data?: Record<string, unknown>
 }) => {
+  if (!DEBUG_LOG_ENDPOINT) return
   fetch(DEBUG_LOG_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

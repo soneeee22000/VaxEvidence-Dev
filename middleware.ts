@@ -8,6 +8,27 @@ import { getAuthFromCookies } from "@/lib/auth/dev-auth"
 // In production, replace with Supabase session validation.
 // =============================================================================
 
+const DEBUG_LOG_ENDPOINT =
+  process.env.DEBUG_LOG_ENDPOINT ?? process.env.NEXT_PUBLIC_DEBUG_LOG_ENDPOINT
+
+const sendDebugLog = (payload: {
+  location: string
+  message: string
+  data?: Record<string, unknown>
+  hypothesisId?: string
+}) => {
+  if (!DEBUG_LOG_ENDPOINT) return
+  fetch(DEBUG_LOG_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      sessionId: "debug-session",
+      ...payload,
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {})
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const cookieHeader = request.headers.get("cookie")
@@ -15,9 +36,12 @@ export function middleware(request: NextRequest) {
 
   // Protect /app routes - redirect to login if not authenticated
   if (pathname.startsWith("/app") && !isAuthenticated) {
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e605cce5-96c8-48d9-ac3a-0c2be5d3a457',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'middleware.ts',message:'Redirecting unauthenticated user from app to auth',data:{pathname},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
+    sendDebugLog({
+      hypothesisId: "C",
+      location: "middleware.ts",
+      message: "Redirecting unauthenticated user from app to auth",
+      data: { pathname },
+    })
     const redirectUrl = request.nextUrl.clone()
     redirectUrl.pathname = "/auth"
     return NextResponse.redirect(redirectUrl)

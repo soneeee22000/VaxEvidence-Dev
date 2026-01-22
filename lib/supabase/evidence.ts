@@ -1,267 +1,207 @@
-import { supabase } from "@/lib/supabase/client"
-import type {
-  EvidenceFormValues,
-  EvidenceUpdateValues,
-  EvidenceItem,
-  EvidenceLink,
-  EvidenceLinkValues,
-  EvidenceType,
-  EvidenceStatus,
-} from "@/lib/validators/evidence"
+import { supabase, isSupabaseConfigured } from "@/lib/supabase/client"
+import type { EvidenceItem } from "@/lib/validators/evidence"
+import { isAuthenticatedClient } from "@/lib/auth/dev-auth"
+
+type SupabaseResult<T> = Promise<{ data: T | null; error: { message: string } | null }>
+
+const notConfigured = <T>(message = "Supabase is not configured."): { data: T | null; error: { message: string } } => {
+  return { data: null, error: { message } }
+}
+
+const safeCall = async <T>(fn: () => Promise<{ data: T | null; error: any }>): SupabaseResult<T> => {
+  try {
+    const { data, error } = await fn()
+    return { data: (data ?? null) as T | null, error: error ? { message: error.message ?? String(error) } : null }
+  } catch (err) {
+    return { data: null, error: { message: err instanceof Error ? err.message : String(err) } }
+  }
+}
 
 // =============================================================================
-// EVIDENCE SUPABASE QUERIES
+// DEV AUTH + RLS BYPASS (SERVER PROXY)
 // =============================================================================
-// Query functions for evidence items and protocol-evidence links
+// The app uses a cookie-based dev auth, but Supabase RLS is enabled.
+// When the client is not authenticated with Supabase Auth, direct reads/writes
+// can fail. In that case, we route Evidence CRUD through internal API routes
+// that use the Supabase service role (and are themselves gated by the dev auth
+// cookie).
 // =============================================================================
 
-export interface EvidenceFilters {
-  search?: string
-  type?: EvidenceType[]
-  tags?: string[]
-  status?: EvidenceStatus[]
-  dateFrom?: string
-  dateTo?: string
+const shouldUseEvidenceProxy = (): boolean => {
+  if (typeof window === "undefined") return false
+  // If you're logged in via the dev cookie, prefer the proxy to avoid RLS issues.
+  return isAuthenticatedClient()
 }
 
-export interface EvidenceSortOptions {
-  field: "created_at" | "updated_at" | "title" | "publication_date"
-  direction: "asc" | "desc"
+const safeFetchJson = async <T>(
+  url: string,
+  options?: RequestInit
+): SupabaseResult<T> => {
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        ...(options?.headers ?? {}),
+        ...(options?.body ? { "Content-Type": "application/json" } : {}),
+      },
+    })
+
+    const json = (await response.json().catch(() => ({}))) as any
+
+    if (!response.ok) {
+      return {
+        data: null,
+        error: { message: json?.error ?? response.statusText },
+      }
+    }
+
+    return { data: (json?.data ?? null) as T | null, error: null }
+  } catch (err) {
+    return {
+      data: null,
+      error: { message: err instanceof Error ? err.message : String(err) },
+    }
+  }
 }
 
-/**
- * Fetch all evidence items with optional filters and sorting
- */
-export const fetchEvidenceItems = async (
-  filters?: EvidenceFilters,
-  sort?: EvidenceSortOptions
-) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
+// =============================================================================
+// EVIDENCE ITEMS
+// =============================================================================
+
+export const fetchEvidenceItems = (): SupabaseResult<EvidenceItem[]> => {
+  if (shouldUseEvidenceProxy()) {
+    return safeFetchJson<EvidenceItem[]>("/api/evidence")
   }
 
-  let query = supabase.from("evidence_items").select("*")
-
-  // Apply filters
-  if (filters?.type && filters.type.length > 0) {
-    query = query.in("type", filters.type)
-  }
-
-  if (filters?.status && filters.status.length > 0) {
-    query = query.in("status", filters.status)
-  }
-
-  if (filters?.tags && filters.tags.length > 0) {
-    query = query.overlaps("tags", filters.tags)
-  }
-
-  if (filters?.dateFrom) {
-    query = query.gte("publication_date", filters.dateFrom)
-  }
-
-  if (filters?.dateTo) {
-    query = query.lte("publication_date", filters.dateTo)
-  }
-
-  // Apply text search (search across title, description, and authors)
-  if (filters?.search) {
-    query = query.or(
-      `title.ilike.%${filters.search}%,description.ilike.%${filters.search}%,authors.ilike.%${filters.search}%`
-    )
-  }
-
-  // Apply sorting
-  const sortField = sort?.field || "updated_at"
-  const sortDirection = sort?.direction || "desc"
-  query = query.order(sortField, { ascending: sortDirection === "asc" })
-
-  return query
-}
-
-/**
- * Fetch a single evidence item by ID
- */
-export const fetchEvidenceById = async (id: string) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
-
-  return supabase.from("evidence_items").select("*").eq("id", id).maybeSingle()
-}
-
-/**
- * Create a new evidence item
- */
-export const createEvidence = async (
-  payload: EvidenceFormValues & { user_id: string }
-) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
-
-  // Clean up empty string values to null for optional fields
-  const cleanedPayload = {
-    ...payload,
-    authors: payload.authors || null,
-    journal: payload.journal || null,
-    doi: payload.doi || null,
-    regulatory_body: payload.regulatory_body || null,
-    document_type: payload.document_type || null,
-    source_url: payload.source_url || null,
-    publication_date: payload.publication_date || null,
-  }
-
-  return supabase.from("evidence_items").insert(cleanedPayload).select("*").single()
-}
-
-/**
- * Update an existing evidence item
- */
-export const updateEvidence = async (
-  id: string,
-  payload: EvidenceUpdateValues
-) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
-
-  // Clean up empty string values to null
-  const cleanedPayload = Object.entries(payload).reduce(
-    (acc, [key, value]) => {
-      acc[key] = value === "" ? null : value
-      return acc
-    },
-    {} as Record<string, any>
+  if (!isSupabaseConfigured() || !supabase) return Promise.resolve(notConfigured<EvidenceItem[]>())
+  return safeCall(() =>
+    supabase
+      .from("evidence_items")
+      .select("*")
+      .order("updated_at", { ascending: false })
   )
-
-  return supabase
-    .from("evidence_items")
-    .update({ ...cleanedPayload, updated_at: new Date().toISOString() })
-    .eq("id", id)
-    .select("*")
-    .single()
 }
 
-/**
- * Delete an evidence item
- */
-export const deleteEvidence = async (id: string) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
+export const fetchEvidenceById = (id: string): SupabaseResult<EvidenceItem> => {
+  if (shouldUseEvidenceProxy()) {
+    return safeFetchJson<EvidenceItem>(`/api/evidence/${encodeURIComponent(id)}`)
   }
 
-  return supabase.from("evidence_items").delete().eq("id", id)
+  if (!isSupabaseConfigured() || !supabase) return Promise.resolve(notConfigured<EvidenceItem>())
+  return safeCall(() => supabase.from("evidence_items").select("*").eq("id", id).single())
 }
 
-/**
- * Link evidence to a protocol
- */
-export const linkEvidenceToProtocol = async (
+export const createEvidence = (payload: Partial<EvidenceItem> & { user_id: string }): SupabaseResult<EvidenceItem> => {
+  if (shouldUseEvidenceProxy()) {
+    return safeFetchJson<EvidenceItem>("/api/evidence", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    })
+  }
+
+  if (!isSupabaseConfigured() || !supabase) return Promise.resolve(notConfigured<EvidenceItem>())
+  return safeCall(() => supabase.from("evidence_items").insert(payload).select("*").single())
+}
+
+export const updateEvidence = (id: string, payload: Partial<EvidenceItem>): SupabaseResult<EvidenceItem> => {
+  if (shouldUseEvidenceProxy()) {
+    return safeFetchJson<EvidenceItem>(`/api/evidence/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    })
+  }
+
+  if (!isSupabaseConfigured() || !supabase) return Promise.resolve(notConfigured<EvidenceItem>())
+  return safeCall(() =>
+    supabase
+      .from("evidence_items")
+      .update({ ...payload, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .select("*")
+      .single()
+  )
+}
+
+export const deleteEvidence = (id: string): SupabaseResult<null> => {
+  if (shouldUseEvidenceProxy()) {
+    return safeFetchJson<null>(`/api/evidence/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    })
+  }
+
+  if (!isSupabaseConfigured() || !supabase) return Promise.resolve(notConfigured<null>())
+  return safeCall(() => supabase.from("evidence_items").delete().eq("id", id))
+}
+
+export const getUniqueTags = async (): SupabaseResult<string[]> => {
+  if (shouldUseEvidenceProxy()) {
+    const { data, error } = await fetchEvidenceItems()
+    if (error || !data) return { data: null, error }
+
+    const tags = data
+      .flatMap((row) => row.tags ?? [])
+      .filter(Boolean)
+
+    return { data: Array.from(new Set(tags)).sort(), error: null }
+  }
+
+  if (!isSupabaseConfigured() || !supabase) return notConfigured<string[]>()
+
+  const { data, error } = await safeCall(() => supabase.from("evidence_items").select("tags"))
+  if (error || !data) return { data: null, error }
+
+  const tags = (data as Array<{ tags?: string[] | null }>)
+    .flatMap((row) => row.tags ?? [])
+    .filter(Boolean)
+
+  return { data: Array.from(new Set(tags)).sort(), error: null }
+}
+
+// =============================================================================
+// PROTOCOL ↔ EVIDENCE LINKING
+// =============================================================================
+// These helpers assume conventional table names:
+// - protocol_evidence_links(protocol_id, evidence_id, note, linked_at)
+// If your Supabase schema uses different names, we’ll adjust.
+
+export const getLinkedEvidence = (protocolId: string): SupabaseResult<any[]> => {
+  if (!isSupabaseConfigured() || !supabase) return Promise.resolve(notConfigured<any[]>())
+  return safeCall(() =>
+    supabase
+      .from("protocol_evidence_links")
+      .select("*, evidence_items(*)")
+      .eq("protocol_id", protocolId)
+      .order("linked_at", { ascending: false })
+  )
+}
+
+export const linkEvidenceToProtocol = (
   protocolId: string,
   evidenceId: string,
   note?: string
-) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
-
-  const payload: Partial<EvidenceLink> = {
-    protocol_id: protocolId,
-    evidence_id: evidenceId,
-    note: note || null,
-  }
-
-  return supabase
-    .from("protocol_evidence_links")
-    .insert(payload)
-    .select("*")
-    .single()
+): SupabaseResult<any> => {
+  if (!isSupabaseConfigured() || !supabase) return Promise.resolve(notConfigured<any>())
+  return safeCall(() =>
+    supabase
+      .from("protocol_evidence_links")
+      .insert({ protocol_id: protocolId, evidence_id: evidenceId, note: note ?? null })
+      .select("*")
+      .single()
+  )
 }
 
-/**
- * Unlink evidence from a protocol
- */
-export const unlinkEvidence = async (linkId: string) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
-
-  return supabase.from("protocol_evidence_links").delete().eq("id", linkId)
+export const unlinkEvidence = (linkId: string): SupabaseResult<null> => {
+  if (!isSupabaseConfigured() || !supabase) return Promise.resolve(notConfigured<null>())
+  return safeCall(() => supabase.from("protocol_evidence_links").delete().eq("id", linkId))
 }
 
-/**
- * Get all evidence linked to a specific protocol
- */
-export const getLinkedEvidence = async (protocolId: string) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
-
-  return supabase
-    .from("protocol_evidence_links")
-    .select(
-      `
-      *,
-      evidence_items (*)
-    `
-    )
-    .eq("protocol_id", protocolId)
-    .order("linked_at", { ascending: false })
-}
-
-/**
- * Get all protocols linked to a specific evidence item
- */
-export const getLinkedProtocols = async (evidenceId: string) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
-
-  return supabase
-    .from("protocol_evidence_links")
-    .select(
-      `
-      *,
-      protocols (*)
-    `
-    )
-    .eq("evidence_id", evidenceId)
-    .order("linked_at", { ascending: false })
-}
-
-/**
- * Update a link note
- */
-export const updateLinkNote = async (linkId: string, note: string) => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
-
-  return supabase
-    .from("protocol_evidence_links")
-    .update({ note })
-    .eq("id", linkId)
-    .select("*")
-    .single()
-}
-
-/**
- * Get unique tags from all evidence items (for filter suggestions)
- */
-export const getUniqueTags = async () => {
-  if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } }
-  }
-
-  const { data, error } = await supabase
-    .from("evidence_items")
-    .select("tags")
-
-  if (error) return { data: null, error }
-
-  // Flatten and deduplicate tags
-  const allTags = data?.flatMap((item) => item.tags || []) || []
-  const uniqueTags = Array.from(new Set(allTags)).sort()
-
-  return { data: uniqueTags, error: null }
+export const getLinkedProtocols = (evidenceId: string): SupabaseResult<any[]> => {
+  if (!isSupabaseConfigured() || !supabase) return Promise.resolve(notConfigured<any[]>())
+  return safeCall(() =>
+    supabase
+      .from("protocol_evidence_links")
+      .select("*, protocols(*)")
+      .eq("evidence_id", evidenceId)
+      .order("linked_at", { ascending: false })
+  )
 }

@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase/client"
+import { supabase, isSupabaseConfigured } from "@/lib/supabase/client"
 import type { ProtocolFormValues } from "@/lib/validators/protocol"
 
 export type ProtocolRecord = ProtocolFormValues & {
@@ -9,6 +9,9 @@ export type ProtocolRecord = ProtocolFormValues & {
 }
 
 export const fetchProtocols = async () => {
+  if (!isSupabaseConfigured() || !supabase) {
+    return { data: null, error: { message: "Supabase is not configured." } }
+  }
   return supabase
     .from("protocols")
     .select("*")
@@ -16,10 +19,16 @@ export const fetchProtocols = async () => {
 }
 
 export const fetchProtocolById = async (id: string) => {
+  if (!isSupabaseConfigured() || !supabase) {
+    return { data: null, error: { message: "Supabase is not configured." } }
+  }
   return supabase.from("protocols").select("*").eq("id", id).single()
 }
 
 export const createProtocol = async (payload: ProtocolFormValues & { user_id: string }) => {
+  if (!isSupabaseConfigured() || !supabase) {
+    return { data: null, error: { message: "Supabase is not configured." } }
+  }
   return supabase.from("protocols").insert(payload).select("*").single()
 }
 
@@ -27,6 +36,9 @@ export const updateProtocol = async (
   id: string,
   payload: Partial<ProtocolFormValues>
 ) => {
+  if (!isSupabaseConfigured() || !supabase) {
+    return { data: null, error: { message: "Supabase is not configured." } }
+  }
   return supabase
     .from("protocols")
     .update({ ...payload, updated_at: new Date().toISOString() })
@@ -36,5 +48,8 @@ export const updateProtocol = async (
 }
 
 export const deleteProtocol = async (id: string) => {
+  if (!isSupabaseConfigured() || !supabase) {
+    return { data: null, error: { message: "Supabase is not configured." } }
+  }
   return supabase.from("protocols").delete().eq("id", id)
 }
