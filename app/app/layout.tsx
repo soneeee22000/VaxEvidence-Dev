@@ -11,7 +11,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { removeAuthCookie, DEV_USER } from "@/lib/auth/dev-auth"
-import { FileText, BookOpen, Database, LogOut, Activity } from "lucide-react"
+import { FileText, BookOpen, Database, LogOut, Activity, LayoutTemplate } from "lucide-react"
 import { useState, useEffect } from "react"
 import { fetchPendingReviewCount } from "@/lib/supabase/reviews"
 
@@ -76,6 +76,12 @@ export default function AppLayout({
       label: "Protocols",
       icon: FileText,
       exact: true,
+    },
+    {
+      href: "/app/templates",
+      label: "Templates",
+      icon: LayoutTemplate,
+      exact: false,
     },
     {
       href: "/app/datasets",

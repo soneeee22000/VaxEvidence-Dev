@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 
+import { ProtocolTemplateSelector } from "@/components/templates/ProtocolTemplateSelector"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -34,7 +35,8 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DEV_USER } from "@/lib/auth/dev-auth"
-import { createProtocol } from "@/lib/supabase/protocols"
+import { createProtocol, createTemplateUsage } from "@/lib/supabase/protocols"
+import { getTemplateById } from "@/lib/templates/protocol-templates"
 import { protocolSchema, type ProtocolFormValues } from "@/lib/validators/protocol"
 
 const defaultValues: ProtocolFormValues = {
@@ -49,14 +51,42 @@ const defaultValues: ProtocolFormValues = {
 
 export default function NewProtocolPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
+  const [showTemplateSelector, setShowTemplateSelector] = useState(true)
 
   const form = useForm<ProtocolFormValues>({
     resolver: zodResolver(protocolSchema),
     defaultValues,
     mode: "onTouched",
   })
+
+  const template = selectedTemplateId ? getTemplateById(selectedTemplateId) : null
+
+  useEffect(() => {
+    const templateFromQuery = searchParams?.get("template")
+    if (!templateFromQuery) return
+    if (templateFromQuery === selectedTemplateId) return
+    const templateToApply = getTemplateById(templateFromQuery)
+    if (!templateToApply) return
+    setSelectedTemplateId(templateFromQuery)
+    setShowTemplateSelector(false)
+  }, [searchParams, selectedTemplateId])
+
+  useEffect(() => {
+    if (!template) return
+    form.reset({
+      ...defaultValues,
+      title: template.title,
+      study_question: template.study_question,
+      population: template.population,
+      comparator: template.comparator,
+      outcomes: template.outcomes,
+      design: template.study_design,
+    })
+  }, [form, template])
 
   const handleSubmit = async (values: ProtocolFormValues) => {
     setError(null)
@@ -66,6 +96,8 @@ export default function NewProtocolPage() {
       const { data, error } = await createProtocol({
         ...values,
         user_id: DEV_USER.id,
+        template_id: template?.id,
+        template_name: template?.name,
       })
 
       if (error) {
@@ -73,12 +105,56 @@ export default function NewProtocolPage() {
       }
 
       if (data) {
+        if (template) {
+          try {
+            await createTemplateUsage({
+              user_id: DEV_USER.id,
+              template_id: template.id,
+              template_name: template.name,
+              created_protocol_id: data.id,
+            })
+          } catch (usageError) {
+            console.warn("Failed to log template usage:", usageError)
+          }
+        }
         router.push(`/app/${data.id}`)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create protocol")
       setIsSubmitting(false)
     }
+  }
+
+  if (showTemplateSelector) {
+    return (
+      <main className="min-h-screen bg-background px-4 py-12">
+        <div className="mx-auto w-full max-w-6xl space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Choose a protocol template</h1>
+              <p className="text-muted-foreground">
+                Start fast with a proven framework, or build from scratch.
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setSelectedTemplateId(null)
+                setShowTemplateSelector(false)
+              }}
+            >
+              Skip templates
+            </Button>
+          </div>
+          <ProtocolTemplateSelector
+            onSelectTemplate={(templateId) => {
+              setSelectedTemplateId(templateId)
+              setShowTemplateSelector(false)
+            }}
+          />
+        </div>
+      </main>
+    )
   }
 
   return (
@@ -92,6 +168,23 @@ export default function NewProtocolPage() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)}>
               <CardContent className="space-y-6">
+                {template && (
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                    <p className="font-semibold">
+                      Pre-filled from template: {template.name}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTemplateId(null)
+                        setShowTemplateSelector(true)
+                      }}
+                      className="mt-1 text-blue-700 underline"
+                    >
+                      Change template
+                    </button>
+                  </div>
+                )}
                 {error && (
                   <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
                     {error}
