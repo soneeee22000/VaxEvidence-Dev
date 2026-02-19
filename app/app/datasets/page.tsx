@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -29,20 +30,26 @@ import {
   getDatasetFileUrl,
   getTotalStorageUsed,
   getUniqueTags,
+  createDataset,
   type DatasetSortOptions,
 } from "@/lib/supabase/datasets"
 import type { Dataset } from "@/lib/validators/dataset"
 import { formatFileSize } from "@/lib/validators/dataset"
-import { Search, Filter, Upload, HardDrive } from "lucide-react"
+import { Search, Filter, Upload, HardDrive, Database, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { createClient } from "@/lib/supabase/browser"
+import { SAMPLE_DATASETS } from "@/lib/demo/sample-datasets"
 
 type SortField = "created_at" | "updated_at" | "name" | "file_size" | "row_count"
 
 export default function DatasetsPage() {
+  const router = useRouter()
   const { toast } = useToast()
+  const supabase = createClient()
   const [datasets, setDatasets] = useState<Dataset[]>([])
   const [filteredDatasets, setFilteredDatasets] = useState<Dataset[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingSampleData, setIsLoadingSampleData] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [sortField, setSortField] = useState<SortField>("created_at")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
@@ -180,6 +187,65 @@ export default function DatasetsPage() {
     setSortDirection(direction)
   }
 
+  const handleLoadSampleData = async () => {
+    setIsLoadingSampleData(true)
+
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        throw new Error("Not authenticated")
+      }
+
+      // Load the sample dataset metadata (no storage upload needed for demo data)
+      const sampleDataset = SAMPLE_DATASETS[0]
+
+      // Use demo: prefix - file is served directly from public folder
+      const demoStoragePath = `demo:${sampleDataset.filePath}`
+
+      // Create dataset record with demo path (no actual file upload)
+      const datasetPayload = {
+        name: sampleDataset.name,
+        description: sampleDataset.description,
+        dataset_type: sampleDataset.datasetType,
+        tags: sampleDataset.tags,
+        status: 'draft' as const,
+        user_id: user.id,
+        file_name: sampleDataset.fileName,
+        file_size: 5000,
+        file_type: 'csv' as const,
+        storage_path: demoStoragePath,
+        row_count: sampleDataset.rowCount,
+        column_count: sampleDataset.columnCount,
+      }
+
+      const { data: dataset, error: createError } = await createDataset(datasetPayload)
+
+      if (createError || !dataset) {
+        throw new Error(createError?.message || "Failed to create dataset record")
+      }
+
+      toast({
+        title: "Sample data loaded",
+        description: "Vaccine clinical trial sample dataset has been added to your library.",
+      })
+
+      // Refresh datasets
+      loadDatasets()
+      loadTotalStorage()
+      loadUniqueTags()
+    } catch (error) {
+      console.error("Error loading sample data:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to load sample data",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoadingSampleData(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <main className="min-h-screen bg-background px-4 py-12">
@@ -307,12 +373,39 @@ export default function DatasetsPage() {
                       : "No datasets yet"}
                   </p>
                   {!searchQuery && filters.types.length === 0 && (
-                    <Button asChild>
-                      <Link href="/app/datasets/new">
-                        <Upload className="mr-2 h-4 w-4" />
-                        Upload your first dataset
-                      </Link>
-                    </Button>
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="flex gap-2">
+                        <Button asChild>
+                          <Link href="/app/datasets/new">
+                            <Upload className="mr-2 h-4 w-4" />
+                            Upload your first dataset
+                          </Link>
+                        </Button>
+                      </div>
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <span className="text-sm">or</span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        onClick={handleLoadSampleData}
+                        disabled={isLoadingSampleData}
+                      >
+                        {isLoadingSampleData ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Loading sample data...
+                          </>
+                        ) : (
+                          <>
+                            <Database className="mr-2 h-4 w-4" />
+                            Load Sample Clinical Trial Data
+                          </>
+                        )}
+                      </Button>
+                      <p className="text-xs text-muted-foreground text-center max-w-sm">
+                        Try VaxEvidence with a sample vaccine clinical trial dataset containing 50 participant records.
+                      </p>
+                    </div>
                   )}
                 </CardContent>
               </Card>

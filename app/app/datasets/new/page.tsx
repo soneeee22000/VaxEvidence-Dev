@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -49,13 +49,15 @@ import {
   extractFileMetadata,
 } from "@/lib/supabase/datasets"
 import { parseFile } from "@/lib/utils/file-parser"
-import { DEV_USER } from "@/lib/auth/dev-auth"
+import { createClient } from "@/lib/supabase/browser"
 import { useToast } from "@/hooks/use-toast"
 import { Loader2, X, ChevronRight, ChevronLeft } from "lucide-react"
 
 export default function NewDatasetPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const supabase = createClient()
+  const [currentUserId, setCurrentUserId] = useState<string>("")
   const [step, setStep] = useState<1 | 2>(1)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -64,6 +66,17 @@ export default function NewDatasetPage() {
     rowCount: number
     columnCount: number
   } | null>(null)
+
+  // Get current user on mount
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setCurrentUserId(user.id)
+      }
+    }
+    getUser()
+  }, [supabase.auth])
 
   const form = useForm<DatasetFormValues>({
     resolver: zodResolver(datasetSchema),
@@ -142,12 +155,17 @@ export default function NewDatasetPage() {
         throw new Error("Unsupported file type")
       }
 
+      if (!currentUserId) {
+        throw new Error("Not authenticated. Please sign in again.")
+      }
+
       const { data: uploadData, error: uploadError } = await uploadDatasetFile(
         selectedFile,
-        DEV_USER.id
+        currentUserId
       )
 
       if (uploadError || !uploadData) {
+        console.error("[Dataset Upload Page] Upload failed:", uploadError)
         throw new Error(uploadError?.message || "Failed to upload file")
       }
 
@@ -156,7 +174,7 @@ export default function NewDatasetPage() {
       // Step 2: Create dataset metadata
       const datasetPayload = {
         ...values,
-        user_id: DEV_USER.id,
+        user_id: currentUserId,
         file_name: selectedFile.name,
         file_size: selectedFile.size,
         file_type: fileType,

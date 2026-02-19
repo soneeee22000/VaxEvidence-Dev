@@ -13,8 +13,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { WorkspaceExportButton } from "@/components/export/workspace-export-button"
 import { fetchProtocols, type ProtocolRecord } from "@/lib/supabase/protocols"
-import { DEV_USER, isAuthenticatedClient, removeAuthCookie } from "@/lib/auth/dev-auth"
+import { createClient } from "@/lib/supabase/browser"
 
 export default function AppDashboardPage() {
   const router = useRouter()
@@ -26,18 +27,23 @@ export default function AppDashboardPage() {
 
   const hasProtocols = useMemo(() => protocols.length > 0, [protocols.length])
 
+  const supabase = createClient()
+
   useEffect(() => {
     let isMounted = true
 
     const load = async () => {
-      // Dev-mode auth is cookie-based (see `middleware.ts` + `lib/auth/dev-auth.ts`)
-      // We don’t require a Supabase Auth session in local development.
       if (!isMounted) return
-      if (!isAuthenticatedClient()) {
+
+      // Get the authenticated user
+      const { data: { user } } = await supabase.auth.getUser()
+
+      if (!user) {
         router.replace("/auth")
         return
       }
-      setEmail(DEV_USER.email)
+
+      setEmail(user.email ?? null)
 
       const { data, error: fetchError } = await fetchProtocols()
       if (!isMounted) return
@@ -54,12 +60,13 @@ export default function AppDashboardPage() {
     return () => {
       isMounted = false
     }
-  }, [router])
+  }, [router, supabase.auth])
 
   const handleSignOut = async () => {
     setIsSigningOut(true)
-    removeAuthCookie()
+    await supabase.auth.signOut()
     router.replace("/auth")
+    router.refresh()
   }
 
   const formatDate = (value: string) => new Date(value).toLocaleDateString()
@@ -94,6 +101,7 @@ export default function AppDashboardPage() {
               <Button asChild>
                 <Link href="/app/new">New protocol</Link>
               </Button>
+              <WorkspaceExportButton />
               <Button variant="outline" onClick={handleSignOut} disabled={isSigningOut}>
                 {isSigningOut ? "Signing out..." : "Sign out"}
               </Button>

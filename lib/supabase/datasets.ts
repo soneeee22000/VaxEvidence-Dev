@@ -94,24 +94,51 @@ export const getTotalStorageUsed = async (): SupabaseResult<number> => {
 // =============================================================================
 
 export const uploadDatasetFile = async (file: File, userId: string): SupabaseResult<{ fullPath: string }> => {
-  if (!isSupabaseConfigured() || !supabase) return notConfigured<{ fullPath: string }>()
+  if (!isSupabaseConfigured() || !supabase) {
+    console.error("[Dataset Upload] Supabase is not configured")
+    return notConfigured<{ fullPath: string }>()
+  }
 
   const timestamp = Date.now()
   const safeName = file.name.replace(/[^\w.\-]+/g, "_")
   const path = `${userId}/${timestamp}-${safeName}`
 
-  return safeCall(async () => {
+  console.log(`[Dataset Upload] Uploading to bucket "${DATASETS_BUCKET}" at path: ${path}`)
+
+  try {
     const { data, error } = await supabase.storage.from(DATASETS_BUCKET).upload(path, file, {
       cacheControl: "3600",
       upsert: false,
     })
-    if (error) return { data: null, error }
+
+    if (error) {
+      console.error("[Dataset Upload] Supabase storage error:", error)
+      // Provide more helpful error messages
+      let errorMessage = error.message
+      if (error.message.includes("Bucket not found")) {
+        errorMessage = `Storage bucket "${DATASETS_BUCKET}" does not exist. Please create it in Supabase Dashboard → Storage.`
+      } else if (error.message.includes("not authorized") || error.message.includes("policy")) {
+        errorMessage = `Storage access denied. Please check RLS policies for bucket "${DATASETS_BUCKET}".`
+      }
+      return { data: null, error: { message: errorMessage } }
+    }
+
     const uploadedPath = (data as any)?.path ?? path
+    console.log("[Dataset Upload] Success:", uploadedPath)
     return { data: { fullPath: uploadedPath }, error: null }
-  })
+  } catch (err) {
+    console.error("[Dataset Upload] Unexpected error:", err)
+    return { data: null, error: { message: err instanceof Error ? err.message : String(err) } }
+  }
 }
 
 export const getDatasetFileUrl = async (storagePath: string): SupabaseResult<{ signedUrl: string }> => {
+  // Handle demo files served from public folder
+  if (storagePath.startsWith("demo:")) {
+    const publicPath = storagePath.replace("demo:", "")
+    return { data: { signedUrl: publicPath }, error: null }
+  }
+
   if (!isSupabaseConfigured() || !supabase) return notConfigured<{ signedUrl: string }>()
 
   return safeCall(async () => {

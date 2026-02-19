@@ -44,7 +44,17 @@ export const createProtocol = async (payload: ProtocolCreatePayload) => {
   if (!isSupabaseConfigured() || !supabase) {
     return { data: null, error: { message: "Supabase is not configured." } }
   }
-  return supabase.from("protocols").insert(payload).select("*").single()
+
+  // First attempt with all fields
+  const result = await supabase.from("protocols").insert(payload).select("*").single()
+
+  // If error mentions missing column (migration not applied), retry without template fields
+  if (result.error?.message?.includes("column") || result.error?.message?.includes("schema cache")) {
+    const { template_id, template_name, ...corePayload } = payload
+    return supabase.from("protocols").insert(corePayload).select("*").single()
+  }
+
+  return result
 }
 
 export const createTemplateUsage = async (payload: TemplateUsagePayload) => {

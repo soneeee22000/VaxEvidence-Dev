@@ -1,0 +1,51 @@
+participant_id,age,gender,vaccine_type,dose_number,administration_date,adverse_event,adverse_event_severity,days_post_vaccination,efficacy_endpoint_met,antibody_titer,study_site,randomization_group
+VCT-001,45,Female,mRNA-VE001,1,2025-03-15,None,,0,No,0,Site A,Treatment
+VCT-001,45,Female,mRNA-VE001,2,2025-04-12,Injection site pain,Mild,1,Yes,2450,Site A,Treatment
+VCT-002,32,Male,mRNA-VE001,1,2025-03-16,Fatigue,Mild,1,No,0,Site A,Treatment
+VCT-002,32,Male,mRNA-VE001,2,2025-04-13,None,,0,Yes,3120,Site A,Treatment
+VCT-003,58,Female,mRNA-VE001,1,2025-03-17,Headache,Mild,2,No,0,Site B,Treatment
+VCT-003,58,Female,mRNA-VE001,2,2025-04-14,Fever,Moderate,1,Yes,2890,Site B,Treatment
+VCT-004,27,Male,Placebo,1,2025-03-15,None,,0,No,0,Site A,Control
+VCT-004,27,Male,Placebo,2,2025-04-12,None,,0,No,120,Site A,Control
+VCT-005,41,Female,mRNA-VE001,1,2025-03-18,Injection site swelling,Mild,1,No,0,Site B,Treatment
+VCT-005,41,Female,mRNA-VE001,2,2025-04-15,Myalgia,Mild,2,Yes,2670,Site B,Treatment
+VCT-006,55,Male,mRNA-VE001,1,2025-03-19,None,,0,No,0,Site C,Treatment
+VCT-006,55,Male,mRNA-VE001,2,2025-04-16,Chills,Mild,1,Yes,3450,Site C,Treatment
+VCT-007,38,Female,Placebo,1,2025-03-16,None,,0,No,0,Site B,Control
+VCT-007,38,Female,Placebo,2,2025-04-13,None,,0,No,95,Site B,Control
+VCT-008,62,Male,mRNA-VE001,1,2025-03-20,Fatigue,Mild,1,No,0,Site C,Treatment
+VCT-008,62,Male,mRNA-VE001,2,2025-04-17,Arthralgia,Mild,3,Yes,2210,Site C,Treatment
+VCT-009,29,Female,mRNA-VE001,1,2025-03-21,Nausea,Mild,1,No,0,Site A,Treatment
+VCT-009,29,Female,mRNA-VE001,2,2025-04-18,Injection site pain,Mild,1,Yes,3680,Site A,Treatment
+VCT-010,47,Male,Placebo,1,2025-03-17,None,,0,No,0,Site C,Control
+VCT-010,47,Male,Placebo,2,2025-04-14,None,,0,No,110,Site C,Control
+VCT-011,34,Female,mRNA-VE001,1,2025-03-22,Headache,Mild,1,No,0,Site B,Treatment
+VCT-011,34,Female,mRNA-VE001,2,2025-04-19,Fatigue,Mild,2,Yes,2980,Site B,Treatment
+VCT-012,51,Male,mRNA-VE001,1,2025-03-23,None,,0,No,0,Site A,Treatment
+VCT-012,51,Male,mRNA-VE001,2,2025-04-20,Lymphadenopathy,Moderate,3,Yes,3290,Site A,Treatment
+VCT-013,43,Female,Placebo,1,2025-03-18,None,,0,No,0,Site A,Control
+VCT-013,43,Female,Placebo,2,2025-04-15,None,,0,No,88,Site A,Control
+VCT-014,36,Male,mRNA-VE001,1,2025-03-24,Injection site pain,Mild,1,No,0,Site C,Treatment
+VCT-014,36,Male,mRNA-VE001,2,2025-04-21,Fever,Mild,1,Yes,2540,Site C,Treatment
+VCT-015,59,Female,mRNA-VE001,1,2025-03-25,Dizziness,Mild,1,No,0,Site B,Treatment
+VCT-015,59,Female,mRNA-VE001,2,2025-04-22,None,,0,Yes,2150,Site B,Treatment
+VCT-016,25,Male,Placebo,1,2025-03-19,None,,0,No,0,Site B,Control
+VCT-016,25,Male,Placebo,2,2025-04-16,None,,0,No,102,Site B,Control
+VCT-017,48,Female,mRNA-VE001,1,2025-03-26,Fatigue,Mild,2,No,0,Site A,Treatment
+VCT-017,48,Female,mRNA-VE001,2,2025-04-23,Myalgia,Mild,1,Yes,3150,Site A,Treatment
+VCT-018,31,Male,mRNA-VE001,1,2025-03-27,None,,0,No,0,Site C,Treatment
+VCT-018,31,Male,mRNA-VE001,2,2025-04-24,Chills,Mild,1,Yes,2870,Site C,Treatment
+VCT-019,54,Female,Placebo,1,2025-03-20,None,,0,No,0,Site C,Control
+VCT-019,54,Female,Placebo,2,2025-04-17,None,,0,No,78,Site C,Control
+VCT-020,40,Male,mRNA-VE001,1,2025-03-28,Headache,Mild,1,No,0,Site B,Treatment
+VCT-020,40,Male,mRNA-VE001,2,2025-04-25,Injection site swelling,Mild,2,Yes,3420,Site B,Treatment
+VCT-021,67,Female,mRNA-VE001,1,2025-03-29,None,,0,No,0,Site A,Treatment
+VCT-021,67,Female,mRNA-VE001,2,2025-04-26,Fatigue,Moderate,2,Yes,1980,Site A,Treatment
+VCT-022,28,Male,Placebo,1,2025-03-21,None,,0,No,0,Site A,Control
+VCT-022,28,Male,Placebo,2,2025-04-18,None,,0,No,115,Site A,Control
+VCT-023,52,Female,mRNA-VE001,1,2025-03-30,Nausea,Mild,1,No,0,Site C,Treatment
+VCT-023,52,Female,mRNA-VE001,2,2025-04-27,Arthralgia,Mild,3,Yes,2680,Site C,Treatment
+VCT-024,35,Male,mRNA-VE001,1,2025-03-31,Injection site pain,Mild,1,No,0,Site B,Treatment
+VCT-024,35,Male,mRNA-VE001,2,2025-04-28,None,,0,Yes,3210,Site B,Treatment
+VCT-025,61,Female,Placebo,1,2025-03-22,None,,0,No,0,Site B,Control
+VCT-025,61,Female,Placebo,2,2025-04-19,None,,0,No,92,Site B,Control

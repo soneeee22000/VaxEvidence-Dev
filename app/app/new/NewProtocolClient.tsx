@@ -34,7 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { DEV_USER } from "@/lib/auth/dev-auth"
+import { createClient } from "@/lib/supabase/browser"
 import { createProtocol, createTemplateUsage } from "@/lib/supabase/protocols"
 import { getTemplateById } from "@/lib/templates/protocol-templates"
 import { protocolSchema, type ProtocolFormValues } from "@/lib/validators/protocol"
@@ -56,6 +56,19 @@ export function NewProtocolClient() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
   const [showTemplateSelector, setShowTemplateSelector] = useState(true)
+  const [userId, setUserId] = useState<string | null>(null)
+
+  const supabase = createClient()
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setUserId(user.id)
+      }
+    }
+    getUser()
+  }, [supabase.auth])
 
   const form = useForm<ProtocolFormValues>({
     resolver: zodResolver(protocolSchema),
@@ -92,10 +105,16 @@ export function NewProtocolClient() {
     setError(null)
     setIsSubmitting(true)
 
+    if (!userId) {
+      setError("Not authenticated. Please sign in again.")
+      setIsSubmitting(false)
+      return
+    }
+
     try {
       const { data, error } = await createProtocol({
         ...values,
-        user_id: DEV_USER.id,
+        user_id: userId,
         template_id: template?.id,
         template_name: template?.name,
       })
@@ -105,10 +124,10 @@ export function NewProtocolClient() {
       }
 
       if (data) {
-        if (template) {
+        if (template && userId) {
           try {
             await createTemplateUsage({
-              user_id: DEV_USER.id,
+              user_id: userId,
               template_id: template.id,
               template_name: template.name,
               created_protocol_id: data.id,

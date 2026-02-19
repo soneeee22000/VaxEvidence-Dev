@@ -1,53 +1,32 @@
 "use client"
 
 // =============================================================================
-// APP LAYOUT - Dev Mode
+// APP LAYOUT
 // =============================================================================
-// Simplified layout for development. Middleware handles auth protection.
+// Main layout for authenticated app pages. Uses Supabase Auth.
 // =============================================================================
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { removeAuthCookie, DEV_USER } from "@/lib/auth/dev-auth"
+import { AuthProvider, useAuth } from "@/lib/auth/auth-context"
 import { FileText, BookOpen, Database, LogOut, Activity, LayoutTemplate } from "lucide-react"
 import { useState, useEffect } from "react"
 import { fetchPendingReviewCount } from "@/lib/supabase/reviews"
 
-const DEBUG_LOG_ENDPOINT = process.env.NEXT_PUBLIC_DEBUG_LOG_ENDPOINT
-
-const sendDebugLog = (payload: {
-  hypothesisId?: string
-  location: string
-  message: string
-  data?: Record<string, unknown>
-}) => {
-  if (!DEBUG_LOG_ENDPOINT) return
-  fetch(DEBUG_LOG_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      sessionId: "debug-session",
-      ...payload,
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {})
-}
-
-export default function AppLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
+  const { user, signOut } = useAuth()
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [pendingReviewCount, setPendingReviewCount] = useState(0)
 
   useEffect(() => {
+    if (!user) return
+
     const loadPendingReviews = async () => {
-      const { data } = await fetchPendingReviewCount(DEV_USER.id)
+      const { data } = await fetchPendingReviewCount(user.id)
       if (data !== null) {
         setPendingReviewCount(data)
       }
@@ -56,18 +35,13 @@ export default function AppLayout({
     // Refresh every 30 seconds
     const interval = setInterval(loadPendingReviews, 30000)
     return () => clearInterval(interval)
-  }, [])
+  }, [user])
 
-  const handleSignOut = () => {
-    sendDebugLog({
-      hypothesisId: "A",
-      location: "app/app/layout.tsx:handleSignOut",
-      message: "Sign out initiated from layout",
-      data: { pathname },
-    })
+  const handleSignOut = async () => {
     setIsSigningOut(true)
-    removeAuthCookie()
-    router.replace("/")
+    await signOut()
+    router.replace("/auth")
+    router.refresh()
   }
 
   const navLinks = [
@@ -151,7 +125,7 @@ export default function AppLayout({
           </nav>
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground hidden md:block">
-              {DEV_USER.email}
+              {user?.email ?? "Loading..."}
             </span>
             <Button
               variant="ghost"
@@ -169,5 +143,17 @@ export default function AppLayout({
       {/* Main Content */}
       <main>{children}</main>
     </div>
+  )
+}
+
+export default function AppLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <AuthProvider>
+      <AppLayoutContent>{children}</AppLayoutContent>
+    </AuthProvider>
   )
 }

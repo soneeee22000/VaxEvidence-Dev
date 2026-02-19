@@ -75,19 +75,32 @@ import { fetchComments, createComment, updateComment, deleteComment } from "@/li
 import { fetchReviews, requestReview, submitReviewDecision, cancelReview } from "@/lib/supabase/reviews"
 import { buildCommentThreads, type CommentWithUser } from "@/lib/validators/comment"
 import type { ReviewWithDetails, ReviewStatus } from "@/lib/validators/review"
-import { DEV_USER } from "@/lib/auth/dev-auth"
+import { createClient } from "@/lib/supabase/browser"
 
 export default function ProtocolDetailPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
   const protocolId = params?.id
   const { toast } = useToast()
+  const supabase = createClient()
 
+  const [currentUserId, setCurrentUserId] = useState<string>("")
   const [protocol, setProtocol] = useState<ProtocolRecord | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+
+  // Get current user on mount
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setCurrentUserId(user.id)
+      }
+    }
+    getUser()
+  }, [supabase.auth])
 
   // Evidence linking state
   const [linkedEvidence, setLinkedEvidence] = useState<any[]>([])
@@ -246,7 +259,7 @@ export default function ProtocolDetailPage() {
 
     try {
       const { data, error } = await createComment({
-        user_id: DEV_USER.id,
+        user_id: currentUserId,
         resource_type: "protocol",
         resource_id: protocolId,
         content,
@@ -277,7 +290,7 @@ export default function ProtocolDetailPage() {
 
     try {
       const { data, error } = await createComment({
-        user_id: DEV_USER.id,
+        user_id: currentUserId,
         resource_type: "protocol",
         resource_id: protocolId,
         content,
@@ -357,7 +370,7 @@ export default function ProtocolDetailPage() {
       const { data, error } = await requestReview({
         protocol_id: protocolId,
         reviewer_id: reviewerId,
-        requester_id: DEV_USER.id,
+        requester_id: currentUserId,
       })
 
       if (error || !data) {
@@ -1232,7 +1245,7 @@ export default function ProtocolDetailPage() {
         {/* Reviews Section */}
         <ReviewPanel
           reviews={reviews}
-          currentUserId={DEV_USER.id}
+          currentUserId={currentUserId}
           protocolId={protocolId}
           onRequestReview={handleRequestReview}
           onSubmitDecision={handleSubmitReviewDecision}
@@ -1260,7 +1273,7 @@ export default function ProtocolDetailPage() {
             ) : (
               <CommentThread
                 comments={buildCommentThreads(comments)}
-                currentUserId={DEV_USER.id}
+                currentUserId={currentUserId}
                 onReply={handleReplyComment}
                 onEdit={handleEditComment}
                 onDelete={handleDeleteComment}

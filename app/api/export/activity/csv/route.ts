@@ -23,17 +23,24 @@ export async function POST(request: NextRequest) {
     const { data: activityLogs, error } = await fetchActivityLog(filters)
 
     if (error) {
+      console.error('[Activity Export] Failed to fetch activity logs:', error)
       return NextResponse.json(
-        { error: 'Failed to fetch activity logs' },
+        { error: 'Failed to fetch activity logs', details: error.message },
         { status: 500 }
       )
     }
 
+    // If no activity logs, return empty CSV with headers (not 404)
     if (!activityLogs || activityLogs.length === 0) {
-      return NextResponse.json(
-        { error: 'No activity logs found' },
-        { status: 404 }
-      )
+      const emptyCSV = 'timestamp,user,action,resource_type,resource_id,description\n'
+      const filename = 'activity-log-empty.csv'
+      return new Response(emptyCSV, {
+        headers: {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': `attachment; filename="${filename}"`,
+          'Cache-Control': 'no-cache',
+        },
+      })
     }
 
     // Generate CSV
