@@ -101,7 +101,7 @@ public/demo/            # Demo mode static assets
 ### Authentication
 
 - **Supabase Auth:** OAuth/passwordless via `@supabase/ssr`, session refresh in `lib/supabase/middleware.ts`
-- **Route protection:** `middleware.ts` guards `/app/*` routes using Supabase session check, redirects unauthenticated to `/auth`
+- **Route protection:** `proxy.ts` guards `/app/*` routes using Supabase session check, redirects unauthenticated to `/auth`
 - **OAuth callback:** `app/auth/callback/route.ts` handles OAuth code exchange
 - **Client auth:** `useAuth()` and `useUserId()` hooks from `lib/auth/auth-context.tsx`, using `lib/supabase/browser.ts`
 - **Dev fallback:** `useUserId()` returns a hardcoded UUID (`550e8400-...`) when no session exists (dev convenience only)
