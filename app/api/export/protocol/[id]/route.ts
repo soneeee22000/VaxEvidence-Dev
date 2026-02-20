@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fetchProtocolById } from "@/lib/supabase/protocols";
-import { getLinkedEvidence } from "@/lib/supabase/evidence";
-import { getLinkedDatasets } from "@/lib/supabase/datasets";
-import { fetchComments } from "@/lib/supabase/comments";
-import { fetchReviews } from "@/lib/supabase/reviews";
+import { getSupabaseAdmin, getServerUser } from "@/lib/supabase/server";
 import { generateProtocolPDF } from "@/lib/export/pdf-generator";
 import type { ProtocolExportOptions } from "@/lib/export/types";
 
@@ -16,6 +12,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const user = await getServerUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id: protocolId } = await params;
 
     if (!protocolId) {
@@ -35,9 +36,15 @@ export async function POST(
       templateStyle: body.templateStyle ?? "professional",
     };
 
+    const admin = getSupabaseAdmin();
+
     // Fetch protocol data
-    const { data: protocol, error: protocolError } =
-      await fetchProtocolById(protocolId);
+    const { data: protocol, error: protocolError } = await admin
+      .from("protocols")
+      .select("*")
+      .eq("id", protocolId)
+      .single();
+
     if (protocolError || !protocol) {
       return NextResponse.json(
         { error: "Protocol not found" },
@@ -46,13 +53,31 @@ export async function POST(
     }
 
     // Fetch linked data
-    const { data: linkedEvidence } = await getLinkedEvidence(protocolId);
-    const { data: linkedDatasets } = await getLinkedDatasets(protocolId);
+    const { data: linkedEvidence } = await admin
+      .from("protocol_evidence")
+      .select("*, evidence_items(*)")
+      .eq("protocol_id", protocolId);
+
+    const { data: linkedDatasets } = await admin
+      .from("protocol_datasets")
+      .select("*, datasets(*)")
+      .eq("protocol_id", protocolId);
+
     const { data: comments } = options.includeComments
-      ? await fetchComments(protocolId, "protocol")
+      ? await admin
+          .from("comments")
+          .select("*")
+          .eq("resource_id", protocolId)
+          .eq("resource_type", "protocol")
+          .order("created_at")
       : { data: [] };
+
     const { data: reviews } = options.includeReviews
-      ? await fetchReviews(protocolId)
+      ? await admin
+          .from("reviews")
+          .select("*")
+          .eq("protocol_id", protocolId)
+          .order("created_at", { ascending: false })
       : { data: [] };
 
     // Generate PDF

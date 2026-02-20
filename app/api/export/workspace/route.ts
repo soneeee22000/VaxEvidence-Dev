@@ -1,16 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fetchProtocols } from "@/lib/supabase/protocols";
-import { fetchEvidenceItems } from "@/lib/supabase/evidence";
-import { fetchDatasets } from "@/lib/supabase/datasets";
-import { getLinkedEvidence } from "@/lib/supabase/evidence";
-import { getLinkedDatasets } from "@/lib/supabase/datasets";
-import { fetchComments } from "@/lib/supabase/comments";
-import { fetchReviews } from "@/lib/supabase/reviews";
+import { getSupabaseAdmin, getServerUser } from "@/lib/supabase/server";
 import {
   generateWorkspaceArchive,
   generateJSONExport,
 } from "@/lib/export/archive-generator";
-import { getServerUser } from "@/lib/supabase/server";
 
 /**
  * Export entire workspace as ZIP archive
@@ -26,8 +19,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const format = body.format || "zip"; // 'zip' or 'json'
 
+    const admin = getSupabaseAdmin();
+
     // Fetch all user data
-    const { data: protocols, error: protocolsError } = await fetchProtocols();
+    const { data: protocols, error: protocolsError } = await admin
+      .from("protocols")
+      .select("*")
+      .eq("user_id", user.id);
+
     if (protocolsError) {
       return NextResponse.json(
         { error: "Failed to fetch protocols" },
@@ -35,7 +34,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: evidence, error: evidenceError } = await fetchEvidenceItems();
+    const { data: evidence, error: evidenceError } = await admin
+      .from("evidence_items")
+      .select("*")
+      .eq("user_id", user.id);
+
     if (evidenceError) {
       return NextResponse.json(
         { error: "Failed to fetch evidence" },
@@ -43,7 +46,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: datasets, error: datasetsError } = await fetchDatasets();
+    const { data: datasets, error: datasetsError } = await admin
+      .from("datasets")
+      .select("*")
+      .eq("user_id", user.id);
+
     if (datasetsError) {
       return NextResponse.json(
         { error: "Failed to fetch datasets" },
@@ -59,13 +66,28 @@ export async function POST(request: NextRequest) {
 
     if (protocols && protocols.length > 0) {
       for (const protocol of protocols) {
-        const { data: linkedEv } = await getLinkedEvidence(protocol.id);
-        const { data: linkedDs } = await getLinkedDatasets(protocol.id);
-        const { data: protocolComments } = await fetchComments(
-          protocol.id,
-          "protocol",
-        );
-        const { data: protocolReviews } = await fetchReviews(protocol.id);
+        const { data: linkedEv } = await admin
+          .from("protocol_evidence")
+          .select("*, evidence_items(*)")
+          .eq("protocol_id", protocol.id);
+
+        const { data: linkedDs } = await admin
+          .from("protocol_datasets")
+          .select("*, datasets(*)")
+          .eq("protocol_id", protocol.id);
+
+        const { data: protocolComments } = await admin
+          .from("comments")
+          .select("*")
+          .eq("resource_id", protocol.id)
+          .eq("resource_type", "protocol")
+          .order("created_at");
+
+        const { data: protocolReviews } = await admin
+          .from("reviews")
+          .select("*")
+          .eq("protocol_id", protocol.id)
+          .order("created_at", { ascending: false });
 
         linkedEvidence[protocol.id] = linkedEv || [];
         linkedDatasets[protocol.id] = linkedDs || [];
