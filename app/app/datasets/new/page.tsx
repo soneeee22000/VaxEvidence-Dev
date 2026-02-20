@@ -1,11 +1,11 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import { Button } from "@/components/ui/button"
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -13,7 +13,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -22,18 +22,18 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { UploadDropzone } from "@/components/datasets/upload-dropzone"
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { UploadDropzone } from "@/components/datasets/upload-dropzone";
 import {
   datasetSchema,
   datasetTypes,
@@ -42,41 +42,38 @@ import {
   getFileType,
   getDatasetTypeLabel,
   type DatasetFormValues,
-} from "@/lib/validators/dataset"
-import {
-  createDataset,
-  uploadDatasetFile,
-  extractFileMetadata,
-} from "@/lib/supabase/datasets"
-import { parseFile } from "@/lib/utils/file-parser"
-import { createClient } from "@/lib/supabase/browser"
-import { useToast } from "@/hooks/use-toast"
-import { Loader2, X, ChevronRight, ChevronLeft } from "lucide-react"
+} from "@/lib/validators/dataset";
+import { createDataset, uploadDatasetFile } from "@/lib/supabase/datasets";
+import { parseFile } from "@/lib/utils/file-parser";
+import { createClient } from "@/lib/supabase/browser";
+import { toast } from "sonner";
+import { Loader2, X, ChevronRight, ChevronLeft } from "lucide-react";
 
 export default function NewDatasetPage() {
-  const router = useRouter()
-  const { toast } = useToast()
-  const supabase = createClient()
-  const [currentUserId, setCurrentUserId] = useState<string>("")
-  const [step, setStep] = useState<1 | 2>(1)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [uploadProgress, setUploadProgress] = useState(0)
-  const [isProcessing, setIsProcessing] = useState(false)
+  const router = useRouter();
+  const supabase = createClient();
+  const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [step, setStep] = useState<1 | 2>(1);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [parsedMetadata, setParsedMetadata] = useState<{
-    rowCount: number
-    columnCount: number
-  } | null>(null)
+    rowCount: number;
+    columnCount: number;
+  } | null>(null);
 
   // Get current user on mount
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) {
-        setCurrentUserId(user.id)
+        setCurrentUserId(user.id);
       }
-    }
-    getUser()
-  }, [supabase.auth])
+    };
+    getUser();
+  }, [supabase.auth]);
 
   const form = useForm<DatasetFormValues>({
     resolver: zodResolver(datasetSchema),
@@ -87,89 +84,85 @@ export default function NewDatasetPage() {
       tags: [],
       status: "draft",
     },
-  })
+  });
 
   const handleFileSelect = async (file: File) => {
-    setSelectedFile(file)
-    
+    setSelectedFile(file);
+
     // Auto-fill name from filename
-    const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "")
-    form.setValue("name", nameWithoutExt)
+    const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
+    form.setValue("name", nameWithoutExt);
 
     // Parse file to get metadata
-    setIsProcessing(true)
-    const parsed = await parseFile(file)
-    
+    setIsProcessing(true);
+    const parsed = await parseFile(file);
+
     if (parsed.error) {
-      toast({
-        title: "Warning",
-        description: `Could not parse file: ${parsed.error}`,
-        variant: "destructive",
-      })
-      setParsedMetadata(null)
+      toast.warning("Could not parse file", {
+        description: parsed.error,
+      });
+      setParsedMetadata(null);
     } else {
       setParsedMetadata({
         rowCount: parsed.rowCount,
         columnCount: parsed.columnCount,
-      })
+      });
     }
-    
-    setIsProcessing(false)
-  }
+
+    setIsProcessing(false);
+  };
 
   const handleFileRemove = () => {
-    setSelectedFile(null)
-    setParsedMetadata(null)
-    form.setValue("name", "")
-  }
+    setSelectedFile(null);
+    setParsedMetadata(null);
+    form.setValue("name", "");
+  };
 
   const handleNext = () => {
     if (selectedFile) {
-      setStep(2)
+      setStep(2);
     }
-  }
+  };
 
   const handleBack = () => {
-    setStep(1)
-  }
+    setStep(1);
+  };
 
   const handleSubmit = async (values: DatasetFormValues) => {
     if (!selectedFile) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Please select a file to upload",
-        variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
-    setIsProcessing(true)
-    setUploadProgress(0)
+    setIsProcessing(true);
+    setUploadProgress(0);
 
     try {
       // Step 1: Upload file to storage
-      setUploadProgress(30)
-      const fileType = getFileType(selectedFile.name)
-      
+      setUploadProgress(30);
+      const fileType = getFileType(selectedFile.name);
+
       if (!fileType) {
-        throw new Error("Unsupported file type")
+        throw new Error("Unsupported file type");
       }
 
       if (!currentUserId) {
-        throw new Error("Not authenticated. Please sign in again.")
+        throw new Error("Not authenticated. Please sign in again.");
       }
 
       const { data: uploadData, error: uploadError } = await uploadDatasetFile(
         selectedFile,
-        currentUserId
-      )
+        currentUserId,
+      );
 
       if (uploadError || !uploadData) {
-        console.error("[Dataset Upload Page] Upload failed:", uploadError)
-        throw new Error(uploadError?.message || "Failed to upload file")
+        console.error("[Dataset Upload Page] Upload failed:", uploadError);
+        throw new Error(uploadError?.message || "Failed to upload file");
       }
 
-      setUploadProgress(60)
+      setUploadProgress(60);
 
       // Step 2: Create dataset metadata
       const datasetPayload = {
@@ -181,32 +174,29 @@ export default function NewDatasetPage() {
         storage_path: uploadData.fullPath,
         row_count: parsedMetadata?.rowCount || null,
         column_count: parsedMetadata?.columnCount || null,
-      }
+      };
 
-      const { data: dataset, error: createError } = await createDataset(datasetPayload)
+      const { data: dataset, error: createError } =
+        await createDataset(datasetPayload);
 
       if (createError || !dataset) {
-        throw new Error(createError?.message || "Failed to create dataset")
+        throw new Error(createError?.message || "Failed to create dataset");
       }
 
-      setUploadProgress(100)
+      setUploadProgress(100);
 
-      toast({
-        title: "Success",
-        description: "Dataset uploaded successfully",
-      })
+      toast.success("Dataset uploaded successfully");
 
-      router.push(`/app/datasets/${dataset.id}`)
+      router.push(`/app/datasets/${dataset.id}`);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to upload dataset",
-        variant: "destructive",
-      })
-      setIsProcessing(false)
-      setUploadProgress(0)
+      toast.error("Upload failed", {
+        description:
+          error instanceof Error ? error.message : "Failed to upload dataset",
+      });
+      setIsProcessing(false);
+      setUploadProgress(0);
     }
-  }
+  };
 
   return (
     <main className="min-h-screen bg-background px-4 py-12">
@@ -241,7 +231,9 @@ export default function NewDatasetPage() {
                       </div>
                       <div>
                         <span className="text-muted-foreground">Columns:</span>{" "}
-                        <span className="font-medium">{parsedMetadata.columnCount}</span>
+                        <span className="font-medium">
+                          {parsedMetadata.columnCount}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -252,7 +244,10 @@ export default function NewDatasetPage() {
                 <Button asChild variant="ghost">
                   <Link href="/app/datasets">Cancel</Link>
                 </Button>
-                <Button onClick={handleNext} disabled={!selectedFile || isProcessing}>
+                <Button
+                  onClick={handleNext}
+                  disabled={!selectedFile || isProcessing}
+                >
                   {isProcessing ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -312,7 +307,10 @@ export default function NewDatasetPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Dataset Type</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue />
@@ -341,7 +339,9 @@ export default function NewDatasetPage() {
                           <FormControl>
                             <Input type="date" {...field} />
                           </FormControl>
-                          <FormDescription>Data collection start</FormDescription>
+                          <FormDescription>
+                            Data collection start
+                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -379,8 +379,10 @@ export default function NewDatasetPage() {
                                     variant="default"
                                     className="cursor-pointer"
                                     onClick={() => {
-                                      const newTags = field.value.filter((t) => t !== tag)
-                                      field.onChange(newTags)
+                                      const newTags = field.value.filter(
+                                        (t) => t !== tag,
+                                      );
+                                      field.onChange(newTags);
                                     }}
                                   >
                                     {tag}
@@ -399,8 +401,8 @@ export default function NewDatasetPage() {
                                     variant="outline"
                                     className="cursor-pointer"
                                     onClick={() => {
-                                      const newTags = [...field.value, tag]
-                                      field.onChange(newTags)
+                                      const newTags = [...field.value, tag];
+                                      field.onChange(newTags);
                                     }}
                                   >
                                     + {tag}
@@ -423,7 +425,10 @@ export default function NewDatasetPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Status</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue />
@@ -431,7 +436,11 @@ export default function NewDatasetPage() {
                           </FormControl>
                           <SelectContent>
                             {datasetStatuses.map((status) => (
-                              <SelectItem key={status} value={status} className="capitalize">
+                              <SelectItem
+                                key={status}
+                                value={status}
+                                className="capitalize"
+                              >
                                 {status}
                               </SelectItem>
                             ))}
@@ -470,5 +479,5 @@ export default function NewDatasetPage() {
         </Card>
       </div>
     </main>
-  )
+  );
 }

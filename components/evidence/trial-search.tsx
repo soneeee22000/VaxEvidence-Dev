@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import type { EvidenceItem } from "@/lib/validators/evidence";
 
 interface ClinicalTrial {
@@ -32,7 +32,6 @@ interface TrialSearchProps {
 }
 
 export function TrialSearch({ onImported }: TrialSearchProps) {
-  const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ClinicalTrial[]>([]);
@@ -52,10 +51,8 @@ export function TrialSearch({ onImported }: TrialSearchProps) {
       setResults(Array.isArray(data.trials) ? data.trials : []);
     } catch (error) {
       console.error("ClinicalTrials search failed:", error);
-      toast({
-        title: "Search failed",
+      toast.error("Search failed", {
         description: "Unable to fetch clinical trials.",
-        variant: "destructive",
       });
     } finally {
       setIsSearching(false);
@@ -81,8 +78,7 @@ export function TrialSearch({ onImported }: TrialSearchProps) {
         throw new Error(data?.error ?? "Import failed");
       }
 
-      toast({
-        title: data.existing ? "Already imported" : "Imported",
+      toast.success(data.existing ? "Already imported" : "Imported", {
         description: data.existing
           ? "This trial is already in your library."
           : "Clinical trial imported successfully.",
@@ -92,10 +88,8 @@ export function TrialSearch({ onImported }: TrialSearchProps) {
       onImported?.(data.evidence);
     } catch (error) {
       console.error("ClinicalTrials import failed:", error);
-      toast({
-        title: "Import failed",
+      toast.error("Import failed", {
         description: "Unable to import clinical trial.",
-        variant: "destructive",
       });
     } finally {
       setImporting((prev) => ({ ...prev, [trial.nctId]: false }));

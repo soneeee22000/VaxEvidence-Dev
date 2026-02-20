@@ -118,6 +118,7 @@ export default function ProtocolDetailPage() {
   const supabase = createClient();
 
   const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [currentUserEmail, setCurrentUserEmail] = useState<string>("");
   const [protocol, setProtocol] = useState<ProtocolRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -132,6 +133,7 @@ export default function ProtocolDetailPage() {
       } = await supabase.auth.getUser();
       if (user) {
         setCurrentUserId(user.id);
+        setCurrentUserEmail(user.email ?? "");
       }
     };
     getUser();
@@ -386,6 +388,7 @@ export default function ProtocolDetailPage() {
         protocol_id: protocolId,
         reviewer_id: reviewerId,
         requester_id: currentUserId,
+        requester_email: currentUserEmail || undefined,
       });
 
       if (error || !data) {
@@ -589,6 +592,7 @@ export default function ProtocolDetailPage() {
           title: data.title,
           study_question: data.study_question,
           population: data.population,
+          intervention: data.intervention ?? "",
           comparator: data.comparator,
           outcomes: data.outcomes,
           design: data.design,

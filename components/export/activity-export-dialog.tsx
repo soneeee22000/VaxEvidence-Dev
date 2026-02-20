@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Loader2, Calendar } from "lucide-react"
+import { useState } from "react";
+import { Loader2, Calendar } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -9,11 +9,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { useToast } from "@/hooks/use-toast"
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 // =============================================================================
 // ACTIVITY EXPORT DIALOG COMPONENT
@@ -22,9 +22,9 @@ import { useToast } from "@/hooks/use-toast"
 // =============================================================================
 
 interface ActivityExportDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  format: 'csv' | 'pdf'
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  format: "csv" | "pdf";
 }
 
 export function ActivityExportDialog({
@@ -32,68 +32,66 @@ export function ActivityExportDialog({
   onOpenChange,
   format,
 }: ActivityExportDialogProps) {
-  const { toast } = useToast()
-  const [isExporting, setIsExporting] = useState(false)
-  const [fromDate, setFromDate] = useState('')
-  const [toDate, setToDate] = useState('')
+  const [isExporting, setIsExporting] = useState(false);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   const handleExport = async () => {
-    setIsExporting(true)
+    setIsExporting(true);
 
     try {
-      const endpoint = format === 'csv'
-        ? '/api/export/activity/csv'
-        : '/api/export/activity/pdf'
+      const endpoint =
+        format === "csv"
+          ? "/api/export/activity/csv"
+          : "/api/export/activity/pdf";
 
       const response = await fetch(endpoint, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           fromDate: fromDate || undefined,
           toDate: toDate || undefined,
         }),
-      })
+      });
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Export failed')
+        const error = await response.json();
+        throw new Error(error.error || "Export failed");
       }
 
       // Download the file
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      
-      const fromStr = fromDate ? fromDate : 'all'
-      const toStr = toDate ? toDate : 'all'
-      const extension = format === 'csv' ? 'csv' : 'pdf'
-      a.download = `activity-log-${fromStr}-to-${toStr}.${extension}`
-      
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
 
-      toast({
-        title: 'Export successful',
+      const fromStr = fromDate ? fromDate : "all";
+      const toStr = toDate ? toDate : "all";
+      const extension = format === "csv" ? "csv" : "pdf";
+      a.download = `activity-log-${fromStr}-to-${toStr}.${extension}`;
+
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast.success("Export successful", {
         description: `Activity log exported as ${format.toUpperCase()}`,
-      })
+      });
 
-      onOpenChange(false)
+      onOpenChange(false);
     } catch (error) {
-      console.error('Export error:', error)
-      toast({
-        title: 'Export failed',
-        description: error instanceof Error ? error.message : 'Failed to generate export',
-        variant: 'destructive',
-      })
+      console.error("Export error:", error);
+      toast.error("Export failed", {
+        description:
+          error instanceof Error ? error.message : "Failed to generate export",
+      });
     } finally {
-      setIsExporting(false)
+      setIsExporting(false);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -141,9 +139,9 @@ export function ActivityExportDialog({
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Leave dates empty to export all activity logs. 
-            {format === 'pdf' && ' PDF exports are limited to 500 entries.'}
-            {format === 'csv' && ' CSV exports can include up to 1000 entries.'}
+            Leave dates empty to export all activity logs.
+            {format === "pdf" && " PDF exports are limited to 500 entries."}
+            {format === "csv" && " CSV exports can include up to 1000 entries."}
           </p>
         </div>
 
@@ -157,10 +155,10 @@ export function ActivityExportDialog({
           </Button>
           <Button onClick={handleExport} disabled={isExporting}>
             {isExporting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isExporting ? 'Generating...' : `Export ${format.toUpperCase()}`}
+            {isExporting ? "Generating..." : `Export ${format.toUpperCase()}`}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

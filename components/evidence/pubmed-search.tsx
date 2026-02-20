@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import type { EvidenceItem } from "@/lib/validators/evidence";
 
 interface PubMedArticle {
@@ -28,7 +28,6 @@ interface PubMedSearchProps {
 }
 
 export function PubMedSearch({ onImported }: PubMedSearchProps) {
-  const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PubMedArticle[]>([]);
@@ -49,10 +48,8 @@ export function PubMedSearch({ onImported }: PubMedSearchProps) {
       setResults(Array.isArray(data.articles) ? data.articles : []);
     } catch (error) {
       console.error("PubMed search failed:", error);
-      toast({
-        title: "Search failed",
+      toast.error("Search failed", {
         description: "Unable to fetch PubMed results.",
-        variant: "destructive",
       });
     } finally {
       setIsSearching(false);
@@ -94,8 +91,7 @@ export function PubMedSearch({ onImported }: PubMedSearchProps) {
         throw new Error(data?.error ?? "Import failed");
       }
 
-      toast({
-        title: data.existing ? "Already imported" : "Imported",
+      toast.success(data.existing ? "Already imported" : "Imported", {
         description: data.existing
           ? "This PubMed article is already in your library."
           : "PubMed article imported successfully.",
@@ -105,10 +101,8 @@ export function PubMedSearch({ onImported }: PubMedSearchProps) {
       onImported?.(data.evidence);
     } catch (error) {
       console.error("PubMed import failed:", error);
-      toast({
-        title: "Import failed",
+      toast.error("Import failed", {
         description: "Unable to import PubMed article.",
-        variant: "destructive",
       });
     } finally {
       setImporting((prev) => ({ ...prev, [pmid]: false }));

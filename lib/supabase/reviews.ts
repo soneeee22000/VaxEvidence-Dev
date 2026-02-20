@@ -42,14 +42,18 @@ const safeCall = async <T>(
   }
 };
 
-const userEmail = (_userId: string) => "Unknown user";
-
 const toWithDetails = (rows: any[] | null): ReviewWithDetails[] => {
   const list = rows ?? [];
   return list.map((row) => ({
     ...row,
-    reviewer: { id: row.reviewer_id, email: userEmail(row.reviewer_id) },
-    requester: { id: row.requester_id, email: userEmail(row.requester_id) },
+    reviewer: {
+      id: row.reviewer_id,
+      email: row.reviewer_email ?? "Unknown user",
+    },
+    requester: {
+      id: row.requester_id,
+      email: row.requester_email ?? "Unknown user",
+    },
     protocol: {
       id: row.protocol_id,
       title: row.protocol_title ?? "Protocol",
@@ -99,6 +103,8 @@ export const requestReview = async (payload: {
   protocol_id: string;
   reviewer_id: string;
   requester_id: string;
+  reviewer_email?: string;
+  requester_email?: string;
   message?: string;
 }): SupabaseResult<ReviewWithDetails> => {
   const client = getClient();
@@ -112,6 +118,8 @@ export const requestReview = async (payload: {
         protocol_id: payload.protocol_id,
         reviewer_id: payload.reviewer_id,
         requester_id: payload.requester_id,
+        reviewer_email: payload.reviewer_email ?? null,
+        requester_email: payload.requester_email ?? null,
         status: "pending",
         decision: null,
         decision_at: null,

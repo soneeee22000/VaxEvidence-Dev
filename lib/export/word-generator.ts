@@ -442,20 +442,20 @@ export async function generateProtocolWord(
         }),
       );
 
-      if (review.reviewed_at) {
+      if (review.decision_at) {
         children.push(
           new Paragraph({
-            text: `Reviewed: ${format(new Date(review.reviewed_at), "MMM d, yyyy")}`,
+            text: `Reviewed: ${format(new Date(review.decision_at), "MMM d, yyyy")}`,
             spacing: { after: 50 },
             indent: { left: 400 },
           }),
         );
       }
 
-      if (review.feedback) {
+      if (review.decision) {
         children.push(
           new Paragraph({
-            text: `Feedback: ${review.feedback}`,
+            text: `Decision: ${review.decision}`,
             spacing: { after: 150 },
             indent: { left: 400 },
           }),

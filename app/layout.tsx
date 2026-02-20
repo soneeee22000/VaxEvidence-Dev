@@ -4,7 +4,6 @@ import { Inter, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
-import { Toaster as ShadcnToaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 const _inter = Inter({ subsets: ["latin"] });
@@ -57,7 +56,6 @@ export default function RootLayout({
         >
           {children}
           <Toaster richColors position="top-right" />
-          <ShadcnToaster />
         </ThemeProvider>
         <Analytics />
       </body>

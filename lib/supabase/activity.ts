@@ -45,6 +45,7 @@ const withUser = (rows: any[] | null): ActivityLogWithUser[] => {
   const list = rows ?? [];
   return list.map((row) => ({
     ...row,
+    action_type: row.action ?? row.action_type,
     user: {
       id: row.user_id,
       email: row.user_email ?? "Unknown user",
@@ -69,7 +70,7 @@ export const fetchActivityLog = async (
 
     if (filters.user_id) query = query.eq("user_id", filters.user_id);
     if (filters.action_type && filters.action_type.length > 0)
-      query = query.in("action_type", filters.action_type as any);
+      query = query.in("action", filters.action_type as any);
     if (filters.resource_type && filters.resource_type.length > 0)
       query = query.in("resource_type", filters.resource_type as any);
     if (filters.from_date) query = query.gte("created_at", filters.from_date);
@@ -104,7 +105,7 @@ export const logActivity = async (
       .from("activity_logs")
       .insert({
         user_id: userId,
-        action_type: actionType,
+        action: actionType,
         resource_type: resourceType,
         resource_id: resourceId,
         metadata: metadata ?? {},

@@ -374,18 +374,18 @@ export async function generateProtocolPDF(
       );
       yPosition += 4;
 
-      if (review.reviewed_at) {
+      if (review.decision_at) {
         doc.text(
-          `Reviewed: ${format(new Date(review.reviewed_at), "MMM d, yyyy")}`,
+          `Reviewed: ${format(new Date(review.decision_at), "MMM d, yyyy")}`,
           marginLeft + 3,
           yPosition,
         );
         yPosition += 4;
       }
 
-      if (review.feedback) {
+      if (review.decision) {
         const feedbackLines = doc.splitTextToSize(
-          `Feedback: ${review.feedback}`,
+          `Decision: ${review.decision}`,
           contentWidth - 5,
         );
         for (const line of feedbackLines) {

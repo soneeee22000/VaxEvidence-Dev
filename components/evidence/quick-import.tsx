@@ -1,72 +1,71 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { ImportDialog } from "@/components/evidence/import-dialog"
-import { useToast } from "@/hooks/use-toast"
-import type { EvidenceItem } from "@/lib/validators/evidence"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ImportDialog } from "@/components/evidence/import-dialog";
+import { toast } from "sonner";
+import type { EvidenceItem } from "@/lib/validators/evidence";
 
-const DOI_REGEX = /^10\.\d{4,}\/\S+$/i
-const PMID_REGEX = /^\d{1,10}$/
+const DOI_REGEX = /^10\.\d{4,}\/\S+$/i;
+const PMID_REGEX = /^\d{1,10}$/;
 
-type PreviewType = "doi" | "pmid"
+type PreviewType = "doi" | "pmid";
 
 interface PreviewData {
-  type: PreviewType
-  title: string
-  authors: string[]
-  journal: string
-  date: string | null
-  doi?: string
-  sourceUrl?: string | null
+  type: PreviewType;
+  title: string;
+  authors: string[];
+  journal: string;
+  date: string | null;
+  doi?: string;
+  sourceUrl?: string | null;
 }
 
 interface QuickImportProps {
-  onImported?: (evidence: EvidenceItem) => void
+  onImported?: (evidence: EvidenceItem) => void;
 }
 
 export function QuickImport({ onImported }: QuickImportProps) {
-  const router = useRouter()
-  const { toast } = useToast()
-  const [open, setOpen] = useState(false)
-  const [input, setInput] = useState("")
-  const [preview, setPreview] = useState<PreviewData | null>(null)
-  const [isFetching, setIsFetching] = useState(false)
-  const [isImporting, setIsImporting] = useState(false)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [input, setInput] = useState("");
+  const [preview, setPreview] = useState<PreviewData | null>(null);
+  const [isFetching, setIsFetching] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const detectInput = (value: string) => {
-    if (PMID_REGEX.test(value)) return { type: "pmid" as const, value }
-    if (DOI_REGEX.test(value)) return { type: "doi" as const, value }
-    return null
-  }
+    if (PMID_REGEX.test(value)) return { type: "pmid" as const, value };
+    if (DOI_REGEX.test(value)) return { type: "doi" as const, value };
+    return null;
+  };
 
   const fetchMetadata = async () => {
-    const trimmed = input.trim()
-    const detected = detectInput(trimmed)
+    const trimmed = input.trim();
+    const detected = detectInput(trimmed);
     if (!detected) {
-      setErrorMessage("Enter a valid DOI or PMID.")
-      return
+      setErrorMessage("Enter a valid DOI or PMID.");
+      return;
     }
 
-    setErrorMessage(null)
-    setIsFetching(true)
+    setErrorMessage(null);
+    setIsFetching(true);
     try {
       const endpoint =
         detected.type === "doi"
           ? `/api/import/doi?doi=${encodeURIComponent(detected.value)}`
-          : `/api/import/pmid?pmid=${encodeURIComponent(detected.value)}`
-      const response = await fetch(endpoint)
-      const data = await response.json()
+          : `/api/import/pmid?pmid=${encodeURIComponent(detected.value)}`;
+      const response = await fetch(endpoint);
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.error ?? "Unable to fetch metadata")
+        throw new Error(data?.error ?? "Unable to fetch metadata");
       }
 
       if (detected.type === "doi") {
-        const work = data?.work
+        const work = data?.work;
         setPreview({
           type: "doi",
           title: work?.title ?? "Untitled",
@@ -75,9 +74,9 @@ export function QuickImport({ onImported }: QuickImportProps) {
           date: work?.publishedDate ?? null,
           doi: work?.doi,
           sourceUrl: work?.url ?? null,
-        })
+        });
       } else {
-        const article = data?.article
+        const article = data?.article;
         setPreview({
           type: "pmid",
           title: article?.title ?? "Untitled",
@@ -86,56 +85,54 @@ export function QuickImport({ onImported }: QuickImportProps) {
           date: article?.pubDate ?? null,
           doi: article?.doi,
           sourceUrl: article?.sourceUrl ?? null,
-        })
+        });
       }
     } catch (error) {
-      console.error("Quick import preview failed:", error)
-      setErrorMessage("Unable to fetch metadata.")
+      console.error("Quick import preview failed:", error);
+      setErrorMessage("Unable to fetch metadata.");
     } finally {
-      setIsFetching(false)
+      setIsFetching(false);
     }
-  }
+  };
 
   const handleImport = async () => {
-    if (!preview) return
-    const detected = detectInput(input.trim())
-    if (!detected) return
+    if (!preview) return;
+    const detected = detectInput(input.trim());
+    if (!detected) return;
 
-    setIsImporting(true)
+    setIsImporting(true);
     try {
-      const endpoint = detected.type === "doi" ? "/api/import/doi" : "/api/import/pmid"
+      const endpoint =
+        detected.type === "doi" ? "/api/import/doi" : "/api/import/pmid";
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ [detected.type]: detected.value }),
-      })
-      const data = await response.json()
+      });
+      const data = await response.json();
 
       if (!response.ok || !data?.evidence) {
-        throw new Error(data?.error ?? "Import failed")
+        throw new Error(data?.error ?? "Import failed");
       }
 
-      toast({
-        title: data.existing ? "Already imported" : "Imported",
+      toast.success(data.existing ? "Already imported" : "Imported", {
         description: data.existing
           ? "This record is already in your library."
           : "Record imported successfully.",
-      })
+      });
 
-      onImported?.(data.evidence)
-      router.push(`/app/evidence/${data.evidence.id}`)
-      setOpen(false)
+      onImported?.(data.evidence);
+      router.push(`/app/evidence/${data.evidence.id}`);
+      setOpen(false);
     } catch (error) {
-      console.error("Quick import failed:", error)
-      toast({
-        title: "Import failed",
+      console.error("Quick import failed:", error);
+      toast.error("Import failed", {
         description: "Unable to import this record.",
-        variant: "destructive",
-      })
+      });
     } finally {
-      setIsImporting(false)
+      setIsImporting(false);
     }
-  }
+  };
 
   const metadata = preview
     ? [
@@ -146,7 +143,7 @@ export function QuickImport({ onImported }: QuickImportProps) {
         { label: "DOI", value: preview.doi ?? "—" },
         { label: "Source", value: preview.sourceUrl ?? "—" },
       ]
-    : []
+    : [];
 
   return (
     <>
@@ -178,8 +175,8 @@ export function QuickImport({ onImported }: QuickImportProps) {
               <Button
                 variant="ghost"
                 onClick={() => {
-                  setPreview(null)
-                  setErrorMessage(null)
+                  setPreview(null);
+                  setErrorMessage(null);
                 }}
               >
                 Clear Preview
@@ -192,5 +189,5 @@ export function QuickImport({ onImported }: QuickImportProps) {
         </div>
       </ImportDialog>
     </>
-  )
+  );
 }
