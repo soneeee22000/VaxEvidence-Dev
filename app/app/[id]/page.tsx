@@ -113,6 +113,8 @@ import {
 import type { ReviewWithDetails, ReviewStatus } from "@/lib/validators/review";
 import { useAuth } from "@/lib/auth/auth-context";
 import { VersionHistoryPanel } from "@/components/versioning/version-history-panel";
+import { AiAssistantPanel } from "@/components/ai/AiAssistantPanel";
+import type { PicoOutput } from "@/lib/ai/ai-validators";
 
 export default function ProtocolDetailPage() {
   const router = useRouter();
@@ -543,6 +545,21 @@ export default function ProtocolDetailPage() {
     }
     setSelectedDatasetIds(newSelection);
   };
+
+  // AI PICO generation handler
+  const handlePicoGenerated = (pico: PicoOutput) => {
+    form.setValue("study_question", pico.study_question, { shouldDirty: true });
+    form.setValue("population", pico.population, { shouldDirty: true });
+    form.setValue("intervention", pico.intervention, { shouldDirty: true });
+    form.setValue("comparator", pico.comparator, { shouldDirty: true });
+    form.setValue("outcomes", pico.outcomes, { shouldDirty: true });
+    form.setValue("design", pico.design, { shouldDirty: true });
+  };
+
+  // Extract linked PMIDs for paper recommendations
+  const linkedPmids = linkedEvidence
+    .map((link: any) => link.evidence_items?.external_id)
+    .filter(Boolean) as string[];
 
   const filteredAvailableEvidence = availableEvidence.filter((item) => {
     if (!evidenceSearchQuery) return true;
@@ -1334,6 +1351,18 @@ export default function ProtocolDetailPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* AI Research Assistant */}
+        {protocolId && (
+          <AiAssistantPanel
+            protocolId={protocolId}
+            studyQuestion={form.getValues("study_question")}
+            linkedEvidenceCount={linkedEvidence.length}
+            linkedPmids={linkedPmids}
+            onPicoGenerated={handlePicoGenerated}
+            onEvidenceImported={loadLinkedEvidence}
+          />
+        )}
 
         {/* Reviews Section */}
         <ReviewPanel

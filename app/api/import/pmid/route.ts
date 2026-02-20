@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { getServerUser } from "@/lib/supabase/server";
 import { autoTagEvidence } from "@/lib/ml/categorize";
 import { insertEvidenceWithFallback } from "@/lib/api/evidence-import";
+import { scoreEvidenceQuality } from "@/lib/ai/quality-scorer";
 
 const PMID_REGEX = /^\d{1,10}$/;
 
@@ -175,6 +176,25 @@ export async function POST(request: NextRequest) {
         { error: "Failed to import PMID" },
         { status: 500 },
       );
+    }
+
+    // Fire-and-forget AI quality scoring (non-blocking)
+    if (process.env.OPENAI_API_KEY) {
+      scoreEvidenceQuality(data)
+        .then(async (score) => {
+          await supabaseAdmin
+            .from("evidence_items")
+            .update({
+              ai_quality_score: score.score,
+              ai_quality_grade: score.grade,
+              ai_quality_rationale: score.rationale,
+              ai_quality_scored_at: new Date().toISOString(),
+            })
+            .eq("id", data.id);
+        })
+        .catch((err) =>
+          console.error("AI quality scoring failed (non-blocking):", err),
+        );
     }
 
     return NextResponse.json({ evidence: data, existing: false });
