@@ -110,6 +110,7 @@ import {
 } from "@/lib/validators/comment";
 import type { ReviewWithDetails, ReviewStatus } from "@/lib/validators/review";
 import { useAuth } from "@/lib/auth/auth-context";
+import { VersionHistoryPanel } from "@/components/versioning/version-history-panel";
 
 export default function ProtocolDetailPage() {
   const router = useRouter();
@@ -584,6 +585,24 @@ export default function ProtocolDetailPage() {
           design: data.design,
           status: data.status,
         });
+
+        // Auto-version on status transition to "final"
+        const previousStatus = protocol?.status;
+        if (data.status === "final" && previousStatus !== "final") {
+          try {
+            await fetch(`/api/protocols/${protocolId}/versions`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                change_summary: "Auto-versioned on finalization",
+              }),
+            });
+            toast.success("Final version snapshot saved automatically");
+          } catch {
+            // Non-blocking — version creation failure should not block save
+            console.error("Auto-version on finalization failed");
+          }
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save protocol");
@@ -843,6 +862,9 @@ export default function ProtocolDetailPage() {
             </form>
           </Form>
         </Card>
+
+        {/* Version History */}
+        {protocolId && <VersionHistoryPanel protocolId={protocolId} />}
 
         {/* Linked Evidence Section */}
         <Card>
