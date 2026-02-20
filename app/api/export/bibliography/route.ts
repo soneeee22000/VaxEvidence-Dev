@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
 
     // Fetch linked evidence
     const { data: linkedEvidence, error } = await admin
-      .from("protocol_evidence")
+      .from("protocol_evidence_links")
       .select("*, evidence_items(*)")
       .eq("protocol_id", protocolId);
 

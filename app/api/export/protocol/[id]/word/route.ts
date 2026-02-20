@@ -54,12 +54,12 @@ export async function POST(
 
     // Fetch linked data
     const { data: linkedEvidence } = await admin
-      .from("protocol_evidence")
+      .from("protocol_evidence_links")
       .select("*, evidence_items(*)")
       .eq("protocol_id", protocolId);
 
     const { data: linkedDatasets } = await admin
-      .from("protocol_datasets")
+      .from("protocol_dataset_links")
       .select("*, datasets(*)")
       .eq("protocol_id", protocolId);
 

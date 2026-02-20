@@ -67,12 +67,12 @@ export async function POST(request: NextRequest) {
     if (protocols && protocols.length > 0) {
       for (const protocol of protocols) {
         const { data: linkedEv } = await admin
-          .from("protocol_evidence")
+          .from("protocol_evidence_links")
           .select("*, evidence_items(*)")
           .eq("protocol_id", protocol.id);
 
         const { data: linkedDs } = await admin
-          .from("protocol_datasets")
+          .from("protocol_dataset_links")
           .select("*, datasets(*)")
           .eq("protocol_id", protocol.id);
 
