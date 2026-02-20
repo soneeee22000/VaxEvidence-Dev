@@ -34,7 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { createClient } from "@/lib/supabase/browser";
+import { useAuth } from "@/lib/auth/auth-context";
 import { createProtocol, createTemplateUsage } from "@/lib/supabase/protocols";
 import { getTemplateById } from "@/lib/templates/protocol-templates";
 import {
@@ -62,21 +62,8 @@ export function NewProtocolClient() {
     null,
   );
   const [showTemplateSelector, setShowTemplateSelector] = useState(true);
-  const [userId, setUserId] = useState<string | null>(null);
-
-  const supabase = createClient();
-
-  useEffect(() => {
-    const getUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        setUserId(user.id);
-      }
-    };
-    getUser();
-  }, [supabase.auth]);
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
 
   const form = useForm<ProtocolFormValues>({
     resolver: zodResolver(protocolSchema),

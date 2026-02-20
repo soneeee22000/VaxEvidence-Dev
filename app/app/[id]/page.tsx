@@ -109,35 +109,21 @@ import {
   type CommentWithUser,
 } from "@/lib/validators/comment";
 import type { ReviewWithDetails, ReviewStatus } from "@/lib/validators/review";
-import { createClient } from "@/lib/supabase/browser";
+import { useAuth } from "@/lib/auth/auth-context";
 
 export default function ProtocolDetailPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const protocolId = params?.id;
-  const supabase = createClient();
+  const { user: authUser } = useAuth();
+  const currentUserId = authUser?.id ?? "";
+  const currentUserEmail = authUser?.email ?? "";
 
-  const [currentUserId, setCurrentUserId] = useState<string>("");
-  const [currentUserEmail, setCurrentUserEmail] = useState<string>("");
   const [protocol, setProtocol] = useState<ProtocolRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // Get current user on mount
-  useEffect(() => {
-    const getUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        setCurrentUserId(user.id);
-        setCurrentUserEmail(user.email ?? "");
-      }
-    };
-    getUser();
-  }, [supabase.auth]);
 
   // Evidence linking state
   const [linkedEvidence, setLinkedEvidence] = useState<any[]>([]);

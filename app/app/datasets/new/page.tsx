@@ -45,14 +45,14 @@ import {
 } from "@/lib/validators/dataset";
 import { createDataset, uploadDatasetFile } from "@/lib/supabase/datasets";
 import { parseFile } from "@/lib/utils/file-parser";
-import { createClient } from "@/lib/supabase/browser";
+import { useAuth } from "@/lib/auth/auth-context";
 import { toast } from "sonner";
 import { Loader2, X, ChevronRight, ChevronLeft } from "lucide-react";
 
 export default function NewDatasetPage() {
   const router = useRouter();
-  const supabase = createClient();
-  const [currentUserId, setCurrentUserId] = useState<string>("");
+  const { user: authUser } = useAuth();
+  const currentUserId = authUser?.id ?? "";
   const [step, setStep] = useState<1 | 2>(1);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -61,19 +61,6 @@ export default function NewDatasetPage() {
     rowCount: number;
     columnCount: number;
   } | null>(null);
-
-  // Get current user on mount
-  useEffect(() => {
-    const getUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        setCurrentUserId(user.id);
-      }
-    };
-    getUser();
-  }, [supabase.auth]);
 
   const form = useForm<DatasetFormValues>({
     resolver: zodResolver(datasetSchema),

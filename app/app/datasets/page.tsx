@@ -44,7 +44,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { createClient } from "@/lib/supabase/browser";
+import { useAuth } from "@/lib/auth/auth-context";
 import { SAMPLE_DATASETS } from "@/lib/demo/sample-datasets";
 
 type SortField =
@@ -56,7 +56,7 @@ type SortField =
 
 export default function DatasetsPage() {
   const router = useRouter();
-  const supabase = createClient();
+  const { user: authUser } = useAuth();
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [filteredDatasets, setFilteredDatasets] = useState<Dataset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -194,13 +194,10 @@ export default function DatasetsPage() {
     setIsLoadingSampleData(true);
 
     try {
-      // Get current user
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
+      if (!authUser) {
         throw new Error("Not authenticated");
       }
+      const user = authUser;
 
       // Load the sample dataset metadata (no storage upload needed for demo data)
       const sampleDataset = SAMPLE_DATASETS[0];

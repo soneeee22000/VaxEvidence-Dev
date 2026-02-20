@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { useEffect, useMemo, useState } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -12,64 +12,60 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
-import { WorkspaceExportButton } from "@/components/export/workspace-export-button"
-import { fetchProtocols, type ProtocolRecord } from "@/lib/supabase/protocols"
-import { createClient } from "@/lib/supabase/browser"
+} from "@/components/ui/card";
+import { WorkspaceExportButton } from "@/components/export/workspace-export-button";
+import { fetchProtocols, type ProtocolRecord } from "@/lib/supabase/protocols";
+import { useAuth } from "@/lib/auth/auth-context";
 
 export default function AppDashboardPage() {
-  const router = useRouter()
-  const [email, setEmail] = useState<string | null>(null)
-  const [protocols, setProtocols] = useState<ProtocolRecord[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [isSigningOut, setIsSigningOut] = useState(false)
+  const router = useRouter();
+  const [email, setEmail] = useState<string | null>(null);
+  const [protocols, setProtocols] = useState<ProtocolRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
-  const hasProtocols = useMemo(() => protocols.length > 0, [protocols.length])
+  const hasProtocols = useMemo(() => protocols.length > 0, [protocols.length]);
 
-  const supabase = createClient()
+  const { user: authUser, signOut } = useAuth();
 
   useEffect(() => {
-    let isMounted = true
+    let isMounted = true;
 
     const load = async () => {
-      if (!isMounted) return
+      if (!isMounted) return;
 
-      // Get the authenticated user
-      const { data: { user } } = await supabase.auth.getUser()
-
-      if (!user) {
-        router.replace("/auth")
-        return
+      if (!authUser) {
+        return;
       }
 
-      setEmail(user.email ?? null)
+      setEmail(authUser.email ?? null);
 
-      const { data, error: fetchError } = await fetchProtocols()
-      if (!isMounted) return
+      const { data, error: fetchError } = await fetchProtocols();
+      if (!isMounted) return;
       if (fetchError) {
-        setError(fetchError.message)
+        setError(fetchError.message);
       } else {
-        setProtocols(data ?? [])
+        setProtocols(data ?? []);
       }
-      setIsLoading(false)
-    }
+      setIsLoading(false);
+    };
 
-    load()
+    load();
 
     return () => {
-      isMounted = false
-    }
-  }, [router, supabase.auth])
+      isMounted = false;
+    };
+  }, [authUser]);
 
   const handleSignOut = async () => {
-    setIsSigningOut(true)
-    await supabase.auth.signOut()
-    router.replace("/auth")
-    router.refresh()
-  }
+    setIsSigningOut(true);
+    await signOut();
+    router.replace("/auth");
+    router.refresh();
+  };
 
-  const formatDate = (value: string) => new Date(value).toLocaleDateString()
+  const formatDate = (value: string) => new Date(value).toLocaleDateString();
 
   if (isLoading) {
     return (
@@ -83,7 +79,7 @@ export default function AppDashboardPage() {
           </Card>
         </div>
       </main>
-    )
+    );
   }
 
   return (
@@ -94,7 +90,9 @@ export default function AppDashboardPage() {
             <div>
               <CardTitle className="text-2xl">Protocol Builder</CardTitle>
               <CardDescription>
-                {email ? `Signed in as ${email}` : "Your authenticated workspace"}
+                {email
+                  ? `Signed in as ${email}`
+                  : "Your authenticated workspace"}
               </CardDescription>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -102,7 +100,11 @@ export default function AppDashboardPage() {
                 <Link href="/app/new">New protocol</Link>
               </Button>
               <WorkspaceExportButton />
-              <Button variant="outline" onClick={handleSignOut} disabled={isSigningOut}>
+              <Button
+                variant="outline"
+                onClick={handleSignOut}
+                disabled={isSigningOut}
+              >
                 {isSigningOut ? "Signing out..." : "Sign out"}
               </Button>
             </div>
@@ -128,7 +130,9 @@ export default function AppDashboardPage() {
                 {protocols.map((protocol) => (
                   <Card key={protocol.id} className="border-muted/70">
                     <CardHeader>
-                      <CardTitle className="text-lg">{protocol.title}</CardTitle>
+                      <CardTitle className="text-lg">
+                        {protocol.title}
+                      </CardTitle>
                       <CardDescription className="capitalize">
                         {protocol.status.replace("_", " ")} • Updated{" "}
                         {formatDate(protocol.updated_at)}
@@ -150,5 +154,5 @@ export default function AppDashboardPage() {
         </Card>
       </div>
     </main>
-  )
+  );
 }
