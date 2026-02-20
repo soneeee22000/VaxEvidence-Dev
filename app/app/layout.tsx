@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 // =============================================================================
 // APP LAYOUT
@@ -6,43 +6,51 @@
 // Main layout for authenticated app pages. Uses Supabase Auth.
 // =============================================================================
 
-import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { AuthProvider, useAuth } from "@/lib/auth/auth-context"
-import { FileText, BookOpen, Database, LogOut, Activity, LayoutTemplate } from "lucide-react"
-import { useState, useEffect } from "react"
-import { fetchPendingReviewCount } from "@/lib/supabase/reviews"
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { AuthProvider, useAuth } from "@/lib/auth/auth-context";
+import { QueryProvider } from "@/lib/query/query-provider";
+import {
+  FileText,
+  BookOpen,
+  Database,
+  LogOut,
+  Activity,
+  LayoutTemplate,
+} from "lucide-react";
+import { useState, useEffect } from "react";
+import { fetchPendingReviewCount } from "@/lib/supabase/reviews";
 
 function AppLayoutContent({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
-  const router = useRouter()
-  const { user, signOut } = useAuth()
-  const [isSigningOut, setIsSigningOut] = useState(false)
-  const [pendingReviewCount, setPendingReviewCount] = useState(0)
+  const pathname = usePathname();
+  const router = useRouter();
+  const { user, signOut } = useAuth();
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [pendingReviewCount, setPendingReviewCount] = useState(0);
 
   useEffect(() => {
-    if (!user) return
+    if (!user) return;
 
     const loadPendingReviews = async () => {
-      const { data } = await fetchPendingReviewCount(user.id)
+      const { data } = await fetchPendingReviewCount(user.id);
       if (data !== null) {
-        setPendingReviewCount(data)
+        setPendingReviewCount(data);
       }
-    }
-    loadPendingReviews()
+    };
+    loadPendingReviews();
     // Refresh every 30 seconds
-    const interval = setInterval(loadPendingReviews, 30000)
-    return () => clearInterval(interval)
-  }, [user])
+    const interval = setInterval(loadPendingReviews, 30000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   const handleSignOut = async () => {
-    setIsSigningOut(true)
-    await signOut()
-    router.replace("/auth")
-    router.refresh()
-  }
+    setIsSigningOut(true);
+    await signOut();
+    router.replace("/auth");
+    router.refresh();
+  };
 
   const navLinks = [
     {
@@ -76,14 +84,14 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
       exact: false,
       badge: pendingReviewCount > 0 ? pendingReviewCount : undefined,
     },
-  ]
+  ];
 
   const isActive = (href: string, exact: boolean) => {
     if (exact) {
-      return pathname === href
+      return pathname === href;
     }
-    return pathname?.startsWith(href)
-  }
+    return pathname?.startsWith(href);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -91,19 +99,25 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 items-center px-4 sm:px-6 lg:px-8">
           <div className="mr-6 flex items-center">
-            <Link href="/app" className="flex items-center gap-2.5" aria-label="VaxEvidence Home">
+            <Link
+              href="/app"
+              className="flex items-center gap-2.5"
+              aria-label="VaxEvidence Home"
+            >
               <img
                 src="/logo-final.svg"
                 alt="VaxEvidence Logo"
                 className="h-8 w-8 shrink-0"
               />
-              <span className="font-bold text-xl tracking-tight">VaxEvidence</span>
+              <span className="font-bold text-xl tracking-tight">
+                VaxEvidence
+              </span>
             </Link>
           </div>
           <nav className="flex items-center gap-6 flex-1">
             {navLinks.map((link) => {
-              const Icon = link.icon
-              const active = isActive(link.href, link.exact)
+              const Icon = link.icon;
+              const active = isActive(link.href, link.exact);
               return (
                 <Link
                   key={link.href}
@@ -115,12 +129,15 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
                   <Icon className="h-4 w-4" />
                   {link.label}
                   {link.badge && (
-                    <Badge variant="destructive" className="ml-1 px-1.5 py-0 text-xs">
+                    <Badge
+                      variant="destructive"
+                      className="ml-1 px-1.5 py-0 text-xs"
+                    >
                       {link.badge}
                     </Badge>
                   )}
                 </Link>
-              )
+              );
             })}
           </nav>
           <div className="flex items-center gap-4">
@@ -143,17 +160,15 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
       {/* Main Content */}
       <main>{children}</main>
     </div>
-  )
+  );
 }
 
-export default function AppLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AuthProvider>
-      <AppLayoutContent>{children}</AppLayoutContent>
-    </AuthProvider>
-  )
+    <QueryProvider>
+      <AuthProvider>
+        <AppLayoutContent>{children}</AppLayoutContent>
+      </AuthProvider>
+    </QueryProvider>
+  );
 }

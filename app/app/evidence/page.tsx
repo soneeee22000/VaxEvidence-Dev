@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -26,19 +27,49 @@ import {
   EvidenceFilters,
   type FilterState,
 } from "@/components/evidence/evidence-filters";
-import { fetchEvidenceItems, getUniqueTags } from "@/lib/supabase/evidence";
+import { PaginationControls } from "@/components/ui/pagination-controls";
+import { useEvidenceList, useEvidenceTags, queryKeys } from "@/lib/query/hooks";
+import { useDebouncedSearch } from "@/hooks/use-debounced-search";
+import { buildPaginationMeta, DEFAULT_PAGE_SIZE } from "@/lib/types/pagination";
 import type { EvidenceItem } from "@/lib/validators/evidence";
+import type { EvidenceType, EvidenceStatus } from "@/lib/validators/evidence";
 import { Search, Plus, SlidersHorizontal } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useQueryClient } from "@tanstack/react-query";
 
 type SortOption = "newest" | "oldest" | "title-asc" | "title-desc";
 
-export default function EvidenceLibraryPage() {
-  const [evidence, setEvidence] = useState<EvidenceItem[]>([]);
-  const [filteredEvidence, setFilteredEvidence] = useState<EvidenceItem[]>([]);
-  const [availableTags, setAvailableTags] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
+/**
+ * Map UI sort option to API sort params.
+ */
+function parseSortOption(sort: SortOption): {
+  sortBy: string;
+  sortDirection: "asc" | "desc";
+} {
+  switch (sort) {
+    case "newest":
+      return { sortBy: "updated_at", sortDirection: "desc" };
+    case "oldest":
+      return { sortBy: "updated_at", sortDirection: "asc" };
+    case "title-asc":
+      return { sortBy: "title", sortDirection: "asc" };
+    case "title-desc":
+      return { sortBy: "title", sortDirection: "desc" };
+  }
+}
+
+function EvidenceLibraryContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  const initialPage = parseInt(searchParams.get("page") ?? "1", 10) || 1;
+  const initialPageSize =
+    parseInt(searchParams.get("pageSize") ?? String(DEFAULT_PAGE_SIZE), 10) ||
+    DEFAULT_PAGE_SIZE;
+
+  const [page, setPage] = useState(initialPage);
+  const [pageSize, setPageSize] = useState(initialPageSize);
   const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [filters, setFilters] = useState<FilterState>({
     types: [],
@@ -48,123 +79,66 @@ export default function EvidenceLibraryPage() {
     dateTo: "",
   });
 
-  const handleImportedEvidence = (item: EvidenceItem) => {
-    setEvidence((prev) => {
-      if (prev.some((existing) => existing.id === item.id)) return prev;
-      return [item, ...prev];
-    });
-    if (item.tags && item.tags.length > 0) {
-      setAvailableTags((prev) =>
-        Array.from(new Set([...prev, ...item.tags])).sort(),
-      );
-    }
+  const {
+    inputValue: searchInput,
+    debouncedValue: search,
+    setInputValue: setSearchInput,
+  } = useDebouncedSearch("");
+
+  const sortParams = parseSortOption(sortBy);
+
+  const { data, isLoading, isError } = useEvidenceList({
+    page,
+    pageSize,
+    search: search || undefined,
+    types: filters.types.length > 0 ? filters.types : undefined,
+    statuses: filters.statuses.length > 0 ? filters.statuses : undefined,
+    tags: filters.tags.length > 0 ? filters.tags : undefined,
+    dateFrom: filters.dateFrom || undefined,
+    dateTo: filters.dateTo || undefined,
+    ...sortParams,
+  });
+
+  const { data: availableTags } = useEvidenceTags();
+
+  const items = data?.items ?? [];
+  const totalCount = data?.totalCount ?? 0;
+  const pagination = buildPaginationMeta(totalCount, page, pageSize);
+
+  /**
+   * Update URL search params to reflect current page.
+   */
+  const updateUrl = (newPage: number, newPageSize: number) => {
+    const params = new URLSearchParams();
+    if (newPage > 1) params.set("page", String(newPage));
+    if (newPageSize !== DEFAULT_PAGE_SIZE)
+      params.set("pageSize", String(newPageSize));
+    const qs = params.toString();
+    router.replace(`/app/evidence${qs ? `?${qs}` : ""}`, { scroll: false });
   };
 
-  // Load evidence and tags
-  useEffect(() => {
-    async function loadData() {
-      setIsLoading(true);
-      try {
-        // Fetch all evidence
-        const { data: evidenceData, error: evidenceError } =
-          await fetchEvidenceItems();
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    updateUrl(newPage, pageSize);
+  };
 
-        if (evidenceError) {
-          console.error("Error fetching evidence:", evidenceError);
-          setEvidence([]);
-        } else {
-          setEvidence(evidenceData || []);
-        }
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setPage(1);
+    updateUrl(1, newSize);
+  };
 
-        // Fetch unique tags
-        const { data: tagsData, error: tagsError } = await getUniqueTags();
-        if (!tagsError && tagsData) {
-          setAvailableTags(tagsData);
-        }
-      } catch (error) {
-        console.error("Error loading data:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
+  const handleFilterChange = (newFilters: FilterState) => {
+    setFilters(newFilters);
+    setPage(1);
+  };
 
-    loadData();
-  }, []);
+  const handleImportedEvidence = (_item: EvidenceItem) => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.evidence.all });
+    queryClient.invalidateQueries({ queryKey: queryKeys.evidence.tags() });
+  };
 
-  // Apply filters and search
-  useEffect(() => {
-    let result = [...evidence];
-
-    // Apply type filter
-    if (filters.types.length > 0) {
-      result = result.filter((item) => filters.types.includes(item.type));
-    }
-
-    // Apply status filter
-    if (filters.statuses.length > 0) {
-      result = result.filter((item) => filters.statuses.includes(item.status));
-    }
-
-    // Apply tags filter
-    if (filters.tags.length > 0) {
-      result = result.filter((item) =>
-        filters.tags.some((tag) => item.tags.includes(tag)),
-      );
-    }
-
-    // Apply date range filter
-    if (filters.dateFrom) {
-      result = result.filter((item) => {
-        const itemDate = item.publication_date || item.created_at;
-        return itemDate >= filters.dateFrom;
-      });
-    }
-
-    if (filters.dateTo) {
-      result = result.filter((item) => {
-        const itemDate = item.publication_date || item.created_at;
-        return itemDate <= filters.dateTo;
-      });
-    }
-
-    // Apply search query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(
-        (item) =>
-          item.title.toLowerCase().includes(query) ||
-          item.description.toLowerCase().includes(query) ||
-          item.authors?.toLowerCase().includes(query) ||
-          item.tags.some((tag) => tag.toLowerCase().includes(query)),
-      );
-    }
-
-    // Apply sorting
-    switch (sortBy) {
-      case "newest":
-        result.sort(
-          (a, b) =>
-            new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
-        );
-        break;
-      case "oldest":
-        result.sort(
-          (a, b) =>
-            new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime(),
-        );
-        break;
-      case "title-asc":
-        result.sort((a, b) => a.title.localeCompare(b.title));
-        break;
-      case "title-desc":
-        result.sort((a, b) => b.title.localeCompare(a.title));
-        break;
-    }
-
-    setFilteredEvidence(result);
-  }, [evidence, filters, searchQuery, sortBy]);
-
-  if (isLoading) {
+  if (isLoading && items.length === 0) {
     return (
       <main className="min-h-screen bg-background px-4 py-8">
         <div className="mx-auto w-full max-w-7xl">
@@ -212,8 +186,11 @@ export default function EvidenceLibraryPage() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search evidence..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={searchInput}
+              onChange={(e) => {
+                setSearchInput(e.target.value);
+                setPage(1);
+              }}
               className="pl-9"
             />
           </div>
@@ -244,8 +221,8 @@ export default function EvidenceLibraryPage() {
                 <div className="mt-6">
                   <EvidenceFilters
                     filters={filters}
-                    onFilterChange={setFilters}
-                    availableTags={availableTags}
+                    onFilterChange={handleFilterChange}
+                    availableTags={availableTags ?? []}
                   />
                 </div>
               </SheetContent>
@@ -268,8 +245,8 @@ export default function EvidenceLibraryPage() {
               <CardContent className="pt-6">
                 <EvidenceFilters
                   filters={filters}
-                  onFilterChange={setFilters}
-                  availableTags={availableTags}
+                  onFilterChange={handleFilterChange}
+                  availableTags={availableTags ?? []}
                 />
               </CardContent>
             </Card>
@@ -278,10 +255,20 @@ export default function EvidenceLibraryPage() {
           {/* Evidence Grid */}
           <div className="flex-1">
             <div className="mb-4 text-sm text-muted-foreground">
-              Showing {filteredEvidence.length} of {evidence.length} items
+              {isLoading
+                ? "Loading..."
+                : `Showing ${items.length} of ${totalCount} items`}
             </div>
 
-            {filteredEvidence.length === 0 ? (
+            {isError && (
+              <Card className="mb-4">
+                <CardContent className="py-6 text-center text-destructive">
+                  Failed to load evidence. Please try again.
+                </CardContent>
+              </Card>
+            )}
+
+            {items.length === 0 && !isLoading ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <p className="text-lg font-medium text-muted-foreground">
@@ -294,14 +281,44 @@ export default function EvidenceLibraryPage() {
               </Card>
             ) : (
               <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                {filteredEvidence.map((item) => (
+                {items.map((item) => (
                   <EvidenceCard key={item.id} evidence={item} />
                 ))}
+              </div>
+            )}
+
+            {totalCount > 0 && (
+              <div className="mt-6">
+                <PaginationControls
+                  pagination={pagination}
+                  onPageChange={handlePageChange}
+                  onPageSizeChange={handlePageSizeChange}
+                />
               </div>
             )}
           </div>
         </div>
       </div>
     </main>
+  );
+}
+
+export default function EvidenceLibraryPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-background px-4 py-8">
+          <div className="mx-auto w-full max-w-7xl">
+            <Card>
+              <CardHeader>
+                <CardTitle>Loading Evidence Library...</CardTitle>
+              </CardHeader>
+            </Card>
+          </div>
+        </main>
+      }
+    >
+      <EvidenceLibraryContent />
+    </Suspense>
   );
 }

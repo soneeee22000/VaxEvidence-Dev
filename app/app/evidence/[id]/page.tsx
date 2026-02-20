@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query/hooks";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,6 +75,7 @@ import {
 export default function EvidenceDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const [evidence, setEvidence] = useState<EvidenceItem | null>(null);
   const [linkedProtocols, setLinkedProtocols] = useState<any[]>([]);
@@ -247,6 +250,7 @@ export default function EvidenceDetailPage() {
       setEvidence(data);
       setFormData(data);
       setIsEditing(false);
+      queryClient.invalidateQueries({ queryKey: queryKeys.evidence.all });
       toast.success("Evidence updated successfully");
     } catch (error) {
       console.error("Error saving evidence:", error);
@@ -268,6 +272,7 @@ export default function EvidenceDetailPage() {
         return;
       }
 
+      queryClient.invalidateQueries({ queryKey: queryKeys.evidence.all });
       toast.success("Evidence deleted successfully");
       router.push("/app/evidence");
     } catch (error) {

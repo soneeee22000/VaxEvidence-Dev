@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query/hooks";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -51,6 +53,7 @@ import { Loader2, X, ChevronRight, ChevronLeft } from "lucide-react";
 
 export default function NewDatasetPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user: authUser } = useAuth();
   const currentUserId = authUser?.id ?? "";
   const [step, setStep] = useState<1 | 2>(1);
@@ -172,6 +175,7 @@ export default function NewDatasetPage() {
 
       setUploadProgress(100);
 
+      queryClient.invalidateQueries({ queryKey: queryKeys.datasets.all });
       toast.success("Dataset uploaded successfully");
 
       router.push(`/app/datasets/${dataset.id}`);

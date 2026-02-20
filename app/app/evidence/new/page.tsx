@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query/hooks";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +38,7 @@ import { ArrowLeft, Save } from "lucide-react";
 
 export default function NewEvidencePage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
 
@@ -118,6 +121,7 @@ export default function NewEvidencePage() {
         return;
       }
 
+      queryClient.invalidateQueries({ queryKey: queryKeys.evidence.all });
       toast.success("Evidence created successfully");
       router.push(`/app/evidence/${data.id}`);
     } catch (error) {

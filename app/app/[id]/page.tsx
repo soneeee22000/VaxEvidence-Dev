@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query/hooks";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
@@ -114,6 +116,7 @@ import { VersionHistoryPanel } from "@/components/versioning/version-history-pan
 
 export default function ProtocolDetailPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const params = useParams<{ id: string }>();
   const protocolId = params?.id;
   const { user: authUser } = useAuth();
@@ -575,6 +578,7 @@ export default function ProtocolDetailPage() {
 
       if (data) {
         setProtocol(data);
+        queryClient.invalidateQueries({ queryKey: queryKeys.protocols.all });
         form.reset({
           title: data.title,
           study_question: data.study_question,
@@ -623,6 +627,7 @@ export default function ProtocolDetailPage() {
         throw new Error(error.message || "Failed to delete protocol");
       }
 
+      queryClient.invalidateQueries({ queryKey: queryKeys.protocols.all });
       toast.success("Protocol deleted successfully");
       router.push("/app");
     } catch (err) {

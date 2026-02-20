@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query/hooks";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -82,6 +84,7 @@ import {
 
 export default function DatasetDetailPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const params = useParams<{ id: string }>();
   const datasetId = params?.id;
   const { user } = useAuth();
@@ -299,7 +302,7 @@ export default function DatasetDetailPage() {
 
       setDataset(data);
       setIsEditing(false);
-
+      queryClient.invalidateQueries({ queryKey: queryKeys.datasets.all });
       toast.success("Dataset updated successfully");
     } catch (error) {
       toast.error(
@@ -341,6 +344,7 @@ export default function DatasetDetailPage() {
         throw new Error(error.message || "Failed to delete dataset");
       }
 
+      queryClient.invalidateQueries({ queryKey: queryKeys.datasets.all });
       toast.success("Dataset deleted successfully");
 
       router.push("/app/datasets");

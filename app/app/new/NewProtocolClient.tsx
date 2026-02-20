@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query/hooks";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
@@ -55,6 +57,7 @@ const defaultValues: ProtocolFormValues = {
 
 export function NewProtocolClient() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -134,6 +137,7 @@ export function NewProtocolClient() {
             console.warn("Failed to log template usage:", usageError);
           }
         }
+        queryClient.invalidateQueries({ queryKey: queryKeys.protocols.all });
         router.push(`/app/${data.id}`);
       }
     } catch (err) {

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -25,16 +25,18 @@ import {
   DatasetFilters,
   type DatasetFilterState,
 } from "@/components/datasets/dataset-filters";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import {
-  fetchDatasets,
   getDatasetFileUrl,
   getTotalStorageUsed,
-  getUniqueTags,
   createDataset,
-  type DatasetSortOptions,
 } from "@/lib/supabase/datasets";
+import { useDatasetList, useDatasetTags, queryKeys } from "@/lib/query/hooks";
+import { useDebouncedSearch } from "@/hooks/use-debounced-search";
+import { buildPaginationMeta, DEFAULT_PAGE_SIZE } from "@/lib/types/pagination";
 import type { Dataset } from "@/lib/validators/dataset";
 import { formatFileSize } from "@/lib/validators/dataset";
+import type { FileType } from "@/lib/validators/dataset";
 import {
   Search,
   Filter,
@@ -46,6 +48,8 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth/auth-context";
 import { SAMPLE_DATASETS } from "@/lib/demo/sample-datasets";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 type SortField =
   | "created_at"
@@ -54,18 +58,23 @@ type SortField =
   | "file_size"
   | "row_count";
 
-export default function DatasetsPage() {
+function DatasetsContent() {
+  const searchParams = useSearchParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user: authUser } = useAuth();
-  const [datasets, setDatasets] = useState<Dataset[]>([]);
-  const [filteredDatasets, setFilteredDatasets] = useState<Dataset[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingSampleData, setIsLoadingSampleData] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+
+  const initialPage = parseInt(searchParams.get("page") ?? "1", 10) || 1;
+  const initialPageSize =
+    parseInt(searchParams.get("pageSize") ?? String(DEFAULT_PAGE_SIZE), 10) ||
+    DEFAULT_PAGE_SIZE;
+
+  const [page, setPage] = useState(initialPage);
+  const [pageSize, setPageSize] = useState(initialPageSize);
   const [sortField, setSortField] = useState<SortField>("created_at");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [totalStorage, setTotalStorage] = useState(0);
-  const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const [isLoadingSampleData, setIsLoadingSampleData] = useState(false);
 
   const [filters, setFilters] = useState<DatasetFilterState>({
     types: [],
@@ -74,145 +83,97 @@ export default function DatasetsPage() {
     tags: [],
   });
 
+  const {
+    inputValue: searchInput,
+    debouncedValue: search,
+    setInputValue: setSearchInput,
+  } = useDebouncedSearch("");
+
+  const { data, isLoading, isError } = useDatasetList({
+    page,
+    pageSize,
+    search: search || undefined,
+    types: filters.types.length > 0 ? filters.types : undefined,
+    statuses: filters.statuses.length > 0 ? filters.statuses : undefined,
+    fileTypes:
+      filters.fileTypes.length > 0
+        ? (filters.fileTypes as FileType[])
+        : undefined,
+    tags: filters.tags.length > 0 ? filters.tags : undefined,
+    sortBy: sortField,
+    sortDirection,
+  });
+
+  const { data: availableTags } = useDatasetTags();
+
+  const items = data?.items ?? [];
+  const totalCount = data?.totalCount ?? 0;
+  const pagination = buildPaginationMeta(totalCount, page, pageSize);
+
   useEffect(() => {
-    loadDatasets();
-    loadTotalStorage();
-    loadUniqueTags();
+    getTotalStorageUsed().then(({ data: storageData }) => {
+      setTotalStorage(storageData || 0);
+    });
   }, []);
 
-  useEffect(() => {
-    applyFilters();
-  }, [datasets, searchQuery, filters, sortField, sortDirection]);
-
-  const loadDatasets = async () => {
-    setIsLoading(true);
-    const { data, error } = await fetchDatasets();
-
-    if (error || !data) {
-      toast.error("Failed to load datasets");
-      setIsLoading(false);
-      return;
-    }
-
-    setDatasets(data);
-    setIsLoading(false);
+  const updateUrl = (newPage: number, newPageSize: number) => {
+    const params = new URLSearchParams();
+    if (newPage > 1) params.set("page", String(newPage));
+    if (newPageSize !== DEFAULT_PAGE_SIZE)
+      params.set("pageSize", String(newPageSize));
+    const qs = params.toString();
+    router.replace(`/app/datasets${qs ? `?${qs}` : ""}`, { scroll: false });
   };
 
-  const loadTotalStorage = async () => {
-    const { data } = await getTotalStorageUsed();
-    setTotalStorage(data || 0);
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    updateUrl(newPage, pageSize);
   };
 
-  const loadUniqueTags = async () => {
-    const { data } = await getUniqueTags();
-    setAvailableTags(data || []);
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setPage(1);
+    updateUrl(1, newSize);
   };
 
-  const applyFilters = () => {
-    let filtered = [...datasets];
-
-    // Apply search
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (dataset) =>
-          dataset.name.toLowerCase().includes(query) ||
-          dataset.description.toLowerCase().includes(query) ||
-          dataset.file_name.toLowerCase().includes(query) ||
-          dataset.tags.some((tag) => tag.toLowerCase().includes(query)),
-      );
-    }
-
-    // Apply type filter
-    if (filters.types.length > 0) {
-      filtered = filtered.filter((dataset) =>
-        filters.types.includes(dataset.dataset_type),
-      );
-    }
-
-    // Apply file type filter
-    if (filters.fileTypes.length > 0) {
-      filtered = filtered.filter((dataset) =>
-        filters.fileTypes.includes(dataset.file_type),
-      );
-    }
-
-    // Apply status filter
-    if (filters.statuses.length > 0) {
-      filtered = filtered.filter((dataset) =>
-        filters.statuses.includes(dataset.status),
-      );
-    }
-
-    // Apply tag filter
-    if (filters.tags.length > 0) {
-      filtered = filtered.filter((dataset) =>
-        filters.tags.some((tag) => dataset.tags.includes(tag)),
-      );
-    }
-
-    // Apply sorting
-    filtered.sort((a, b) => {
-      let aValue: unknown = a[sortField];
-      let bValue: unknown = b[sortField];
-
-      // Handle null values
-      if (aValue === null) return 1;
-      if (bValue === null) return -1;
-
-      // Convert to comparable values
-      if (typeof aValue === "string") aValue = aValue.toLowerCase();
-      if (typeof bValue === "string") bValue = bValue.toLowerCase();
-
-      if (aValue! < bValue!) return sortDirection === "asc" ? -1 : 1;
-      if (aValue! > bValue!) return sortDirection === "asc" ? 1 : -1;
-      return 0;
-    });
-
-    setFilteredDatasets(filtered);
+  const handleFilterChange = (newFilters: DatasetFilterState) => {
+    setFilters(newFilters);
+    setPage(1);
   };
 
   const handleDownload = async (dataset: Dataset) => {
-    const { data, error } = await getDatasetFileUrl(dataset.storage_path);
-
-    if (error || !data) {
+    const { data: urlData, error } = await getDatasetFileUrl(
+      dataset.storage_path,
+    );
+    if (error || !urlData) {
       toast.error("Failed to get download link");
       return;
     }
-
-    // Open download link
-    window.open(data.signedUrl, "_blank");
+    window.open(urlData.signedUrl, "_blank");
   };
 
   const handleSortChange = (value: string) => {
     const [field, direction] = value.split("-") as [SortField, "asc" | "desc"];
     setSortField(field);
     setSortDirection(direction);
+    setPage(1);
   };
 
   const handleLoadSampleData = async () => {
     setIsLoadingSampleData(true);
-
     try {
-      if (!authUser) {
-        throw new Error("Not authenticated");
-      }
-      const user = authUser;
+      if (!authUser) throw new Error("Not authenticated");
 
-      // Load the sample dataset metadata (no storage upload needed for demo data)
       const sampleDataset = SAMPLE_DATASETS[0];
-
-      // Use demo: prefix - file is served directly from public folder
       const demoStoragePath = `demo:${sampleDataset.filePath}`;
 
-      // Create dataset record with demo path (no actual file upload)
       const datasetPayload = {
         name: sampleDataset.name,
         description: sampleDataset.description,
         dataset_type: sampleDataset.datasetType,
         tags: sampleDataset.tags,
         status: "draft" as const,
-        user_id: user.id,
+        user_id: authUser.id,
         file_name: sampleDataset.fileName,
         file_size: 5000,
         file_type: "csv" as const,
@@ -221,23 +182,18 @@ export default function DatasetsPage() {
         column_count: sampleDataset.columnCount,
       };
 
-      const { data: dataset, error: createError } =
-        await createDataset(datasetPayload);
-
-      if (createError || !dataset) {
-        throw new Error(
-          createError?.message || "Failed to create dataset record",
-        );
-      }
+      const { error: createError } = await createDataset(datasetPayload);
+      if (createError) throw new Error(createError.message);
 
       toast.success(
         "Vaccine clinical trial sample dataset has been added to your library.",
       );
 
-      // Refresh datasets
-      loadDatasets();
-      loadTotalStorage();
-      loadUniqueTags();
+      queryClient.invalidateQueries({ queryKey: queryKeys.datasets.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.datasets.tags() });
+      getTotalStorageUsed().then(({ data: storageData }) => {
+        setTotalStorage(storageData || 0);
+      });
     } catch (error) {
       console.error("Error loading sample data:", error);
       toast.error(
@@ -248,7 +204,7 @@ export default function DatasetsPage() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading && items.length === 0) {
     return (
       <main className="min-h-screen bg-background px-4 py-12">
         <div className="mx-auto w-full max-w-7xl">
@@ -296,8 +252,8 @@ export default function DatasetsPage() {
               <CardContent className="pt-6">
                 <DatasetFilters
                   filters={filters}
-                  onFiltersChange={setFilters}
-                  availableTags={availableTags}
+                  onFiltersChange={handleFilterChange}
+                  availableTags={availableTags ?? []}
                 />
               </CardContent>
             </Card>
@@ -311,8 +267,11 @@ export default function DatasetsPage() {
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Search datasets..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={searchInput}
+                  onChange={(e) => {
+                    setSearchInput(e.target.value);
+                    setPage(1);
+                  }}
                   className="pl-9"
                 />
               </div>
@@ -330,8 +289,8 @@ export default function DatasetsPage() {
                     <div className="mt-6">
                       <DatasetFilters
                         filters={filters}
-                        onFiltersChange={setFilters}
-                        availableTags={availableTags}
+                        onFiltersChange={handleFilterChange}
+                        availableTags={availableTags ?? []}
                       />
                     </div>
                   </SheetContent>
@@ -367,20 +326,29 @@ export default function DatasetsPage() {
 
             {/* Results Count */}
             <p className="text-sm text-muted-foreground">
-              {filteredDatasets.length} dataset
-              {filteredDatasets.length !== 1 ? "s" : ""} found
+              {isLoading
+                ? "Loading..."
+                : `${totalCount} dataset${totalCount !== 1 ? "s" : ""} found`}
             </p>
 
+            {isError && (
+              <Card>
+                <CardContent className="py-6 text-center text-destructive">
+                  Failed to load datasets. Please try again.
+                </CardContent>
+              </Card>
+            )}
+
             {/* Dataset Grid */}
-            {filteredDatasets.length === 0 ? (
+            {items.length === 0 && !isLoading ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <p className="text-sm text-muted-foreground mb-4">
-                    {searchQuery || filters.types.length > 0
+                    {search || filters.types.length > 0
                       ? "No datasets match your filters"
                       : "No datasets yet"}
                   </p>
-                  {!searchQuery && filters.types.length === 0 && (
+                  {!search && filters.types.length === 0 && (
                     <div className="flex flex-col items-center gap-4">
                       <div className="flex gap-2">
                         <Button asChild>
@@ -420,7 +388,7 @@ export default function DatasetsPage() {
               </Card>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {filteredDatasets.map((dataset) => (
+                {items.map((dataset) => (
                   <DatasetCard
                     key={dataset.id}
                     dataset={dataset}
@@ -429,9 +397,39 @@ export default function DatasetsPage() {
                 ))}
               </div>
             )}
+
+            {totalCount > 0 && (
+              <div className="mt-4">
+                <PaginationControls
+                  pagination={pagination}
+                  onPageChange={handlePageChange}
+                  onPageSizeChange={handlePageSizeChange}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
     </main>
+  );
+}
+
+export default function DatasetsPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-background px-4 py-12">
+          <div className="mx-auto w-full max-w-7xl">
+            <Card>
+              <CardHeader>
+                <CardTitle>Loading datasets...</CardTitle>
+              </CardHeader>
+            </Card>
+          </div>
+        </main>
+      }
+    >
+      <DatasetsContent />
+    </Suspense>
   );
 }

@@ -1,5 +1,8 @@
 import { createClient } from "@/lib/supabase/browser";
 import type { ProtocolFormValues } from "@/lib/validators/protocol";
+import { buildSupabaseRange } from "@/lib/types/pagination";
+
+type ProtocolStatus = "draft" | "in_review" | "final";
 
 export type ProtocolRecord = ProtocolFormValues & {
   id: string;
@@ -105,4 +108,71 @@ export const deleteProtocol = async (id: string) => {
     return { data: null, error: { message: "Supabase is not configured." } };
   }
   return client.from("protocols").delete().eq("id", id);
+};
+
+// =============================================================================
+// PAGINATED PROTOCOLS
+// =============================================================================
+
+/** Parameters for paginated protocol list queries. */
+export interface ProtocolListParams {
+  page: number;
+  pageSize: number;
+  search?: string;
+  statuses?: ProtocolStatus[];
+  sortBy?: string;
+  sortDirection?: "asc" | "desc";
+}
+
+/**
+ * Fetch protocols with server-side pagination, search, and filtering.
+ */
+export const fetchProtocolsPaginated = async (
+  params: ProtocolListParams,
+): Promise<{
+  data: { items: ProtocolRecord[]; totalCount: number } | null;
+  error: { message: string } | null;
+}> => {
+  const client = getClient();
+  if (!client)
+    return { data: null, error: { message: "Supabase is not configured." } };
+
+  try {
+    const { from, to } = buildSupabaseRange(params.page, params.pageSize);
+    const sortBy = params.sortBy ?? "updated_at";
+    const ascending = (params.sortDirection ?? "desc") === "asc";
+
+    let query = client.from("protocols").select("*", { count: "exact" });
+
+    if (params.search) {
+      query = query.textSearch("search_vector", params.search, {
+        type: "websearch",
+      });
+    }
+
+    if (params.statuses && params.statuses.length > 0) {
+      query = query.in("status", params.statuses);
+    }
+
+    query = query.order(sortBy, { ascending }).range(from, to);
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      return { data: null, error: { message: error.message ?? String(error) } };
+    }
+
+    return {
+      data: {
+        items: (data as ProtocolRecord[]) ?? [],
+        totalCount: count ?? 0,
+      },
+      error: null,
+    };
+  } catch (err) {
+    return {
+      data: null,
+      error: { message: err instanceof Error ? err.message : String(err) },
+    };
+  }
 };

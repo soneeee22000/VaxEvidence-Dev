@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/browser";
 import type { EvidenceItem } from "@/lib/validators/evidence";
+import type { EvidenceType, EvidenceStatus } from "@/lib/validators/evidence";
+import { buildSupabaseRange } from "@/lib/types/pagination";
 
 type SupabaseResult<T> = Promise<{
   data: T | null;
@@ -106,6 +108,94 @@ export const getUniqueTags = async (): SupabaseResult<string[]> => {
     .filter(Boolean);
 
   return { data: Array.from(new Set(tags)).sort(), error: null };
+};
+
+// =============================================================================
+// PAGINATED EVIDENCE
+// =============================================================================
+
+/** Parameters for paginated evidence list queries. */
+export interface EvidenceListParams {
+  page: number;
+  pageSize: number;
+  search?: string;
+  types?: EvidenceType[];
+  statuses?: EvidenceStatus[];
+  tags?: string[];
+  dateFrom?: string;
+  dateTo?: string;
+  sortBy?: string;
+  sortDirection?: "asc" | "desc";
+}
+
+/**
+ * Fetch evidence items with server-side pagination, search, and filtering.
+ * Uses `.select("*", { count: "exact" })` to get total count for pagination.
+ */
+export const fetchEvidenceItemsPaginated = async (
+  params: EvidenceListParams,
+): Promise<{
+  data: { items: EvidenceItem[]; totalCount: number } | null;
+  error: { message: string } | null;
+}> => {
+  const client = getClient();
+  if (!client)
+    return { data: null, error: { message: "Supabase is not configured." } };
+
+  try {
+    const { from, to } = buildSupabaseRange(params.page, params.pageSize);
+    const sortBy = params.sortBy ?? "updated_at";
+    const ascending = (params.sortDirection ?? "desc") === "asc";
+
+    let query = client.from("evidence_items").select("*", { count: "exact" });
+
+    if (params.search) {
+      query = query.textSearch("search_vector", params.search, {
+        type: "websearch",
+      });
+    }
+
+    if (params.types && params.types.length > 0) {
+      query = query.in("type", params.types);
+    }
+
+    if (params.statuses && params.statuses.length > 0) {
+      query = query.in("status", params.statuses);
+    }
+
+    if (params.tags && params.tags.length > 0) {
+      query = query.contains("tags", params.tags);
+    }
+
+    if (params.dateFrom) {
+      query = query.gte("publication_date", params.dateFrom);
+    }
+
+    if (params.dateTo) {
+      query = query.lte("publication_date", params.dateTo);
+    }
+
+    query = query.order(sortBy, { ascending }).range(from, to);
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      return { data: null, error: { message: error.message ?? String(error) } };
+    }
+
+    return {
+      data: {
+        items: (data as EvidenceItem[]) ?? [],
+        totalCount: count ?? 0,
+      },
+      error: null,
+    };
+  } catch (err) {
+    return {
+      data: null,
+      error: { message: err instanceof Error ? err.message : String(err) },
+    };
+  }
 };
 
 // =============================================================================

@@ -3,7 +3,11 @@ import type {
   Dataset,
   DatasetFormValues,
   DatasetCreateValues,
+  DatasetType,
+  DatasetStatus,
+  FileType,
 } from "@/lib/validators/dataset";
+import { buildSupabaseRange } from "@/lib/types/pagination";
 
 type SupabaseResult<T> = Promise<{
   data: T | null;
@@ -135,6 +139,88 @@ export const getTotalStorageUsed = async (): SupabaseResult<number> => {
   );
 
   return { data: total, error: null };
+};
+
+// =============================================================================
+// PAGINATED DATASETS
+// =============================================================================
+
+/** Parameters for paginated dataset list queries. */
+export interface DatasetListParams {
+  page: number;
+  pageSize: number;
+  search?: string;
+  types?: DatasetType[];
+  statuses?: DatasetStatus[];
+  fileTypes?: FileType[];
+  tags?: string[];
+  sortBy?: string;
+  sortDirection?: "asc" | "desc";
+}
+
+/**
+ * Fetch datasets with server-side pagination, search, and filtering.
+ */
+export const fetchDatasetsPaginated = async (
+  params: DatasetListParams,
+): Promise<{
+  data: { items: Dataset[]; totalCount: number } | null;
+  error: { message: string } | null;
+}> => {
+  const client = getClient();
+  if (!client)
+    return { data: null, error: { message: "Supabase is not configured." } };
+
+  try {
+    const { from, to } = buildSupabaseRange(params.page, params.pageSize);
+    const sortBy = params.sortBy ?? "updated_at";
+    const ascending = (params.sortDirection ?? "desc") === "asc";
+
+    let query = client.from("datasets").select("*", { count: "exact" });
+
+    if (params.search) {
+      query = query.textSearch("search_vector", params.search, {
+        type: "websearch",
+      });
+    }
+
+    if (params.types && params.types.length > 0) {
+      query = query.in("dataset_type", params.types);
+    }
+
+    if (params.statuses && params.statuses.length > 0) {
+      query = query.in("status", params.statuses);
+    }
+
+    if (params.fileTypes && params.fileTypes.length > 0) {
+      query = query.in("file_type", params.fileTypes);
+    }
+
+    if (params.tags && params.tags.length > 0) {
+      query = query.contains("tags", params.tags);
+    }
+
+    query = query.order(sortBy, { ascending }).range(from, to);
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      return { data: null, error: { message: error.message ?? String(error) } };
+    }
+
+    return {
+      data: {
+        items: (data as Dataset[]) ?? [],
+        totalCount: count ?? 0,
+      },
+      error: null,
+    };
+  } catch (err) {
+    return {
+      data: null,
+      error: { message: err instanceof Error ? err.message : String(err) },
+    };
+  }
 };
 
 // =============================================================================
