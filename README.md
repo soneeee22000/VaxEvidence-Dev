@@ -9,7 +9,7 @@ A Real-World Evidence (RWE) platform for vaccine research scientists. Enables co
 - **UI Components:** shadcn/ui (New York style) + Radix UI + Lucide icons
 - **Database:** Supabase (PostgreSQL + Auth + RLS + Storage) with `@supabase/ssr`
 - **Forms:** react-hook-form + Zod validation
-- **Exports:** jsPDF, @react-pdf/renderer, docx, papaparse, xlsx, citation-js
+- **Exports:** jsPDF, @react-pdf/renderer, docx, papaparse, xlsx, citation-js, archiver
 - **Charts:** recharts
 - **Animations:** framer-motion, lottie-react
 - **Theming:** next-themes (dark mode default)
@@ -41,13 +41,13 @@ NEXT_PUBLIC_DEBUG_LOG_ENDPOINT=       # Optional (debug logging)
 IP_HASH_SALT=                         # Optional (waitlist IP anonymization)
 ```
 
-## MVP Workflow
+## Core Workflow
 
-1. **Create** protocols and define research questions (PICO)
-2. **Collect** evidence and datasets into the Evidence Library
-3. **Collaborate** with comments and reviews on protocols and evidence
-4. **Export** protocols, activity logs, and workspaces for reporting
-5. **Integrate** scientific databases (PubMed, ClinicalTrials.gov) to import evidence
+1. **Create** protocols and define research questions using PICO framework
+2. **Import** evidence from PubMed, ClinicalTrials.gov, or add manually
+3. **Organize** datasets with upload, preview, and visualization
+4. **Collaborate** with threaded comments, reviews, and activity tracking
+5. **Export** protocols (PDF/Word), bibliographies (APA/BibTeX/RIS), activity logs, and full workspace archives
 
 ## Project Structure
 
@@ -63,7 +63,7 @@ components/
 ├── ui/                 # ~56 shadcn/ui primitives
 ├── collaboration/      # Comments, reviews, activity feed
 ├── datasets/           # Dataset cards, filters, upload
-├── evidence/           # Evidence cards, filters, import, search
+├── evidence/           # Evidence cards, filters, import, PubMed/trial search
 ├── export/             # Export dialogs and menus
 ├── landing/            # Marketing page sections
 └── templates/          # Protocol template selector
@@ -85,19 +85,43 @@ docs/                   # Project documentation
 proxy.ts                # Auth proxy (Supabase session + route guards)
 ```
 
-## Scientific Database Integration
+## Features
 
-- PubMed search + import (E-utilities API)
-- DOI/PMID quick import (CrossRef + PubMed)
-- ClinicalTrials.gov search + import
+### Protocol Builder
+
+- PICO-based protocol design (Population, Intervention, Comparator, Outcomes)
+- Protocol templates for common study types
+- Status tracking: draft, in_review, final
+- Link evidence and datasets to protocols
+
+### Evidence Library
+
+- 4 evidence types: academic, regulatory, dataset, note
+- PubMed search and one-click import (NCBI E-utilities)
+- DOI/PMID quick import (CrossRef)
+- ClinicalTrials.gov search and import
 - Auto-tagging from title/abstract keywords
+- Advanced filtering by type, tags, date
 
-## Reporting & Export
+### Dataset Management
 
-- Protocol export to PDF and Word
-- Bibliography export (APA/MLA/Chicago/BibTeX/RIS)
-- Activity log export (CSV/PDF)
-- Workspace bulk export (ZIP with JSON/CSV/PDF)
+- CSV/Excel upload with Supabase Storage
+- Data preview (first 50 rows) and basic charts
+- Link datasets to protocols
+
+### Collaboration
+
+- Threaded comments on protocols, evidence, datasets
+- Review workflows (request, approve, reject, request changes)
+- Activity feed with automatic logging
+
+### Reporting & Export
+
+- Protocol export as PDF (professional, academic, regulatory templates)
+- Protocol export as Word (.docx)
+- Bibliography export (APA, MLA, Chicago, BibTeX, RIS)
+- Activity audit log export (CSV and PDF)
+- Workspace bulk export (ZIP archive)
 
 ## Documentation
 
@@ -108,3 +132,13 @@ See [`docs/`](docs/) for detailed documentation:
 - `REPORTING_EXPORT_IMPLEMENTATION.md` — Export system details
 - `SCIENTIFIC_DATABASE_INTEGRATION_MVP.md` — Database integration specs
 - `template-integration-guide.md` — Protocol template guide
+
+## Roadmap
+
+See [`ROADMAP.md`](ROADMAP.md) for the full product roadmap. Next priorities:
+
+1. Multi-tenant teams & RBAC
+2. Protocol versioning & audit trail (21 CFR Part 11)
+3. Pagination & performance
+4. Test suite & CI pipeline
+5. AI research assistant

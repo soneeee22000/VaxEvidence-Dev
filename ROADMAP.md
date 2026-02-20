@@ -2,312 +2,269 @@
 
 ## Vision
 
-Build the **most powerful platform** for vaccine researchers to design protocols, gather evidence, collaborate with teams, and produce professional reports.
+Build the **most powerful platform** for vaccine researchers to design protocols, gather evidence, collaborate with teams, and produce regulatory-ready reports. Target: FDA/EMA-compliant workflow used by pharma, biotech, and academic research teams worldwide.
 
 ---
 
-## ✅ **COMPLETED FEATURES** (MVP v1.0)
+## COMPLETED FEATURES (MVP v2.0)
 
-### 1. **Foundation** ✅
+### 1. Foundation
+
 - [x] Marketing landing page with waitlist
-- [x] Supabase authentication (email OTP)
-- [x] Protected routes with middleware
-- [x] Dev mode for rapid development
-- [x] Beautiful UI with shadcn/ui components
-- [x] Dark mode support
+- [x] Supabase authentication (email OTP + OAuth)
+- [x] Protected routes with proxy middleware (Next.js 16)
+- [x] Dev mode with fallback UUID for rapid development
+- [x] shadcn/ui component library (~56 primitives)
+- [x] Dark mode default with theme toggle
 - [x] Responsive design (mobile, tablet, desktop)
 
-### 2. **Protocol Builder** ✅
+### 2. Protocol Builder
+
 - [x] Create, edit, delete study protocols
 - [x] PICO framework (Population, Intervention, Comparator, Outcomes)
 - [x] Protocol status tracking (draft, in_review, final)
+- [x] Protocol templates library
 - [x] Dashboard with protocol cards
 - [x] Supabase-backed with RLS security
 
-### 3. **Evidence Library** ✅
+### 3. Evidence Library
+
 - [x] 4 evidence types (academic, regulatory, dataset, note)
 - [x] Type-specific forms (authors/DOI for academic, etc.)
 - [x] Advanced search and filtering
-- [x] Tags and categorization
+- [x] Tags and auto-categorization (keyword extraction)
 - [x] Link evidence to protocols
-- [x] Seed data (20 realistic evidence items)
 
-### 4. **Dataset Upload & Analysis** ✅
+### 4. Scientific Database Integration
+
+- [x] PubMed search (NCBI E-utilities API)
+- [x] One-click PubMed import with full metadata
+- [x] DOI quick import (CrossRef API)
+- [x] PMID quick import
+- [x] ClinicalTrials.gov search and import
+- [x] Auto-tagging from title/abstract keywords
+
+### 5. Dataset Upload & Analysis
+
 - [x] File upload (CSV, Excel) with Supabase Storage
 - [x] Data preview (first 50 rows)
-- [x] Basic visualizations (charts)
+- [x] Basic visualizations (recharts)
 - [x] Metadata management (type, size, date range)
 - [x] Link datasets to protocols
 - [x] Search and filtering
-- [x] Seed data (8 sample datasets)
 
-### 5. **Collaboration & Review System** ✅ **(Just Shipped!)**
+### 6. Collaboration & Review System
+
 - [x] Threaded comments on protocols, evidence, datasets
 - [x] Review workflows (request, approve, reject, request changes)
 - [x] Activity feed with auto-logging
 - [x] Review notification badges in navigation
 - [x] Edit/delete own comments
 - [x] RLS security on all collaboration data
-- [x] Database triggers for automatic activity logging
 
-**Database**: 9 tables, 60+ seed items, RLS enabled on all tables
+### 7. Reporting & Export
 
----
+- [x] Protocol export as PDF (3 template styles: professional, academic, regulatory)
+- [x] Protocol export as Word (.docx)
+- [x] Bibliography export (APA, MLA, Chicago, BibTeX, RIS)
+- [x] Activity audit log export (CSV and PDF)
+- [x] Workspace bulk export (ZIP archive with JSON/CSV/PDF)
+- [x] Server-side export with admin client (auth-gated)
 
-## 🚀 **PLANNED FEATURES** (Roadmap)
-
-### **Phase 2: Reporting & Export** (Next to Build!)
-
-**Status**: 📋 **Plan Created** → See `REPORTING_EXPORT_MVP.md`
-
-**Why**: Complete the core workflow (Create → Collaborate → Export)
-
-**Features**:
-- Export protocols as PDF/Word documents
-- Generate evidence bibliographies (BibTeX, APA, MLA)
-- Export activity logs for compliance
-- Bulk workspace export (ZIP archive)
-- Professional PDF templates with branding
-
-**Estimated Timeline**: 7-10 days
-
-**Dependencies**: `jspdf`, `docx`, `citation-js`
+**Database**: 9+ tables, RLS enabled on all tables, 6 migrations applied
 
 ---
 
-### **Phase 3: Admin Dashboard & User Management**
+## NEXT UP: Planned Features
 
-**Status**: 📝 Not Yet Planned
+### Phase 3: Multi-Tenant Teams & RBAC (Next to Build)
 
-**Why**: Enable team management and workspace administration
+**Status**: Not Yet Started
+
+**Why**: Without teams, no organization will pay. This is the #1 blocker for monetization.
 
 **Features**:
-- User roles (admin, reviewer, researcher, viewer)
-- Team/workspace management
-- Invite team members
-- Usage analytics dashboard
-- Audit trail viewer
-- Protocol templates library
 
-**Estimated Timeline**: 5-7 days
+- Workspaces with invite-by-email
+- User roles: Admin, Lead Researcher, Reviewer, View-only
+- Per-workspace data isolation
+- Team member management UI
+- Role-based access on protocols, evidence, datasets
 
 ---
 
-### **Phase 4: Audit Trails & Compliance Logging**
+### Phase 4: Protocol Versioning & Audit Trail
 
-**Status**: 📝 Not Yet Planned
+**Status**: Not Yet Started
 
-**Why**: Required for regulatory compliance (FDA, EMA submissions)
+**Why**: Required for 21 CFR Part 11 compliance. No regulated company will adopt without this.
 
 **Features**:
-- Comprehensive audit logs (who changed what, when)
-- Protocol version history
-- Change tracking and rollback
-- Digital signatures on protocols
+
+- Immutable version history for every protocol edit
+- Side-by-side diff view between versions
+- Digital signatures on finalized protocols
 - Compliance reports (21 CFR Part 11 ready)
-- Tamper-proof logs
-
-**Estimated Timeline**: 3-5 days
+- Tamper-proof audit logs with timestamps
 
 ---
 
-### **Phase 5: PubMed & Scientific Database Integration** 🌟 **(Game-Changer!)**
+### Phase 5: Pagination, Search & Performance
 
-**Status**: 📋 **Plan Created** → See `SCIENTIFIC_DATABASE_INTEGRATION_MVP.md`
+**Status**: Not Yet Started
 
-**Why**: Transform from manual library into powerful research platform
+**Why**: Current architecture loads all items at once. Breaks at 500+ records.
 
 **Features**:
-- Search PubMed's 30+ million articles
-- One-click import with full metadata
-- DOI/PMID quick import
-- ClinicalTrials.gov integration
-- OpenFDA adverse events data
-- Auto-categorization and tagging
-- Bulk import from search results
 
-**APIs to Integrate**:
-- NCBI E-utilities (PubMed) - FREE
-- CrossRef API (DOI metadata) - FREE
-- ClinicalTrials.gov API - FREE
-- OpenFDA API - FREE
-
-**Estimated Timeline**: 7-10 days
-
-**This Feature Saves**: ~5 minutes per paper × 100 papers = **8+ hours saved per researcher**
+- Server-side pagination on evidence library, datasets, protocols
+- Full-text search using PostgreSQL `tsvector`
+- Debounced search with instant results
+- Caching layer (React Query or SWR)
+- Infinite scroll or paginated tables
 
 ---
 
-### **Phase 6: Advanced Analytics & Insights**
+### Phase 6: Test Suite & CI Pipeline
 
-**Status**: 📝 Not Yet Planned
+**Status**: Not Yet Started
 
-**Why**: Help researchers analyze evidence and datasets
+**Why**: Zero tests currently. Technical debt compounds with every feature.
 
 **Features**:
-- Evidence gap analysis
-- Dataset correlation analysis
-- AI-powered paper summaries
-- Citation network visualization
-- Risk/benefit analysis tools
-- Meta-analysis support
 
-**Estimated Timeline**: 10-14 days
+- Unit tests for CRUD modules and validators (vitest)
+- Integration tests for all API routes
+- E2E tests for critical flows (Playwright)
+- GitHub Actions CI pipeline (lint + test + build)
+- Minimum 80% coverage on critical paths
 
 ---
 
-### **Phase 7: Real-time Collaboration**
+### Phase 7: AI Research Assistant
 
-**Status**: 📝 Not Yet Planned
+**Status**: Not Yet Started
 
-**Why**: Enable truly collaborative protocol building
+**Why**: The differentiator. No competitor has AI-powered protocol design + evidence synthesis.
 
 **Features**:
-- Real-time editing (Google Docs style)
-- Live cursors showing who's editing what
-- Presence indicators (who's online)
-- Real-time comment notifications
-- WebSocket-based updates
-- Conflict resolution
 
-**Estimated Timeline**: 7-10 days
-
-**Dependencies**: Supabase Realtime, WebSockets
+- Auto-generate PICO from a research question
+- Summarize linked evidence into literature review drafts
+- Evidence gap analysis ("You have 12 RCTs but no safety data from X population")
+- Smart paper recommendations based on protocol context
+- Auto-categorize and quality-score imported papers
 
 ---
 
-## 🎯 **RECOMMENDED BUILD ORDER**
+### Phase 8: Systematic Review Workflow (PRISMA)
 
-Based on user value and complexity:
+**Status**: Not Yet Started
 
-### **Immediate Next Steps** (Foundation First)
-1. ✅ **Collaboration & Review System** - DONE!
-2. 🔨 **Reporting & Export** - Build this next
-3. 🔨 **Admin Dashboard** - Essential for teams
-4. 🔨 **Audit Trails** - Important for compliance
+**Why**: This is what researchers actually do for publications. Covidence charges $240-$6K/yr for this.
 
-### **Game-Changers** (After Foundation)
-5. 🌟 **PubMed Integration** - Major value add
-6. 🌟 **Advanced Analytics** - AI-powered insights
-7. 🌟 **Real-time Collaboration** - Modern UX
+**Features**:
 
----
-
-## 📊 **Feature Comparison: Current vs. Vision**
-
-| Feature | Current | With PubMed | With Analytics |
-|---------|---------|-------------|----------------|
-| Evidence Items | 20 (manual) | Unlimited (PubMed) | + AI summaries |
-| Time to Add Paper | 5 min (copy-paste) | 10 sec (click import) | Auto-categorized |
-| Citation Export | ❌ | BibTeX/RIS ✅ | + Citation network |
-| Clinical Trials | Manual entry | ClinicalTrials.gov ✅ | + Trial comparison |
-| Safety Data | Manual | OpenFDA ✅ | + Risk analysis |
+- PRISMA flow diagram (auto-generated from screening data)
+- Screening pipeline: Identify, Screen, Eligibility, Included
+- Duplicate detection across imported papers
+- Risk of Bias assessment tools (RoB 2, ROBINS-I)
+- Forest plots for meta-analysis
 
 ---
 
-## 🏆 **Success Metrics**
+### Phase 9: Billing & Monetization
 
-### Current (MVP v1.0)
-- ✅ **6 core features** shipped
-- ✅ **9 database tables** with RLS
-- ✅ **15 UI components** built
-- ✅ **60+ seed items** for testing
-- ✅ **2,738 lines of code** in collaboration feature alone
+**Status**: Not Yet Started
 
-### Goals (MVP v2.0 - After Reporting & Admin)
-- 📈 **10 core features** shipped
-- 📈 **Export 100+ protocols** as PDFs
-- 📈 **5+ team members** per workspace
-- 📈 **Full compliance** audit trail
+**Why**: Start charging money.
 
-### Goals (MVP v3.0 - With PubMed Integration)
-- 🚀 **1,000+ papers** imported per user
-- 🚀 **80% time savings** vs. manual entry
-- 🚀 **Competitive advantage** over generic tools
-- 🚀 **Research-grade** platform ready for publication
+**Features**:
+
+- Stripe integration for subscriptions
+- Tiered pricing: Free (1 workspace), Pro ($X/mo), Enterprise (custom)
+- Usage limits per tier (protocols, evidence items, exports)
+- Billing dashboard and invoice history
 
 ---
 
-## 🔮 **Future Vision (Post-MVP)**
+### Phase 10: Real-Time Collaboration
 
-### Integration Ecosystem
-- Zotero/Mendeley sync
-- Google Drive/Dropbox export
-- JIRA/Asana integration (for project management)
-- Slack/Teams notifications
-- REDCap data import (clinical trials)
+**Status**: Not Yet Started
 
-### AI & Machine Learning
-- GPT-powered protocol suggestions
-- Automated evidence quality scoring
-- Predictive safety signal detection
-- Smart paper recommendations
-- Auto-generate study sections (Introduction, Methods)
+**Why**: Modern UX expectation for team tools.
 
-### Regulatory & Compliance
-- FDA submission packages
-- EMA dossier generation
-- CONSORT checklist integration
-- ClinicalTrials.gov auto-registration
-- Digital signatures and timestamps
+**Features**:
 
-### Mobile & Offline
-- iOS/Android apps
-- Offline mode for field work
-- Voice-to-text for comments
-- Mobile data collection
+- Live cursors and presence indicators
+- Simultaneous protocol editing (Yjs/CRDT)
+- @mentions in comments with email notifications
+- Supabase Realtime for instant updates
+- Slack/Teams webhook integration
 
 ---
 
-## 💡 **Strategic Decision: Why Build Reporting Before PubMed?**
+### Phase 11: Regulatory Submission Packages
 
-### Pros of Reporting First:
-✅ **Completes core workflow** (Create → Collaborate → Export)  
-✅ **Faster to build** (7 days vs. 10 days)  
-✅ **Demonstrates completeness** to stakeholders  
-✅ **Required for real-world use** (researchers need PDFs)  
-✅ **Builds foundation** for compliance (audit logs → reports)  
+**Status**: Not Yet Started
 
-### Why PubMed Can Wait:
-- Requires external API setup (NCBI key, rate limiting)
-- More complex error handling (network issues, API changes)
-- Evidence Library is functional with manual entry for now
-- Bigger feature, save it for major release
+**Why**: This alone is worth $50K+/year per pharma company.
 
-### The Plan:
-1. **Build Reporting** → Complete MVP v2.0 (solid foundation)
-2. **Then PubMed** → Launch MVP v3.0 (game-changer release)
-3. **Market v3.0** as the "Research Platform" upgrade
+**Features**:
+
+- One-click FDA IND/BLA package generation
+- EMA dossier format (eCTD Module 5)
+- Auto-populate ICH E6(R2) GCP sections
+- CONSORT/STROBE checklist enforcement
+- CDISC/SDTM dataset format support
 
 ---
 
-## 📅 **Estimated Timeline**
+### Phase 12: Enterprise & Integrations
 
-| Phase | Feature | Duration | Total Time |
-|-------|---------|----------|------------|
-| ✅ Done | Collaboration & Reviews | - | 0 days |
-| 🔨 Next | Reporting & Export | 7-10 days | 10 days |
-| 🔨 Phase 3 | Admin Dashboard | 5-7 days | 17 days |
-| 🔨 Phase 4 | Audit Trails | 3-5 days | 22 days |
-| 🌟 Phase 5 | PubMed Integration | 7-10 days | 32 days |
-| 🌟 Phase 6 | Advanced Analytics | 10-14 days | 46 days |
-| 🌟 Phase 7 | Real-time Collab | 7-10 days | 56 days |
+**Status**: Not Yet Started
 
-**Total Time to Full Vision**: ~8-10 weeks of focused development
+**Why**: Enterprise procurement requirements.
 
----
+**Features**:
 
-## 🎉 **You're Here: MVP v1.0 Complete!**
-
-**Congratulations!** You've built a fully-functional vaccine research platform with:
-- Protocol management
-- Evidence library
-- Dataset analysis
-- Team collaboration
-- Review workflows
-
-**Next Up**: Reporting & Export → Make it production-ready for real researchers! 📄
+- SSO (SAML/OIDC) for enterprise IT
+- Zotero/Mendeley two-way sync
+- REDCap data import (clinical trial data)
+- Public REST API with API keys and webhooks
+- Data residency options (US, EU, APAC)
+- SOC 2 Type II / HIPAA compliance
 
 ---
 
-*Last Updated: January 20, 2026*
+## Recommended Build Order
+
+| Priority | Phase | Feature                   | Why Now                       |
+| -------- | ----- | ------------------------- | ----------------------------- |
+| 1        | 3     | Teams & RBAC              | Can't monetize without it     |
+| 2        | 4     | Versioning & Audit Trail  | FDA compliance requirement    |
+| 3        | 5     | Pagination & Performance  | Breaks at scale               |
+| 4        | 6     | Test Suite & CI           | Technical debt is compounding |
+| 5        | 7     | AI Research Assistant     | Core differentiator           |
+| 6        | 9     | Billing (Stripe)          | Start generating revenue      |
+| 7        | 8     | PRISMA Workflow           | Publication-grade features    |
+| 8        | 10    | Real-Time Collaboration   | Modern team UX                |
+| 9        | 11    | Regulatory Packages       | Enterprise sales unlock       |
+| 10       | 12    | Enterprise & Integrations | Scale to large orgs           |
+
+---
+
+## Competitive Landscape
+
+| Competitor        | Price       | What They Do       | VaxEvidence Advantage                      |
+| ----------------- | ----------- | ------------------ | ------------------------------------------ |
+| Covidence         | $240-$6K/yr | Systematic review  | AI + protocol builder + exports            |
+| DistillerSR       | Enterprise  | Evidence synthesis | 10x cheaper, modern UX                     |
+| SWIFT-Review      | Free        | Text mining        | Full end-to-end workflow                   |
+| RevMan (Cochrane) | Free        | Meta-analysis      | Protocol design + evidence + collaboration |
+
+**None of them** combine protocol design + evidence management + AI + regulatory export in one platform.
+
+---
+
+_Last Updated: February 20, 2026_

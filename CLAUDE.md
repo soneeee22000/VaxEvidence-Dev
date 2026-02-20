@@ -111,6 +111,7 @@ proxy.ts                # Auth proxy (Supabase session + route guards, Next.js 1
 
 - Direct Supabase queries in `lib/supabase/*.ts` (one module per table)
 - Evidence CRUD uses API route proxy (`/api/evidence`) with service role to bypass RLS
+- Export API routes use `getSupabaseAdmin()` with inline queries (not browser CRUD modules)
 - Server-side: `getSupabaseAdmin()` (service role), `createServerSupabaseClient()` (user session), `getServerUser()` (auth helper) from `lib/supabase/server.ts`
 - Client-side: `createClient()` from `lib/supabase/browser.ts` (SSR-aware)
 - Supabase query pattern: `const { data, error } = await supabase.from('table').select('*')`
@@ -181,3 +182,13 @@ IP_HASH_SALT                          # Optional (waitlist IP anonymization)
 - No pagination yet — evidence library loads all items
 - No caching layer (no React Query/SWR) — direct Supabase queries
 - No test suite currently in place
+
+## Important: Server vs Browser Client in API Routes
+
+Export API routes (`/api/export/*`) use `getSupabaseAdmin()` from `lib/supabase/server.ts` for all database queries. Do NOT use browser CRUD modules (`lib/supabase/*.ts`) in API routes — the browser client (`@supabase/ssr`) relies on cookie-based auth that is unavailable in server-side route handlers. All API routes that need data must:
+
+1. Import `getSupabaseAdmin` and `getServerUser` from `@/lib/supabase/server`
+2. Check auth with `getServerUser()` (return 401 if null)
+3. Query with `getSupabaseAdmin().from("table")...` (bypasses RLS via service role)
+
+Junction table names: `protocol_evidence_links` (not `protocol_evidence`), `protocol_dataset_links` (not `protocol_datasets`).
