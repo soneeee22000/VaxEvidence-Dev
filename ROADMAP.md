@@ -77,9 +77,9 @@ Build the **most powerful platform** for vaccine researchers to design protocols
 
 ## NEXT UP: Planned Features
 
-### Phase 3: Multi-Tenant Teams & RBAC (Next to Build)
+### Phase 3: Multi-Tenant Teams & RBAC
 
-**Status**: Not Yet Started
+**Status**: COMPLETED
 
 **Why**: Without teams, no organization will pay. This is the #1 blocker for monetization.
 
@@ -95,17 +95,18 @@ Build the **most powerful platform** for vaccine researchers to design protocols
 
 ### Phase 4: Protocol Versioning & Audit Trail
 
-**Status**: Not Yet Started
+**Status**: COMPLETED
 
 **Why**: Required for 21 CFR Part 11 compliance. No regulated company will adopt without this.
 
 **Features**:
 
-- Immutable version history for every protocol edit
-- Side-by-side diff view between versions
+- Immutable version snapshots with SHA-256 content hashing
+- Side-by-side diff view between versions (word-level highlighting)
 - Digital signatures on finalized protocols
-- Compliance reports (21 CFR Part 11 ready)
+- Compliance reports (21 CFR Part 11 PDF export)
 - Tamper-proof audit logs with timestamps
+- Auto-version on protocol finalization
 
 ---
 
@@ -127,7 +128,7 @@ Build the **most powerful platform** for vaccine researchers to design protocols
 
 ### Phase 6: Test Suite & CI Pipeline
 
-**Status**: Not Yet Started
+**Status**: COMPLETED
 
 **Why**: Zero tests currently. Technical debt compounds with every feature.
 
@@ -267,4 +268,4 @@ Build the **most powerful platform** for vaccine researchers to design protocols
 
 ---
 
-_Last Updated: February 20, 2026_
+_Last Updated: February 21, 2026_
