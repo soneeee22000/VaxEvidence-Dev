@@ -1,13 +1,18 @@
-import Link from "next/link"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
-import type { Dataset } from "@/lib/validators/dataset"
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+} from "@/components/ui/card";
+import type { Dataset } from "@/lib/validators/dataset";
 import {
   formatFileSize,
   getDatasetTypeLabel,
   getDatasetTypeColor,
-} from "@/lib/validators/dataset"
+} from "@/lib/validators/dataset";
 import {
   Database,
   FileSpreadsheet,
@@ -18,30 +23,22 @@ import {
   Grid3x3,
   Download,
   ExternalLink,
-} from "lucide-react"
+} from "lucide-react";
 
 interface DatasetCardProps {
-  dataset: Dataset
-  onDownload?: (dataset: Dataset) => void
+  dataset: Dataset;
+  onDownload?: (dataset: Dataset) => void;
 }
 
-export function DatasetCard({ dataset, onDownload }: DatasetCardProps) {
-  // Get icon based on file type
-  const getFileIcon = () => {
-    switch (dataset.file_type) {
-      case "csv":
-        return FileText
-      case "xlsx":
-        return FileSpreadsheet
-      case "json":
-        return FileJson
-      default:
-        return Database
-    }
-  }
+const FILE_TYPE_ICONS: Record<string, typeof FileText> = {
+  csv: FileText,
+  xlsx: FileSpreadsheet,
+  json: FileJson,
+};
 
-  const FileIcon = getFileIcon()
-  const typeColor = getDatasetTypeColor(dataset.dataset_type)
+export function DatasetCard({ dataset, onDownload }: DatasetCardProps) {
+  const FileIcon = FILE_TYPE_ICONS[dataset.file_type] ?? Database;
+  const typeColor = getDatasetTypeColor(dataset.dataset_type);
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -79,7 +76,9 @@ export function DatasetCard({ dataset, onDownload }: DatasetCardProps) {
             {dataset.status}
           </Badge>
         </div>
-        <h3 className="font-semibold leading-tight line-clamp-2">{dataset.name}</h3>
+        <h3 className="font-semibold leading-tight line-clamp-2">
+          {dataset.name}
+        </h3>
       </CardHeader>
 
       <CardContent className="space-y-3">
@@ -96,8 +95,8 @@ export function DatasetCard({ dataset, onDownload }: DatasetCardProps) {
             <div className="flex items-center gap-1">
               <Grid3x3 className="h-3 w-3" />
               <span>
-                {dataset.row_count.toLocaleString()} rows × {dataset.column_count}{" "}
-                cols
+                {dataset.row_count.toLocaleString()} rows ×{" "}
+                {dataset.column_count} cols
               </span>
             </div>
           )}
@@ -137,16 +136,12 @@ export function DatasetCard({ dataset, onDownload }: DatasetCardProps) {
           </Link>
         </Button>
         {onDownload && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onDownload(dataset)}
-          >
+          <Button variant="ghost" size="sm" onClick={() => onDownload(dataset)}>
             <Download className="mr-2 h-3 w-3" />
             Download
           </Button>
         )}
       </CardFooter>
     </Card>
-  )
+  );
 }

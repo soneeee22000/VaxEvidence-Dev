@@ -113,7 +113,7 @@ export function ExportDialog({
             Export Protocol as {format === "pdf" ? "PDF" : "Word"}
           </DialogTitle>
           <DialogDescription>
-            Configure export options for "{protocolTitle}"
+            Configure export options for &ldquo;{protocolTitle}&rdquo;
           </DialogDescription>
         </DialogHeader>
 

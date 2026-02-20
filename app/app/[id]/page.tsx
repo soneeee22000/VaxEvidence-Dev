@@ -1014,8 +1014,8 @@ export default function ProtocolDetailPage() {
             {linkedEvidence.length === 0 ? (
               <div className="rounded-lg border border-dashed p-8 text-center">
                 <p className="text-sm text-muted-foreground">
-                  No evidence linked yet. Click "Add Evidence" to link
-                  supporting evidence.
+                  No evidence linked yet. Click &ldquo;Add Evidence&rdquo; to
+                  link supporting evidence.
                 </p>
               </div>
             ) : (
@@ -1243,8 +1243,8 @@ export default function ProtocolDetailPage() {
             {linkedDatasets.length === 0 ? (
               <div className="rounded-lg border border-dashed p-8 text-center">
                 <p className="text-sm text-muted-foreground">
-                  No datasets linked yet. Click "Add Dataset" to link supporting
-                  data files.
+                  No datasets linked yet. Click &ldquo;Add Dataset&rdquo; to
+                  link supporting data files.
                 </p>
               </div>
             ) : (

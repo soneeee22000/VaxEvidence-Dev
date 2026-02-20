@@ -45,7 +45,7 @@ let mockTerminalValue: { data: unknown; error: unknown } = {
   data: null,
   error: null,
 };
-let mockFromFn: ReturnType<typeof vi.fn>;
+let mockFromFn: any; // vi.fn — needs `any` for .mock.calls access
 
 vi.mock("@/lib/supabase/browser", () => ({
   createClient: () => ({
@@ -148,7 +148,7 @@ describe("workspaces CRUD", () => {
       expect(result.data).toEqual(wsData);
       expect(result.error).toBeNull();
       // Should call from() for both workspaces and workspace_members
-      const fromCalls = mockFromFn.mock.calls.map((c) => c[0]);
+      const fromCalls = mockFromFn.mock.calls.map((c: unknown[]) => c[0]);
       expect(fromCalls).toContain("workspaces");
       expect(fromCalls).toContain("workspace_members");
     });

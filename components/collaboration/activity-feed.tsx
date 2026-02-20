@@ -1,16 +1,16 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { useState } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 import {
   MessageSquare,
   UserCheck,
@@ -20,19 +20,22 @@ import {
   Trash2,
   Link as LinkIcon,
   Activity,
-} from "lucide-react"
-import type { ActivityLogWithUser, ActivityActionType } from "@/lib/validators/activity"
+} from "lucide-react";
+import type {
+  ActivityLogWithUser,
+  ActivityActionType,
+} from "@/lib/validators/activity";
 import {
   formatActivityMessage,
   getActivityColor,
   groupActivitiesByDate,
-} from "@/lib/validators/activity"
-import { getRelativeTime } from "@/lib/validators/comment"
+} from "@/lib/validators/activity";
+import { getRelativeTime } from "@/lib/validators/comment";
 
 interface ActivityFeedProps {
-  activities: ActivityLogWithUser[]
-  showFilters?: boolean
-  maxItems?: number
+  activities: ActivityLogWithUser[];
+  showFilters?: boolean;
+  maxItems?: number;
 }
 
 export function ActivityFeed({
@@ -40,17 +43,18 @@ export function ActivityFeed({
   showFilters = true,
   maxItems,
 }: ActivityFeedProps) {
-  const [filter, setFilter] = useState<ActivityActionType | "all">("all")
+  const [filter, setFilter] = useState<ActivityActionType | "all">("all");
 
-  const filteredActivities = filter === "all"
-    ? activities
-    : activities.filter((a) => a.action_type === filter)
+  const filteredActivities =
+    filter === "all"
+      ? activities
+      : activities.filter((a) => a.action_type === filter);
 
   const displayedActivities = maxItems
     ? filteredActivities.slice(0, maxItems)
-    : filteredActivities
+    : filteredActivities;
 
-  const groupedActivities = groupActivitiesByDate(displayedActivities)
+  const groupedActivities = groupActivitiesByDate(displayedActivities);
 
   return (
     <div className="space-y-6">
@@ -101,18 +105,21 @@ export function ActivityFeed({
         </div>
       )}
     </div>
-  )
+  );
 }
 
 interface ActivityItemProps {
-  activity: ActivityLogWithUser
+  activity: ActivityLogWithUser;
 }
 
 function ActivityItem({ activity }: ActivityItemProps) {
-  const icon = getActivityIcon(activity.action_type)
-  const color = getActivityColor(activity.action_type)
-  const message = formatActivityMessage(activity)
-  const resourceLink = getResourceLink(activity.resource_type, activity.resource_id)
+  const icon = getActivityIcon(activity.action_type);
+  const color = getActivityColor(activity.action_type);
+  const message = formatActivityMessage(activity);
+  const resourceLink = getResourceLink(
+    activity.resource_type,
+    activity.resource_id,
+  );
 
   return (
     <div className="flex items-start gap-3 rounded-lg border p-4 hover:bg-accent/50 transition-colors">
@@ -122,7 +129,7 @@ function ActivityItem({ activity }: ActivityItemProps) {
           {message}
           {activity.metadata.resource_title && (
             <span className="font-medium ml-1">
-              "{activity.metadata.resource_title}"
+              &ldquo;{activity.metadata.resource_title}&rdquo;
             </span>
           )}
         </p>
@@ -144,40 +151,43 @@ function ActivityItem({ activity }: ActivityItemProps) {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function getActivityIcon(actionType: ActivityActionType) {
   switch (actionType) {
     case "comment":
-      return <MessageSquare className="h-4 w-4" />
+      return <MessageSquare className="h-4 w-4" />;
     case "review_request":
-      return <UserCheck className="h-4 w-4" />
+      return <UserCheck className="h-4 w-4" />;
     case "review_decision":
-      return <CheckCircle className="h-4 w-4" />
+      return <CheckCircle className="h-4 w-4" />;
     case "create":
-      return <Plus className="h-4 w-4" />
+      return <Plus className="h-4 w-4" />;
     case "update":
-      return <Edit className="h-4 w-4" />
+      return <Edit className="h-4 w-4" />;
     case "delete":
-      return <Trash2 className="h-4 w-4" />
+      return <Trash2 className="h-4 w-4" />;
     case "link":
     case "unlink":
-      return <LinkIcon className="h-4 w-4" />
+      return <LinkIcon className="h-4 w-4" />;
     default:
-      return <Activity className="h-4 w-4" />
+      return <Activity className="h-4 w-4" />;
   }
 }
 
-function getResourceLink(resourceType: string, resourceId: string): string | null {
+function getResourceLink(
+  resourceType: string,
+  resourceId: string,
+): string | null {
   switch (resourceType) {
     case "protocol":
-      return `/app/${resourceId}`
+      return `/app/${resourceId}`;
     case "evidence_item":
-      return `/app/evidence/${resourceId}`
+      return `/app/evidence/${resourceId}`;
     case "dataset":
-      return `/app/datasets/${resourceId}`
+      return `/app/datasets/${resourceId}`;
     default:
-      return null
+      return null;
   }
 }
