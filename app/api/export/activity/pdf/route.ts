@@ -63,14 +63,7 @@ export async function POST(request: NextRequest) {
       },
     }));
 
-    if (activityLogs.length === 0) {
-      return NextResponse.json(
-        { error: "No activity logs found" },
-        { status: 404 },
-      );
-    }
-
-    // Generate PDF
+    // Generate PDF (empty logs produce a valid PDF with headers only)
     const pdfBlob = await generateAuditLogPDF(
       activityLogs,
       filters.from_date,
