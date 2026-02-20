@@ -1,0 +1,26 @@
+import { defineConfig } from "vitest/config";
+import path from "path";
+
+export default defineConfig({
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "."),
+    },
+  },
+  test: {
+    globals: true,
+    environment: "node",
+    include: ["__tests__/**/*.test.ts", "__tests__/**/*.test.tsx"],
+    exclude: ["node_modules", ".next", "e2e"],
+    coverage: {
+      provider: "v8",
+      include: ["lib/**/*.ts"],
+      exclude: [
+        "lib/**/*.d.ts",
+        "lib/supabase/browser.ts",
+        "lib/supabase/server.ts",
+        "lib/supabase/middleware.ts",
+      ],
+    },
+  },
+});

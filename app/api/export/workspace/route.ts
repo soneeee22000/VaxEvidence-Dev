@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Return ZIP as download
-    return new Response(archiveBuffer, {
+    return new Response(new Uint8Array(archiveBuffer), {
       headers: {
         "Content-Type": contentType,
         "Content-Disposition": `attachment; filename="${filename}"`,

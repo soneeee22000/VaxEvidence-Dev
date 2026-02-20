@@ -159,8 +159,8 @@ export default function NewDatasetPage() {
         file_size: selectedFile.size,
         file_type: fileType,
         storage_path: uploadData.fullPath,
-        row_count: parsedMetadata?.rowCount || null,
-        column_count: parsedMetadata?.columnCount || null,
+        row_count: parsedMetadata?.rowCount ?? undefined,
+        column_count: parsedMetadata?.columnCount ?? undefined,
       };
 
       const { data: dataset, error: createError } =

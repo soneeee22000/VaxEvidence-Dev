@@ -111,6 +111,9 @@ export const logActivity = async (
         metadata: metadata ?? {},
       })
       .select()
-      .then(({ error }) => ({ data: null, error })),
+      .then(({ error }: { error: { message: string } | null }) => ({
+        data: null,
+        error,
+      })),
   );
 };

@@ -4,38 +4,38 @@
 // Client-side file parsing for CSV, Excel, and JSON files
 // =============================================================================
 
-import Papa from "papaparse"
-import * as XLSX from "xlsx"
+import Papa from "papaparse";
+import * as XLSX from "xlsx";
 
 /**
  * Parsed data result
  */
 export interface ParsedData {
-  data: Record<string, unknown>[]
-  rowCount: number
-  columnCount: number
-  columns: string[]
-  error?: string
+  data: Record<string, unknown>[];
+  rowCount: number;
+  columnCount: number;
+  columns: string[];
+  error?: string;
 }
 
 /**
  * Column type information
  */
 export interface ColumnType {
-  name: string
-  type: "string" | "number" | "date" | "boolean" | "unknown"
-  sampleValues: unknown[]
+  name: string;
+  type: "string" | "number" | "date" | "boolean" | "unknown";
+  sampleValues: unknown[];
 }
 
 /**
  * Summary statistics for numeric columns
  */
 export interface SummaryStats {
-  min: number
-  max: number
-  mean: number
-  median: number
-  count: number
+  min: number;
+  max: number;
+  mean: number;
+  median: number;
+  count: number;
 }
 
 /**
@@ -48,16 +48,17 @@ export async function parseCSV(file: File): Promise<ParsedData> {
       dynamicTyping: true,
       skipEmptyLines: true,
       complete: (results) => {
-        const data = results.data as Record<string, unknown>[]
-        const columns = results.meta.fields || []
+        const data = results.data as Record<string, unknown>[];
+        const columns = results.meta.fields || [];
 
         resolve({
           data,
           rowCount: data.length,
           columnCount: columns.length,
           columns,
-          error: results.errors.length > 0 ? results.errors[0].message : undefined,
-        })
+          error:
+            results.errors.length > 0 ? results.errors[0].message : undefined,
+        });
       },
       error: (error) => {
         resolve({
@@ -66,10 +67,10 @@ export async function parseCSV(file: File): Promise<ParsedData> {
           columnCount: 0,
           columns: [],
           error: error.message,
-        })
+        });
       },
-    })
-  })
+    });
+  });
 }
 
 /**
@@ -78,11 +79,11 @@ export async function parseCSV(file: File): Promise<ParsedData> {
  */
 export async function parseExcel(file: File): Promise<ParsedData> {
   try {
-    const arrayBuffer = await file.arrayBuffer()
-    const workbook = XLSX.read(arrayBuffer, { type: "array" })
+    const arrayBuffer = await file.arrayBuffer();
+    const workbook = XLSX.read(arrayBuffer, { type: "array" });
 
     // Get first sheet
-    const firstSheetName = workbook.SheetNames[0]
+    const firstSheetName = workbook.SheetNames[0];
     if (!firstSheetName) {
       return {
         data: [],
@@ -90,11 +91,14 @@ export async function parseExcel(file: File): Promise<ParsedData> {
         columnCount: 0,
         columns: [],
         error: "No sheets found in Excel file",
-      }
+      };
     }
 
-    const worksheet = workbook.Sheets[firstSheetName]
-    const data = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[]
+    const worksheet = workbook.Sheets[firstSheetName];
+    const data = XLSX.utils.sheet_to_json(worksheet) as Record<
+      string,
+      unknown
+    >[];
 
     if (data.length === 0) {
       return {
@@ -103,25 +107,26 @@ export async function parseExcel(file: File): Promise<ParsedData> {
         columnCount: 0,
         columns: [],
         error: "Sheet is empty",
-      }
+      };
     }
 
-    const columns = Object.keys(data[0])
+    const columns = Object.keys(data[0]);
 
     return {
       data,
       rowCount: data.length,
       columnCount: columns.length,
       columns,
-    }
+    };
   } catch (error) {
     return {
       data: [],
       rowCount: 0,
       columnCount: 0,
       columns: [],
-      error: error instanceof Error ? error.message : "Failed to parse Excel file",
-    }
+      error:
+        error instanceof Error ? error.message : "Failed to parse Excel file",
+    };
   }
 }
 
@@ -131,8 +136,8 @@ export async function parseExcel(file: File): Promise<ParsedData> {
  */
 export async function parseJSON(file: File): Promise<ParsedData> {
   try {
-    const text = await file.text()
-    const parsed = JSON.parse(text)
+    const text = await file.text();
+    const parsed = JSON.parse(text);
 
     if (!Array.isArray(parsed)) {
       return {
@@ -141,10 +146,10 @@ export async function parseJSON(file: File): Promise<ParsedData> {
         columnCount: 0,
         columns: [],
         error: "JSON must be an array of objects",
-      }
+      };
     }
 
-    const data = parsed as Record<string, unknown>[]
+    const data = parsed as Record<string, unknown>[];
 
     if (data.length === 0) {
       return {
@@ -152,26 +157,29 @@ export async function parseJSON(file: File): Promise<ParsedData> {
         rowCount: 0,
         columnCount: 0,
         columns: [],
-      }
+      };
     }
 
     const columns =
-      typeof data[0] === "object" && data[0] !== null ? Object.keys(data[0]) : []
+      typeof data[0] === "object" && data[0] !== null
+        ? Object.keys(data[0])
+        : [];
 
     return {
       data,
       rowCount: data.length,
       columnCount: columns.length,
       columns,
-    }
+    };
   } catch (error) {
     return {
       data: [],
       rowCount: 0,
       columnCount: 0,
       columns: [],
-      error: error instanceof Error ? error.message : "Failed to parse JSON file",
-    }
+      error:
+        error instanceof Error ? error.message : "Failed to parse JSON file",
+    };
   }
 }
 
@@ -179,18 +187,18 @@ export async function parseJSON(file: File): Promise<ParsedData> {
  * Parse file based on file type
  */
 export async function parseFile(file: File): Promise<ParsedData> {
-  const extension = file.name.split(".").pop()?.toLowerCase()
+  const extension = file.name.split(".").pop()?.toLowerCase();
 
   if (extension === "csv") {
-    return parseCSV(file)
+    return parseCSV(file);
   }
 
   if (extension === "xlsx" || extension === "xls") {
-    return parseExcel(file)
+    return parseExcel(file);
   }
 
   if (extension === "json") {
-    return parseJSON(file)
+    return parseJSON(file);
   }
 
   return {
@@ -199,7 +207,7 @@ export async function parseFile(file: File): Promise<ParsedData> {
     columnCount: 0,
     columns: [],
     error: "Unsupported file type",
-  }
+  };
 }
 
 /**
@@ -208,59 +216,63 @@ export async function parseFile(file: File): Promise<ParsedData> {
  */
 export function inferColumnTypes(
   data: Record<string, unknown>[],
-  maxSamples = 100
+  maxSamples = 100,
 ): ColumnType[] {
-  if (data.length === 0) return []
+  if (data.length === 0) return [];
 
-  const columns = Object.keys(data[0])
-  const sampleSize = Math.min(data.length, maxSamples)
-  const samples = data.slice(0, sampleSize)
+  const columns = Object.keys(data[0]);
+  const sampleSize = Math.min(data.length, maxSamples);
+  const samples = data.slice(0, sampleSize);
 
   return columns.map((columnName) => {
-    const values = samples.map((row) => row[columnName]).filter((v) => v != null)
-    const sampleValues = values.slice(0, 5) // First 5 non-null values
+    const values = samples
+      .map((row) => row[columnName])
+      .filter((v) => v != null);
+    const sampleValues = values.slice(0, 5); // First 5 non-null values
 
     if (values.length === 0) {
       return {
         name: columnName,
         type: "unknown" as const,
         sampleValues: [],
-      }
+      };
     }
 
     // Check if all values are numbers
-    const allNumbers = values.every((v) => typeof v === "number" || !isNaN(Number(v)))
+    const allNumbers = values.every(
+      (v) => typeof v === "number" || !isNaN(Number(v)),
+    );
     if (allNumbers) {
       return {
         name: columnName,
         type: "number" as const,
         sampleValues,
-      }
+      };
     }
 
     // Check if all values are booleans
     const allBooleans = values.every(
-      (v) => typeof v === "boolean" || v === "true" || v === "false"
-    )
+      (v) => typeof v === "boolean" || v === "true" || v === "false",
+    );
     if (allBooleans) {
       return {
         name: columnName,
         type: "boolean" as const,
         sampleValues,
-      }
+      };
     }
 
     // Check if values look like dates
     const allDates = values.every((v) => {
-      const dateValue = new Date(String(v))
-      return !isNaN(dateValue.getTime())
-    })
+      const dateValue = new Date(String(v));
+      return !isNaN(dateValue.getTime());
+    });
     if (allDates) {
       return {
         name: columnName,
         type: "date" as const,
         sampleValues,
-      }
+      };
     }
 
     // Default to string
@@ -268,8 +280,8 @@ export function inferColumnTypes(
       name: columnName,
       type: "string" as const,
       sampleValues,
-    }
-  })
+    };
+  });
 }
 
 /**
@@ -277,24 +289,24 @@ export function inferColumnTypes(
  */
 export function generateSummaryStats(
   data: Record<string, unknown>[],
-  columnName: string
+  columnName: string,
 ): SummaryStats | null {
   const values = data
     .map((row) => row[columnName])
     .filter((v) => v != null)
     .map((v) => Number(v))
-    .filter((v) => !isNaN(v))
+    .filter((v) => !isNaN(v));
 
-  if (values.length === 0) return null
+  if (values.length === 0) return null;
 
-  const sorted = [...values].sort((a, b) => a - b)
-  const sum = values.reduce((acc, val) => acc + val, 0)
-  const mean = sum / values.length
+  const sorted = [...values].sort((a, b) => a - b);
+  const sum = values.reduce((acc, val) => acc + val, 0);
+  const mean = sum / values.length;
 
   const median =
     values.length % 2 === 0
       ? (sorted[values.length / 2 - 1] + sorted[values.length / 2]) / 2
-      : sorted[Math.floor(values.length / 2)]
+      : sorted[Math.floor(values.length / 2)];
 
   return {
     min: Math.min(...values),
@@ -302,7 +314,7 @@ export function generateSummaryStats(
     mean: Math.round(mean * 100) / 100,
     median: Math.round(median * 100) / 100,
     count: values.length,
-  }
+  };
 }
 
 /**
@@ -312,11 +324,11 @@ export function generateSummaryStats(
 export function getUniqueValues(
   data: Record<string, unknown>[],
   columnName: string,
-  limit = 100
+  limit = 100,
 ): unknown[] {
-  const values = data.map((row) => row[columnName]).filter((v) => v != null)
-  const unique = Array.from(new Set(values))
-  return unique.slice(0, limit)
+  const values = data.map((row) => row[columnName]).filter((v) => v != null);
+  const unique = Array.from(new Set(values));
+  return unique.slice(0, limit);
 }
 
 /**
@@ -325,38 +337,41 @@ export function getUniqueValues(
 export function getFrequencyDistribution(
   data: Record<string, unknown>[],
   columnName: string,
-  topN = 10
+  topN = 10,
 ): Array<{ value: unknown; count: number }> {
-  const values = data.map((row) => row[columnName]).filter((v) => v != null)
+  const values = data.map((row) => row[columnName]).filter((v) => v != null);
 
   const frequency = values.reduce(
-    (acc, val) => {
-      const key = String(val)
-      acc[key] = (acc[key] || 0) + 1
-      return acc
+    (acc: Record<string, number>, val) => {
+      const key = String(val);
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
     },
-    {} as Record<string, number>
-  )
+    {} as Record<string, number>,
+  );
 
   return Object.entries(frequency)
     .map(([value, count]) => ({ value, count }))
     .sort((a, b) => b.count - a.count)
-    .slice(0, topN)
+    .slice(0, topN);
 }
 
 /**
  * Export data to CSV
  */
-export function exportToCSV(data: Record<string, unknown>[], filename: string): void {
-  const csv = Papa.unparse(data)
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
-  const link = document.createElement("a")
-  const url = URL.createObjectURL(blob)
+export function exportToCSV(
+  data: Record<string, unknown>[],
+  filename: string,
+): void {
+  const csv = Papa.unparse(data);
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
 
-  link.setAttribute("href", url)
-  link.setAttribute("download", filename)
-  link.style.visibility = "hidden"
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
+  link.setAttribute("href", url);
+  link.setAttribute("download", filename);
+  link.style.visibility = "hidden";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }

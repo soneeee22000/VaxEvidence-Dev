@@ -59,7 +59,11 @@ export async function generateProtocolWord(
       new TableRow({
         children: [
           new TableCell({
-            children: [new Paragraph({ text: "Status", bold: true })],
+            children: [
+              new Paragraph({
+                children: [new TextRun({ text: "Status", bold: true })],
+              }),
+            ],
             width: { size: 30, type: WidthType.PERCENTAGE },
           }),
           new TableCell({
@@ -70,7 +74,11 @@ export async function generateProtocolWord(
       new TableRow({
         children: [
           new TableCell({
-            children: [new Paragraph({ text: "Created", bold: true })],
+            children: [
+              new Paragraph({
+                children: [new TextRun({ text: "Created", bold: true })],
+              }),
+            ],
           }),
           new TableCell({
             children: [
@@ -84,7 +92,11 @@ export async function generateProtocolWord(
       new TableRow({
         children: [
           new TableCell({
-            children: [new Paragraph({ text: "Last Updated", bold: true })],
+            children: [
+              new Paragraph({
+                children: [new TextRun({ text: "Last Updated", bold: true })],
+              }),
+            ],
           }),
           new TableCell({
             children: [
@@ -98,7 +110,11 @@ export async function generateProtocolWord(
       new TableRow({
         children: [
           new TableCell({
-            children: [new Paragraph({ text: "Protocol ID", bold: true })],
+            children: [
+              new Paragraph({
+                children: [new TextRun({ text: "Protocol ID", bold: true })],
+              }),
+            ],
           }),
           new TableCell({
             children: [new Paragraph({ text: protocol.id })],

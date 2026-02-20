@@ -396,7 +396,7 @@ export default function ProtocolDetailPage() {
   ) => {
     try {
       const { error } = await submitReviewDecision(reviewId, {
-        status,
+        status: status as "approved" | "rejected" | "changes_requested",
         decision,
       });
 
