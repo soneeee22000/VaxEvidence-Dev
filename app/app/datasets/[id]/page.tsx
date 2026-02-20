@@ -1,12 +1,12 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import Link from "next/link"
-import { useParams, useRouter } from "next/navigation"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -14,7 +14,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -22,18 +22,18 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { DataPreview } from "@/components/datasets/data-preview"
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DataPreview } from "@/components/datasets/data-preview";
 import {
   fetchDatasetById,
   updateDataset,
@@ -41,8 +41,8 @@ import {
   getDatasetFileUrl,
   deleteDatasetFile,
   getLinkedProtocols,
-} from "@/lib/supabase/datasets"
-import { parseFile } from "@/lib/utils/file-parser"
+} from "@/lib/supabase/datasets";
+import { parseFile } from "@/lib/utils/file-parser";
 import {
   datasetSchema,
   datasetTypes,
@@ -52,13 +52,21 @@ import {
   getDatasetTypeLabel,
   type Dataset,
   type DatasetFormValues,
-} from "@/lib/validators/dataset"
-import { useToast } from "@/hooks/use-toast"
-import { CommentThread } from "@/components/collaboration/comment-thread"
-import { CommentInput } from "@/components/collaboration/comment-input"
-import { fetchComments, createComment, updateComment, deleteComment } from "@/lib/supabase/comments"
-import { buildCommentThreads, type CommentWithUser } from "@/lib/validators/comment"
-import { DEV_USER } from "@/lib/auth/dev-auth"
+} from "@/lib/validators/dataset";
+import { useAuth } from "@/lib/auth/auth-context";
+import { toast } from "sonner";
+import { CommentThread } from "@/components/collaboration/comment-thread";
+import { CommentInput } from "@/components/collaboration/comment-input";
+import {
+  fetchComments,
+  createComment,
+  updateComment,
+  deleteComment,
+} from "@/lib/supabase/comments";
+import {
+  buildCommentThreads,
+  type CommentWithUser,
+} from "@/lib/validators/comment";
 import {
   Edit,
   Save,
@@ -70,29 +78,29 @@ import {
   FileText,
   Trash2,
   ExternalLink,
-} from "lucide-react"
+} from "lucide-react";
 
 export default function DatasetDetailPage() {
-  const router = useRouter()
-  const params = useParams<{ id: string }>()
-  const datasetId = params?.id
-  const { toast } = useToast()
+  const router = useRouter();
+  const params = useParams<{ id: string }>();
+  const datasetId = params?.id;
+  const { user } = useAuth();
 
-  const [dataset, setDataset] = useState<Dataset | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isEditing, setIsEditing] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const [dataset, setDataset] = useState<Dataset | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [parsedData, setParsedData] = useState<{
-    data: Record<string, unknown>[]
-    columns: string[]
-  } | null>(null)
-  const [linkedProtocols, setLinkedProtocols] = useState<any[]>([])
+    data: Record<string, unknown>[];
+    columns: string[];
+  } | null>(null);
+  const [linkedProtocols, setLinkedProtocols] = useState<any[]>([]);
 
   // Comments state
-  const [comments, setComments] = useState<CommentWithUser[]>([])
-  const [isLoadingComments, setIsLoadingComments] = useState(false)
-  const [commentCount, setCommentCount] = useState(0)
+  const [comments, setComments] = useState<CommentWithUser[]>([]);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [commentCount, setCommentCount] = useState(0);
 
   const form = useForm<DatasetFormValues>({
     resolver: zodResolver(datasetSchema),
@@ -103,32 +111,28 @@ export default function DatasetDetailPage() {
       tags: [],
       status: "draft",
     },
-  })
+  });
 
   useEffect(() => {
     if (datasetId) {
-      loadDataset()
-      loadLinkedProtocols()
-      loadComments()
+      loadDataset();
+      loadLinkedProtocols();
+      loadComments();
     }
-  }, [datasetId])
+  }, [datasetId]);
 
   const loadDataset = async () => {
-    if (!datasetId) return
+    if (!datasetId) return;
 
-    const { data, error } = await fetchDatasetById(datasetId)
+    const { data, error } = await fetchDatasetById(datasetId);
 
     if (error || !data) {
-      toast({
-        title: "Error",
-        description: "Failed to load dataset",
-        variant: "destructive",
-      })
-      setIsLoading(false)
-      return
+      toast.error("Failed to load dataset");
+      setIsLoading(false);
+      return;
     }
 
-    setDataset(data)
+    setDataset(data);
     form.reset({
       name: data.name,
       description: data.description,
@@ -137,277 +141,224 @@ export default function DatasetDetailPage() {
       date_range_start: data.date_range_start || undefined,
       date_range_end: data.date_range_end || undefined,
       status: data.status,
-    })
-    setIsLoading(false)
-  }
+    });
+    setIsLoading(false);
+  };
 
   const loadLinkedProtocols = async () => {
-    if (!datasetId) return
+    if (!datasetId) return;
 
-    const { data } = await getLinkedProtocols(datasetId)
+    const { data } = await getLinkedProtocols(datasetId);
     if (data) {
-      setLinkedProtocols(data)
+      setLinkedProtocols(data);
     }
-  }
+  };
 
   const loadComments = async () => {
-    if (!datasetId) return
+    if (!datasetId) return;
 
-    setIsLoadingComments(true)
+    setIsLoadingComments(true);
     try {
-      const { data, error } = await fetchComments("dataset", datasetId)
+      const { data, error } = await fetchComments("dataset", datasetId);
       if (!error && data) {
-        setComments(data as CommentWithUser[])
-        setCommentCount(data.length)
+        setComments(data as CommentWithUser[]);
+        setCommentCount(data.length);
       }
     } catch (error) {
-      console.error("Error loading comments:", error)
+      console.error("Error loading comments:", error);
     } finally {
-      setIsLoadingComments(false)
+      setIsLoadingComments(false);
     }
-  }
+  };
 
   const handleCreateComment = async (content: string) => {
-    if (!datasetId) return
+    if (!datasetId) return;
 
     try {
       const { data, error } = await createComment({
-        user_id: DEV_USER.id,
+        user_id: user!.id,
         resource_type: "dataset",
         resource_id: datasetId,
         content,
         mentions: [],
-      })
+      });
 
       if (error || !data) {
-        toast({
-          title: "Error",
-          description: "Failed to post comment",
-          variant: "destructive",
-        })
-        return
+        toast.error("Failed to post comment");
+        return;
       }
 
-      toast({
-        title: "Success",
-        description: "Comment posted successfully",
-      })
-      loadComments()
+      toast.success("Comment posted successfully");
+      loadComments();
     } catch (error) {
-      console.error("Error creating comment:", error)
+      console.error("Error creating comment:", error);
     }
-  }
+  };
 
   const handleReplyComment = async (parentId: string, content: string) => {
-    if (!datasetId) return
+    if (!datasetId) return;
 
     try {
       const { data, error } = await createComment({
-        user_id: DEV_USER.id,
+        user_id: user!.id,
         resource_type: "dataset",
         resource_id: datasetId,
         content,
         parent_id: parentId,
         mentions: [],
-      })
+      });
 
       if (error || !data) {
-        toast({
-          title: "Error",
-          description: "Failed to post reply",
-          variant: "destructive",
-        })
-        return
+        toast.error("Failed to post reply");
+        return;
       }
 
-      toast({
-        title: "Success",
-        description: "Reply posted successfully",
-      })
-      loadComments()
+      toast.success("Reply posted successfully");
+      loadComments();
     } catch (error) {
-      console.error("Error replying to comment:", error)
+      console.error("Error replying to comment:", error);
     }
-  }
+  };
 
   const handleEditComment = async (commentId: string, content: string) => {
     try {
-      const { error } = await updateComment(commentId, { content })
+      const { error } = await updateComment(commentId, { content });
 
       if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to update comment",
-          variant: "destructive",
-        })
-        return
+        toast.error("Failed to update comment");
+        return;
       }
 
-      toast({
-        title: "Success",
-        description: "Comment updated successfully",
-      })
-      loadComments()
+      toast.success("Comment updated successfully");
+      loadComments();
     } catch (error) {
-      console.error("Error updating comment:", error)
+      console.error("Error updating comment:", error);
     }
-  }
+  };
 
   const handleDeleteComment = async (commentId: string) => {
     try {
-      const { error } = await deleteComment(commentId)
+      const { error } = await deleteComment(commentId);
 
       if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to delete comment",
-          variant: "destructive",
-        })
-        return
+        toast.error("Failed to delete comment");
+        return;
       }
 
-      toast({
-        title: "Success",
-        description: "Comment deleted successfully",
-      })
-      loadComments()
+      toast.success("Comment deleted successfully");
+      loadComments();
     } catch (error) {
-      console.error("Error deleting comment:", error)
+      console.error("Error deleting comment:", error);
     }
-  }
+  };
 
   const loadFilePreview = async () => {
-    if (!dataset || parsedData) return
+    if (!dataset || parsedData) return;
 
     const { data: urlData, error: urlError } = await getDatasetFileUrl(
-      dataset.storage_path
-    )
+      dataset.storage_path,
+    );
 
     if (urlError || !urlData) {
-      toast({
-        title: "Error",
-        description: "Failed to load file preview",
-        variant: "destructive",
-      })
-      return
+      toast.error("Failed to load file preview");
+      return;
     }
 
     try {
-      const response = await fetch(urlData.signedUrl)
-      const blob = await response.blob()
-      const file = new File([blob], dataset.file_name, { type: blob.type })
-      
-      const parsed = await parseFile(file)
-      
+      const response = await fetch(urlData.signedUrl);
+      const blob = await response.blob();
+      const file = new File([blob], dataset.file_name, { type: blob.type });
+
+      const parsed = await parseFile(file);
+
       if (parsed.error) {
-        toast({
-          title: "Warning",
-          description: `Could not parse file: ${parsed.error}`,
-        })
-        return
+        toast.warning(`Could not parse file: ${parsed.error}`);
+        return;
       }
 
       setParsedData({
         data: parsed.data,
         columns: parsed.columns,
-      })
+      });
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to parse file",
-        variant: "destructive",
-      })
+      toast.error("Failed to parse file");
     }
-  }
+  };
 
   const handleSave = async (values: DatasetFormValues) => {
-    if (!datasetId) return
+    if (!datasetId) return;
 
-    setIsSaving(true)
+    setIsSaving(true);
 
     try {
-      const { data, error } = await updateDataset(datasetId, values)
+      const { data, error } = await updateDataset(datasetId, values);
 
       if (error || !data) {
-        throw new Error(error?.message || "Failed to update dataset")
+        throw new Error(error?.message || "Failed to update dataset");
       }
 
-      setDataset(data)
-      setIsEditing(false)
+      setDataset(data);
+      setIsEditing(false);
 
-      toast({
-        title: "Success",
-        description: "Dataset updated successfully",
-      })
+      toast.success("Dataset updated successfully");
     } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to update dataset",
-        variant: "destructive",
-      })
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update dataset",
+      );
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   const handleDownload = async () => {
-    if (!dataset) return
+    if (!dataset) return;
 
-    const { data, error } = await getDatasetFileUrl(dataset.storage_path)
+    const { data, error } = await getDatasetFileUrl(dataset.storage_path);
 
     if (error || !data) {
-      toast({
-        title: "Error",
-        description: "Failed to get download link",
-        variant: "destructive",
-      })
-      return
+      toast.error("Failed to get download link");
+      return;
     }
 
-    window.open(data.signedUrl, "_blank")
-  }
+    window.open(data.signedUrl, "_blank");
+  };
 
   const handleDelete = async () => {
-    if (!dataset || !datasetId) return
+    if (!dataset || !datasetId) return;
 
-    if (!window.confirm("Delete this dataset? This cannot be undone.")) return
+    if (!window.confirm("Delete this dataset? This cannot be undone.")) return;
 
-    setIsDeleting(true)
+    setIsDeleting(true);
 
     try {
       // Delete file from storage
-      await deleteDatasetFile(dataset.storage_path)
+      await deleteDatasetFile(dataset.storage_path);
 
       // Delete dataset metadata
-      const { error } = await deleteDataset(datasetId)
+      const { error } = await deleteDataset(datasetId);
 
       if (error) {
-        throw new Error(error.message || "Failed to delete dataset")
+        throw new Error(error.message || "Failed to delete dataset");
       }
 
-      toast({
-        title: "Success",
-        description: "Dataset deleted successfully",
-      })
+      toast.success("Dataset deleted successfully");
 
-      router.push("/app/datasets")
+      router.push("/app/datasets");
     } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to delete dataset",
-        variant: "destructive",
-      })
-      setIsDeleting(false)
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete dataset",
+      );
+      setIsDeleting(false);
     }
-  }
+  };
 
   const toggleTag = (tag: string) => {
-    const currentTags = form.getValues("tags")
+    const currentTags = form.getValues("tags");
     const newTags = currentTags.includes(tag)
       ? currentTags.filter((t) => t !== tag)
-      : [...currentTags, tag]
-    form.setValue("tags", newTags)
-  }
+      : [...currentTags, tag];
+    form.setValue("tags", newTags);
+  };
 
   if (isLoading) {
     return (
@@ -420,7 +371,7 @@ export default function DatasetDetailPage() {
           </Card>
         </div>
       </main>
-    )
+    );
   }
 
   if (!dataset) {
@@ -430,7 +381,9 @@ export default function DatasetDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle>Dataset not found</CardTitle>
-              <CardDescription>This dataset may have been deleted</CardDescription>
+              <CardDescription>
+                This dataset may have been deleted
+              </CardDescription>
             </CardHeader>
             <CardFooter>
               <Button asChild variant="ghost">
@@ -440,7 +393,7 @@ export default function DatasetDetailPage() {
           </Card>
         </div>
       </main>
-    )
+    );
   }
 
   return (
@@ -452,10 +405,7 @@ export default function DatasetDetailPage() {
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-2 flex-1">
                 <div className="flex items-center gap-2">
-                  <Badge
-                    variant="outline"
-                    className="capitalize"
-                  >
+                  <Badge variant="outline" className="capitalize">
                     {getDatasetTypeLabel(dataset.dataset_type)}
                   </Badge>
                   <Badge
@@ -480,7 +430,11 @@ export default function DatasetDetailPage() {
                   Download
                 </Button>
                 {!isEditing && (
-                  <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditing(true)}
+                  >
                     <Edit className="mr-2 h-4 w-4" />
                     Edit
                   </Button>
@@ -549,7 +503,10 @@ export default function DatasetDetailPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Dataset Type</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue />
@@ -649,7 +606,10 @@ export default function DatasetDetailPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Status</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue />
@@ -657,7 +617,11 @@ export default function DatasetDetailPage() {
                               </FormControl>
                               <SelectContent>
                                 {datasetStatuses.map((status) => (
-                                  <SelectItem key={status} value={status} className="capitalize">
+                                  <SelectItem
+                                    key={status}
+                                    value={status}
+                                    className="capitalize"
+                                  >
                                     {status}
                                   </SelectItem>
                                 ))}
@@ -684,8 +648,8 @@ export default function DatasetDetailPage() {
                           type="button"
                           variant="ghost"
                           onClick={() => {
-                            setIsEditing(false)
-                            loadDataset()
+                            setIsEditing(false);
+                            loadDataset();
                           }}
                           disabled={isSaving}
                         >
@@ -713,23 +677,32 @@ export default function DatasetDetailPage() {
                       <div className="flex items-center gap-2">
                         <HardDrive className="h-4 w-4 text-muted-foreground" />
                         <span className="text-muted-foreground">Size:</span>
-                        <span className="font-medium">{formatFileSize(dataset.file_size)}</span>
+                        <span className="font-medium">
+                          {formatFileSize(dataset.file_size)}
+                        </span>
                       </div>
                       {dataset.row_count && (
                         <div className="flex items-center gap-2">
                           <Grid3x3 className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-muted-foreground">Dimensions:</span>
+                          <span className="text-muted-foreground">
+                            Dimensions:
+                          </span>
                           <span className="font-medium">
-                            {dataset.row_count.toLocaleString()} rows × {dataset.column_count} columns
+                            {dataset.row_count.toLocaleString()} rows ×{" "}
+                            {dataset.column_count} columns
                           </span>
                         </div>
                       )}
                       {dataset.date_range_start && (
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-muted-foreground">Date Range:</span>
+                          <span className="text-muted-foreground">
+                            Date Range:
+                          </span>
                           <span className="font-medium">
-                            {new Date(dataset.date_range_start).toLocaleDateString()}
+                            {new Date(
+                              dataset.date_range_start,
+                            ).toLocaleDateString()}
                             {dataset.date_range_end &&
                               ` - ${new Date(dataset.date_range_end).toLocaleDateString()}`}
                           </span>
@@ -761,9 +734,7 @@ export default function DatasetDetailPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Data Preview</CardTitle>
-                <CardDescription>
-                  First 50 rows of the dataset
-                </CardDescription>
+                <CardDescription>First 50 rows of the dataset</CardDescription>
               </CardHeader>
               <CardContent>
                 {parsedData ? (
@@ -805,7 +776,9 @@ export default function DatasetDetailPage() {
                         className="flex items-center justify-between gap-4 rounded-lg border p-4"
                       >
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-medium mb-1">{link.protocols.title}</h4>
+                          <h4 className="font-medium mb-1">
+                            {link.protocols.title}
+                          </h4>
                           <p className="text-sm text-muted-foreground line-clamp-2">
                             {link.protocols.study_question}
                           </p>
@@ -842,7 +815,7 @@ export default function DatasetDetailPage() {
                   onSubmit={handleCreateComment}
                   placeholder="Share your thoughts about this dataset..."
                 />
-                
+
                 {isLoadingComments ? (
                   <div className="text-center py-8 text-sm text-muted-foreground">
                     Loading comments...
@@ -850,7 +823,7 @@ export default function DatasetDetailPage() {
                 ) : (
                   <CommentThread
                     comments={buildCommentThreads(comments)}
-                    currentUserId={DEV_USER.id}
+                    currentUserId={user?.id ?? ""}
                     onReply={handleReplyComment}
                     onEdit={handleEditComment}
                     onDelete={handleDeleteComment}
@@ -862,5 +835,5 @@ export default function DatasetDetailPage() {
         </Tabs>
       </div>
     </main>
-  )
+  );
 }

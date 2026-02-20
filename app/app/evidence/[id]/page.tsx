@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import { useCallback, useEffect, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
+import { useCallback, useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -15,14 +15,14 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,306 +33,267 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
 import {
   fetchEvidenceById,
   updateEvidence,
   deleteEvidence,
   getLinkedProtocols,
-} from "@/lib/supabase/evidence"
-import type { EvidenceItem } from "@/lib/validators/evidence"
+} from "@/lib/supabase/evidence";
+import type { EvidenceItem } from "@/lib/validators/evidence";
 import {
   evidenceTypes,
   evidenceStatuses,
   suggestedTags,
-} from "@/lib/validators/evidence"
-import { ArrowLeft, Edit, Save, Trash2, ExternalLink, MessageSquare } from "lucide-react"
-import { DEV_USER } from "@/lib/auth/dev-auth"
-import { useToast } from "@/hooks/use-toast"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { CommentThread } from "@/components/collaboration/comment-thread"
-import { CommentInput } from "@/components/collaboration/comment-input"
-import { fetchComments, createComment, updateComment, deleteComment } from "@/lib/supabase/comments"
-import { buildCommentThreads, type CommentWithUser } from "@/lib/validators/comment"
+} from "@/lib/validators/evidence";
+import { useAuth } from "@/lib/auth/auth-context";
+import { toast } from "sonner";
+import {
+  ArrowLeft,
+  Edit,
+  Save,
+  Trash2,
+  ExternalLink,
+  MessageSquare,
+} from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CommentThread } from "@/components/collaboration/comment-thread";
+import { CommentInput } from "@/components/collaboration/comment-input";
+import {
+  fetchComments,
+  createComment,
+  updateComment,
+  deleteComment,
+} from "@/lib/supabase/comments";
+import {
+  buildCommentThreads,
+  type CommentWithUser,
+} from "@/lib/validators/comment";
 
 export default function EvidenceDetailPage() {
-  const params = useParams()
-  const router = useRouter()
-  const { toast } = useToast()
-  const [evidence, setEvidence] = useState<EvidenceItem | null>(null)
-  const [linkedProtocols, setLinkedProtocols] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
-  const [isEditing, setIsEditing] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const params = useParams();
+  const router = useRouter();
+  const { user } = useAuth();
+  const [evidence, setEvidence] = useState<EvidenceItem | null>(null);
+  const [linkedProtocols, setLinkedProtocols] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Comments state
-  const [comments, setComments] = useState<CommentWithUser[]>([])
-  const [isLoadingComments, setIsLoadingComments] = useState(false)
-  const [commentCount, setCommentCount] = useState(0)
+  const [comments, setComments] = useState<CommentWithUser[]>([]);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [commentCount, setCommentCount] = useState(0);
 
   // Form state
-  const [formData, setFormData] = useState<Partial<EvidenceItem>>({})
-  const [tagInput, setTagInput] = useState("")
+  const [formData, setFormData] = useState<Partial<EvidenceItem>>({});
+  const [tagInput, setTagInput] = useState("");
 
   const loadEvidence = useCallback(async () => {
-    if (!params.id || typeof params.id !== "string") return
+    if (!params.id || typeof params.id !== "string") return;
 
-    setIsLoading(true)
-    setLoadError(null)
+    setIsLoading(true);
+    setLoadError(null);
     try {
-      const { data, error } = await fetchEvidenceById(params.id)
+      const { data, error } = await fetchEvidenceById(params.id);
 
       if (error || !data) {
-        const message = error?.message || "Evidence not found"
-        setEvidence(null)
-        setFormData({})
-        setLinkedProtocols([])
-        setComments([])
-        setCommentCount(0)
-        setLoadError(message)
-        toast({
-          title: "Error",
-          description: "Evidence not found",
-          variant: "destructive",
-        })
-        return
+        const message = error?.message || "Evidence not found";
+        setEvidence(null);
+        setFormData({});
+        setLinkedProtocols([]);
+        setComments([]);
+        setCommentCount(0);
+        setLoadError(message);
+        toast.error("Evidence not found");
+        return;
       }
 
-      setEvidence(data)
-      setFormData(data)
+      setEvidence(data);
+      setFormData(data);
 
       // Load linked protocols
-      const { data: linksData } = await getLinkedProtocols(params.id)
+      const { data: linksData } = await getLinkedProtocols(params.id);
       if (linksData) {
-        setLinkedProtocols(linksData)
+        setLinkedProtocols(linksData);
       }
 
       // Load comments
-      loadComments()
+      loadComments();
     } catch (error) {
-      console.error("Error loading evidence:", error)
-      setLoadError("Failed to load evidence.")
+      console.error("Error loading evidence:", error);
+      setLoadError("Failed to load evidence.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }, [params.id, toast])
+  }, [params.id]);
 
   useEffect(() => {
-    loadEvidence()
-  }, [loadEvidence])
+    loadEvidence();
+  }, [loadEvidence]);
 
   const loadComments = async () => {
-    if (!params.id || typeof params.id !== "string") return
+    if (!params.id || typeof params.id !== "string") return;
 
-    setIsLoadingComments(true)
+    setIsLoadingComments(true);
     try {
-      const { data, error } = await fetchComments("evidence_item", params.id)
+      const { data, error } = await fetchComments("evidence_item", params.id);
       if (!error && data) {
-        setComments(data as CommentWithUser[])
-        setCommentCount(data.length)
+        setComments(data as CommentWithUser[]);
+        setCommentCount(data.length);
       }
     } catch (error) {
-      console.error("Error loading comments:", error)
+      console.error("Error loading comments:", error);
     } finally {
-      setIsLoadingComments(false)
+      setIsLoadingComments(false);
     }
-  }
+  };
 
   const handleCreateComment = async (content: string) => {
-    if (!params.id || typeof params.id !== "string") return
+    if (!params.id || typeof params.id !== "string") return;
 
     try {
       const { data, error } = await createComment({
-        user_id: DEV_USER.id,
+        user_id: user!.id,
         resource_type: "evidence_item",
         resource_id: params.id,
         content,
         mentions: [],
-      })
+      });
 
       if (error || !data) {
-        toast({
-          title: "Error",
-          description: "Failed to post comment",
-          variant: "destructive",
-        })
-        return
+        toast.error("Failed to post comment");
+        return;
       }
 
-      toast({
-        title: "Success",
-        description: "Comment posted successfully",
-      })
-      loadComments()
+      toast.success("Comment posted successfully");
+      loadComments();
     } catch (error) {
-      console.error("Error creating comment:", error)
+      console.error("Error creating comment:", error);
     }
-  }
+  };
 
   const handleReplyComment = async (parentId: string, content: string) => {
-    if (!params.id || typeof params.id !== "string") return
+    if (!params.id || typeof params.id !== "string") return;
 
     try {
       const { data, error } = await createComment({
-        user_id: DEV_USER.id,
+        user_id: user!.id,
         resource_type: "evidence_item",
         resource_id: params.id,
         content,
         parent_id: parentId,
         mentions: [],
-      })
+      });
 
       if (error || !data) {
-        toast({
-          title: "Error",
-          description: "Failed to post reply",
-          variant: "destructive",
-        })
-        return
+        toast.error("Failed to post reply");
+        return;
       }
 
-      toast({
-        title: "Success",
-        description: "Reply posted successfully",
-      })
-      loadComments()
+      toast.success("Reply posted successfully");
+      loadComments();
     } catch (error) {
-      console.error("Error replying to comment:", error)
+      console.error("Error replying to comment:", error);
     }
-  }
+  };
 
   const handleEditComment = async (commentId: string, content: string) => {
     try {
-      const { error } = await updateComment(commentId, { content })
+      const { error } = await updateComment(commentId, { content });
 
       if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to update comment",
-          variant: "destructive",
-        })
-        return
+        toast.error("Failed to update comment");
+        return;
       }
 
-      toast({
-        title: "Success",
-        description: "Comment updated successfully",
-      })
-      loadComments()
+      toast.success("Comment updated successfully");
+      loadComments();
     } catch (error) {
-      console.error("Error updating comment:", error)
+      console.error("Error updating comment:", error);
     }
-  }
+  };
 
   const handleDeleteComment = async (commentId: string) => {
     try {
-      const { error } = await deleteComment(commentId)
+      const { error } = await deleteComment(commentId);
 
       if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to delete comment",
-          variant: "destructive",
-        })
-        return
+        toast.error("Failed to delete comment");
+        return;
       }
 
-      toast({
-        title: "Success",
-        description: "Comment deleted successfully",
-      })
-      loadComments()
+      toast.success("Comment deleted successfully");
+      loadComments();
     } catch (error) {
-      console.error("Error deleting comment:", error)
+      console.error("Error deleting comment:", error);
     }
-  }
+  };
 
   const handleSave = async () => {
-    if (!evidence || !params.id || typeof params.id !== "string") return
+    if (!evidence || !params.id || typeof params.id !== "string") return;
 
-    setIsSaving(true)
+    setIsSaving(true);
     try {
-      const { data, error } = await updateEvidence(params.id, formData)
+      const { data, error } = await updateEvidence(params.id, formData);
 
       if (error || !data) {
-        toast({
-          title: "Error",
-          description: "Failed to update evidence",
-          variant: "destructive",
-        })
-        return
+        toast.error("Failed to update evidence");
+        return;
       }
 
-      setEvidence(data)
-      setFormData(data)
-      setIsEditing(false)
-      toast({
-        title: "Success",
-        description: "Evidence updated successfully",
-      })
+      setEvidence(data);
+      setFormData(data);
+      setIsEditing(false);
+      toast.success("Evidence updated successfully");
     } catch (error) {
-      console.error("Error saving evidence:", error)
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred",
-        variant: "destructive",
-      })
+      console.error("Error saving evidence:", error);
+      toast.error("An unexpected error occurred");
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   const handleDelete = async () => {
-    if (!params.id || typeof params.id !== "string") return
+    if (!params.id || typeof params.id !== "string") return;
 
-    setIsDeleting(true)
+    setIsDeleting(true);
     try {
-      const { error } = await deleteEvidence(params.id)
+      const { error } = await deleteEvidence(params.id);
 
       if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to delete evidence",
-          variant: "destructive",
-        })
-        return
+        toast.error("Failed to delete evidence");
+        return;
       }
 
-      toast({
-        title: "Success",
-        description: "Evidence deleted successfully",
-      })
-      router.push("/app/evidence")
+      toast.success("Evidence deleted successfully");
+      router.push("/app/evidence");
     } catch (error) {
-      console.error("Error deleting evidence:", error)
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred",
-        variant: "destructive",
-      })
+      console.error("Error deleting evidence:", error);
+      toast.error("An unexpected error occurred");
     } finally {
-      setIsDeleting(false)
+      setIsDeleting(false);
     }
-  }
+  };
 
   const handleAddTag = (tag: string) => {
-    if (!tag.trim()) return
-    const currentTags = formData.tags || []
+    if (!tag.trim()) return;
+    const currentTags = formData.tags || [];
     if (!currentTags.includes(tag)) {
-      setFormData({ ...formData, tags: [...currentTags, tag] })
+      setFormData({ ...formData, tags: [...currentTags, tag] });
     }
-    setTagInput("")
-  }
+    setTagInput("");
+  };
 
   const handleRemoveTag = (tagToRemove: string) => {
-    const currentTags = formData.tags || []
+    const currentTags = formData.tags || [];
     setFormData({
       ...formData,
       tags: currentTags.filter((tag) => tag !== tagToRemove),
-    })
-  }
+    });
+  };
 
   if (isLoading) {
     return (
@@ -345,7 +306,7 @@ export default function EvidenceDetailPage() {
           </Card>
         </div>
       </main>
-    )
+    );
   }
 
   if (loadError) {
@@ -368,10 +329,10 @@ export default function EvidenceDetailPage() {
           </Card>
         </div>
       </main>
-    )
+    );
   }
 
-  if (!evidence) return null
+  if (!evidence) return null;
 
   return (
     <main className="min-h-screen bg-background px-4 py-8">
@@ -402,8 +363,8 @@ export default function EvidenceDetailPage() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete Evidence?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete
-                        this evidence item.
+                        This action cannot be undone. This will permanently
+                        delete this evidence item.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -423,8 +384,8 @@ export default function EvidenceDetailPage() {
                 <Button
                   variant="outline"
                   onClick={() => {
-                    setIsEditing(false)
-                    setFormData(evidence)
+                    setIsEditing(false);
+                    setFormData(evidence);
                   }}
                   disabled={isSaving}
                 >
@@ -447,7 +408,9 @@ export default function EvidenceDetailPage() {
                 {evidence.type}
               </Badge>
               <Badge
-                variant={evidence.status === "published" ? "default" : "secondary"}
+                variant={
+                  evidence.status === "published" ? "default" : "secondary"
+                }
                 className="capitalize"
               >
                 {evidence.status}
@@ -488,7 +451,9 @@ export default function EvidenceDetailPage() {
               </div>
             ) : (
               <>
-                <CardTitle className="text-2xl mt-4">{evidence.title}</CardTitle>
+                <CardTitle className="text-2xl mt-4">
+                  {evidence.title}
+                </CardTitle>
                 <CardDescription>
                   Updated {new Date(evidence.updated_at).toLocaleDateString()}
                 </CardDescription>
@@ -683,8 +648,8 @@ export default function EvidenceDetailPage() {
                       onChange={(e) => setTagInput(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
-                          e.preventDefault()
-                          handleAddTag(tagInput)
+                          e.preventDefault();
+                          handleAddTag(tagInput);
                         }
                       }}
                     />
@@ -778,7 +743,7 @@ export default function EvidenceDetailPage() {
                   onSubmit={handleCreateComment}
                   placeholder="Share your thoughts about this evidence..."
                 />
-                
+
                 {isLoadingComments ? (
                   <div className="text-center py-8 text-sm text-muted-foreground">
                     Loading comments...
@@ -786,7 +751,7 @@ export default function EvidenceDetailPage() {
                 ) : (
                   <CommentThread
                     comments={buildCommentThreads(comments)}
-                    currentUserId={DEV_USER.id}
+                    currentUserId={user?.id ?? ""}
                     onReply={handleReplyComment}
                     onEdit={handleEditComment}
                     onDelete={handleDeleteComment}
@@ -798,5 +763,5 @@ export default function EvidenceDetailPage() {
         </Card>
       </div>
     </main>
-  )
+  );
 }

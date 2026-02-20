@@ -1,17 +1,17 @@
-"use client"
+"use client";
 
-import { useCallback, useState } from "react"
-import { validateFile, formatFileSize } from "@/lib/validators/dataset"
-import { Upload, X, FileText } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
+import { useCallback, useState } from "react";
+import { validateFile, formatFileSize } from "@/lib/validators/dataset";
+import { Upload, X, FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 
 interface UploadDropzoneProps {
-  onFileSelect: (file: File) => void
-  onFileRemove: () => void
-  selectedFile: File | null
-  uploadProgress?: number
-  disabled?: boolean
+  onFileSelect: (file: File) => void;
+  onFileRemove: () => void;
+  selectedFile: File | null;
+  uploadProgress?: number;
+  disabled?: boolean;
 }
 
 export function UploadDropzone({
@@ -21,63 +21,63 @@ export function UploadDropzone({
   uploadProgress,
   disabled = false,
 }: UploadDropzoneProps) {
-  const [dragActive, setDragActive] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [dragActive, setDragActive] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
+    e.preventDefault();
+    e.stopPropagation();
     if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true)
+      setDragActive(true);
     } else if (e.type === "dragleave") {
-      setDragActive(false)
+      setDragActive(false);
     }
-  }, [])
+  }, []);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
-      setDragActive(false)
-      setError(null)
+      e.preventDefault();
+      e.stopPropagation();
+      setDragActive(false);
+      setError(null);
 
-      if (disabled) return
+      if (disabled) return;
 
-      const files = e.dataTransfer.files
+      const files = e.dataTransfer.files;
       if (files && files.length > 0) {
-        const file = files[0]
-        const validation = validateFile(file)
+        const file = files[0];
+        const validation = validateFile(file);
 
         if (!validation.valid) {
-          setError(validation.error || "Invalid file")
-          return
+          setError(validation.error || "Invalid file");
+          return;
         }
 
-        onFileSelect(file)
+        onFileSelect(file);
       }
     },
-    [disabled, onFileSelect]
-  )
+    [disabled, onFileSelect],
+  );
 
   const handleFileInput = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      setError(null)
+      setError(null);
 
-      const files = e.target.files
+      const files = e.target.files;
       if (files && files.length > 0) {
-        const file = files[0]
-        const validation = validateFile(file)
+        const file = files[0];
+        const validation = validateFile(file);
 
         if (!validation.valid) {
-          setError(validation.error || "Invalid file")
-          return
+          setError(validation.error || "Invalid file");
+          return;
         }
 
-        onFileSelect(file)
+        onFileSelect(file);
       }
     },
-    [onFileSelect]
-  )
+    [onFileSelect],
+  );
 
   return (
     <div className="space-y-4">
@@ -128,7 +128,9 @@ export function UploadDropzone({
                 <FileText className="h-5 w-5 text-muted-foreground" />
               </div>
               <div className="flex-1 min-w-0 space-y-1">
-                <p className="text-sm font-medium truncate">{selectedFile.name}</p>
+                <p className="text-sm font-medium truncate">
+                  {selectedFile.name}
+                </p>
                 <p className="text-xs text-muted-foreground">
                   {formatFileSize(selectedFile.size)}
                 </p>
@@ -142,7 +144,7 @@ export function UploadDropzone({
                 )}
               </div>
             </div>
-            {!uploadProgress && (
+            {uploadProgress === undefined && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -162,5 +164,5 @@ export function UploadDropzone({
         </div>
       )}
     </div>
-  )
+  );
 }

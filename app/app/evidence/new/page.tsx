@@ -1,109 +1,97 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { createEvidence } from "@/lib/supabase/evidence"
-import type { EvidenceType, EvidenceStatus } from "@/lib/validators/evidence"
-import { evidenceTypes, evidenceStatuses, suggestedTags } from "@/lib/validators/evidence"
-import { ArrowLeft, Save } from "lucide-react"
-import { DEV_USER } from "@/lib/auth/dev-auth"
-import { useToast } from "@/hooks/use-toast"
+} from "@/components/ui/select";
+import { createEvidence } from "@/lib/supabase/evidence";
+import type { EvidenceType, EvidenceStatus } from "@/lib/validators/evidence";
+import {
+  evidenceTypes,
+  evidenceStatuses,
+  suggestedTags,
+} from "@/lib/validators/evidence";
+import { useAuth } from "@/lib/auth/auth-context";
+import { toast } from "sonner";
+import { ArrowLeft, Save } from "lucide-react";
 
 export default function NewEvidencePage() {
-  const router = useRouter()
-  const { toast } = useToast()
-  const [isSaving, setIsSaving] = useState(false)
+  const router = useRouter();
+  const { user } = useAuth();
+  const [isSaving, setIsSaving] = useState(false);
 
   // Form state
-  const [type, setType] = useState<EvidenceType>("academic")
-  const [title, setTitle] = useState("")
-  const [description, setDescription] = useState("")
-  const [status, setStatus] = useState<EvidenceStatus>("draft")
-  const [authors, setAuthors] = useState("")
-  const [journal, setJournal] = useState("")
-  const [doi, setDoi] = useState("")
-  const [regulatoryBody, setRegulatoryBody] = useState("")
-  const [documentType, setDocumentType] = useState("")
-  const [sourceUrl, setSourceUrl] = useState("")
-  const [publicationDate, setPublicationDate] = useState("")
-  const [tags, setTags] = useState<string[]>([])
-  const [tagInput, setTagInput] = useState("")
+  const [type, setType] = useState<EvidenceType>("academic");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [status, setStatus] = useState<EvidenceStatus>("draft");
+  const [authors, setAuthors] = useState("");
+  const [journal, setJournal] = useState("");
+  const [doi, setDoi] = useState("");
+  const [regulatoryBody, setRegulatoryBody] = useState("");
+  const [documentType, setDocumentType] = useState("");
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [publicationDate, setPublicationDate] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
 
   const handleAddTag = (tag: string) => {
-    if (!tag.trim() || tags.includes(tag)) return
-    setTags([...tags, tag])
-    setTagInput("")
-  }
+    if (!tag.trim() || tags.includes(tag)) return;
+    setTags([...tags, tag]);
+    setTagInput("");
+  };
 
   const handleRemoveTag = (tagToRemove: string) => {
-    setTags(tags.filter((tag) => tag !== tagToRemove))
-  }
+    setTags(tags.filter((tag) => tag !== tagToRemove));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!title.trim() || !description.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Title and description are required",
-        variant: "destructive",
-      })
-      return
+      toast.error("Title and description are required");
+      return;
     }
 
     // Type-specific validation
     if (type === "academic" && !authors.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Authors are required for academic papers",
-        variant: "destructive",
-      })
-      return
+      toast.error("Authors are required for academic papers");
+      return;
     }
 
     if (type === "regulatory" && !regulatoryBody.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Regulatory body is required for regulatory documents",
-        variant: "destructive",
-      })
-      return
+      toast.error("Regulatory body is required for regulatory documents");
+      return;
     }
 
     if (type === "dataset" && !sourceUrl.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Source URL is required for datasets",
-        variant: "destructive",
-      })
-      return
+      toast.error("Source URL is required for datasets");
+      return;
     }
 
-    setIsSaving(true)
+    setIsSaving(true);
     try {
       const payload: any = {
-        user_id: DEV_USER.id,
+        user_id: user!.id,
         type,
         title: title.trim(),
         description: description.trim(),
@@ -111,45 +99,34 @@ export default function NewEvidencePage() {
         tags,
         publication_date: publicationDate || null,
         source_url: sourceUrl || null,
-      }
+      };
 
       // Add type-specific fields
       if (type === "academic") {
-        payload.authors = authors.trim()
-        payload.journal = journal.trim() || null
-        payload.doi = doi.trim() || null
+        payload.authors = authors.trim();
+        payload.journal = journal.trim() || null;
+        payload.doi = doi.trim() || null;
       } else if (type === "regulatory") {
-        payload.regulatory_body = regulatoryBody.trim()
-        payload.document_type = documentType.trim() || null
+        payload.regulatory_body = regulatoryBody.trim();
+        payload.document_type = documentType.trim() || null;
       }
 
-      const { data, error } = await createEvidence(payload)
+      const { data, error } = await createEvidence(payload);
 
       if (error || !data) {
-        toast({
-          title: "Error",
-          description: "Failed to create evidence",
-          variant: "destructive",
-        })
-        return
+        toast.error("Failed to create evidence");
+        return;
       }
 
-      toast({
-        title: "Success",
-        description: "Evidence created successfully",
-      })
-      router.push(`/app/evidence/${data.id}`)
+      toast.success("Evidence created successfully");
+      router.push(`/app/evidence/${data.id}`);
     } catch (error) {
-      console.error("Error creating evidence:", error)
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred",
-        variant: "destructive",
-      })
+      console.error("Error creating evidence:", error);
+      toast.error("An unexpected error occurred");
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   return (
     <main className="min-h-screen bg-background px-4 py-8">
@@ -196,7 +173,10 @@ export default function NewEvidencePage() {
 
               <div>
                 <Label htmlFor="status">Status</Label>
-                <Select value={status} onValueChange={(v) => setStatus(v as EvidenceStatus)}>
+                <Select
+                  value={status}
+                  onValueChange={(v) => setStatus(v as EvidenceStatus)}
+                >
                   <SelectTrigger id="status" className="mt-2">
                     <SelectValue />
                   </SelectTrigger>
@@ -383,8 +363,8 @@ export default function NewEvidencePage() {
                   onChange={(e) => setTagInput(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
-                      e.preventDefault()
-                      handleAddTag(tagInput)
+                      e.preventDefault();
+                      handleAddTag(tagInput);
                     }
                   }}
                 />
@@ -447,5 +427,5 @@ export default function NewEvidencePage() {
         </form>
       </div>
     </main>
-  )
+  );
 }

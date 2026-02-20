@@ -1,30 +1,30 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { DatasetCard } from "@/components/datasets/dataset-card"
+} from "@/components/ui/select";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { DatasetCard } from "@/components/datasets/dataset-card";
 import {
   DatasetFilters,
   type DatasetFilterState,
-} from "@/components/datasets/dataset-filters"
+} from "@/components/datasets/dataset-filters";
 import {
   fetchDatasets,
   getDatasetFileUrl,
@@ -32,176 +32,181 @@ import {
   getUniqueTags,
   createDataset,
   type DatasetSortOptions,
-} from "@/lib/supabase/datasets"
-import type { Dataset } from "@/lib/validators/dataset"
-import { formatFileSize } from "@/lib/validators/dataset"
-import { Search, Filter, Upload, HardDrive, Database, Loader2 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
-import { createClient } from "@/lib/supabase/browser"
-import { SAMPLE_DATASETS } from "@/lib/demo/sample-datasets"
+} from "@/lib/supabase/datasets";
+import type { Dataset } from "@/lib/validators/dataset";
+import { formatFileSize } from "@/lib/validators/dataset";
+import {
+  Search,
+  Filter,
+  Upload,
+  HardDrive,
+  Database,
+  Loader2,
+} from "lucide-react";
+import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/browser";
+import { SAMPLE_DATASETS } from "@/lib/demo/sample-datasets";
 
-type SortField = "created_at" | "updated_at" | "name" | "file_size" | "row_count"
+type SortField =
+  | "created_at"
+  | "updated_at"
+  | "name"
+  | "file_size"
+  | "row_count";
 
 export default function DatasetsPage() {
-  const router = useRouter()
-  const { toast } = useToast()
-  const supabase = createClient()
-  const [datasets, setDatasets] = useState<Dataset[]>([])
-  const [filteredDatasets, setFilteredDatasets] = useState<Dataset[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isLoadingSampleData, setIsLoadingSampleData] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [sortField, setSortField] = useState<SortField>("created_at")
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
-  const [totalStorage, setTotalStorage] = useState(0)
-  const [availableTags, setAvailableTags] = useState<string[]>([])
+  const router = useRouter();
+  const supabase = createClient();
+  const [datasets, setDatasets] = useState<Dataset[]>([]);
+  const [filteredDatasets, setFilteredDatasets] = useState<Dataset[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingSampleData, setIsLoadingSampleData] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortField, setSortField] = useState<SortField>("created_at");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [totalStorage, setTotalStorage] = useState(0);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
 
   const [filters, setFilters] = useState<DatasetFilterState>({
     types: [],
     fileTypes: [],
     statuses: [],
     tags: [],
-  })
+  });
 
   useEffect(() => {
-    loadDatasets()
-    loadTotalStorage()
-    loadUniqueTags()
-  }, [])
+    loadDatasets();
+    loadTotalStorage();
+    loadUniqueTags();
+  }, []);
 
   useEffect(() => {
-    applyFilters()
-  }, [datasets, searchQuery, filters, sortField, sortDirection])
+    applyFilters();
+  }, [datasets, searchQuery, filters, sortField, sortDirection]);
 
   const loadDatasets = async () => {
-    setIsLoading(true)
-    const { data, error } = await fetchDatasets()
+    setIsLoading(true);
+    const { data, error } = await fetchDatasets();
 
     if (error || !data) {
-      toast({
-        title: "Error",
-        description: "Failed to load datasets",
-        variant: "destructive",
-      })
-      setIsLoading(false)
-      return
+      toast.error("Failed to load datasets");
+      setIsLoading(false);
+      return;
     }
 
-    setDatasets(data)
-    setIsLoading(false)
-  }
+    setDatasets(data);
+    setIsLoading(false);
+  };
 
   const loadTotalStorage = async () => {
-    const { data } = await getTotalStorageUsed()
-    setTotalStorage(data || 0)
-  }
+    const { data } = await getTotalStorageUsed();
+    setTotalStorage(data || 0);
+  };
 
   const loadUniqueTags = async () => {
-    const { data } = await getUniqueTags()
-    setAvailableTags(data || [])
-  }
+    const { data } = await getUniqueTags();
+    setAvailableTags(data || []);
+  };
 
   const applyFilters = () => {
-    let filtered = [...datasets]
+    let filtered = [...datasets];
 
     // Apply search
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
+      const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (dataset) =>
           dataset.name.toLowerCase().includes(query) ||
           dataset.description.toLowerCase().includes(query) ||
           dataset.file_name.toLowerCase().includes(query) ||
-          dataset.tags.some((tag) => tag.toLowerCase().includes(query))
-      )
+          dataset.tags.some((tag) => tag.toLowerCase().includes(query)),
+      );
     }
 
     // Apply type filter
     if (filters.types.length > 0) {
       filtered = filtered.filter((dataset) =>
-        filters.types.includes(dataset.dataset_type)
-      )
+        filters.types.includes(dataset.dataset_type),
+      );
     }
 
     // Apply file type filter
     if (filters.fileTypes.length > 0) {
       filtered = filtered.filter((dataset) =>
-        filters.fileTypes.includes(dataset.file_type)
-      )
+        filters.fileTypes.includes(dataset.file_type),
+      );
     }
 
     // Apply status filter
     if (filters.statuses.length > 0) {
       filtered = filtered.filter((dataset) =>
-        filters.statuses.includes(dataset.status)
-      )
+        filters.statuses.includes(dataset.status),
+      );
     }
 
     // Apply tag filter
     if (filters.tags.length > 0) {
       filtered = filtered.filter((dataset) =>
-        filters.tags.some((tag) => dataset.tags.includes(tag))
-      )
+        filters.tags.some((tag) => dataset.tags.includes(tag)),
+      );
     }
 
     // Apply sorting
     filtered.sort((a, b) => {
-      let aValue: unknown = a[sortField]
-      let bValue: unknown = b[sortField]
+      let aValue: unknown = a[sortField];
+      let bValue: unknown = b[sortField];
 
       // Handle null values
-      if (aValue === null) return 1
-      if (bValue === null) return -1
+      if (aValue === null) return 1;
+      if (bValue === null) return -1;
 
       // Convert to comparable values
-      if (typeof aValue === "string") aValue = aValue.toLowerCase()
-      if (typeof bValue === "string") bValue = bValue.toLowerCase()
+      if (typeof aValue === "string") aValue = aValue.toLowerCase();
+      if (typeof bValue === "string") bValue = bValue.toLowerCase();
 
-      if (aValue! < bValue!) return sortDirection === "asc" ? -1 : 1
-      if (aValue! > bValue!) return sortDirection === "asc" ? 1 : -1
-      return 0
-    })
+      if (aValue! < bValue!) return sortDirection === "asc" ? -1 : 1;
+      if (aValue! > bValue!) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
 
-    setFilteredDatasets(filtered)
-  }
+    setFilteredDatasets(filtered);
+  };
 
   const handleDownload = async (dataset: Dataset) => {
-    const { data, error } = await getDatasetFileUrl(dataset.storage_path)
+    const { data, error } = await getDatasetFileUrl(dataset.storage_path);
 
     if (error || !data) {
-      toast({
-        title: "Error",
-        description: "Failed to get download link",
-        variant: "destructive",
-      })
-      return
+      toast.error("Failed to get download link");
+      return;
     }
 
     // Open download link
-    window.open(data.signedUrl, "_blank")
-  }
+    window.open(data.signedUrl, "_blank");
+  };
 
   const handleSortChange = (value: string) => {
-    const [field, direction] = value.split("-") as [SortField, "asc" | "desc"]
-    setSortField(field)
-    setSortDirection(direction)
-  }
+    const [field, direction] = value.split("-") as [SortField, "asc" | "desc"];
+    setSortField(field);
+    setSortDirection(direction);
+  };
 
   const handleLoadSampleData = async () => {
-    setIsLoadingSampleData(true)
+    setIsLoadingSampleData(true);
 
     try {
       // Get current user
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
-        throw new Error("Not authenticated")
+        throw new Error("Not authenticated");
       }
 
       // Load the sample dataset metadata (no storage upload needed for demo data)
-      const sampleDataset = SAMPLE_DATASETS[0]
+      const sampleDataset = SAMPLE_DATASETS[0];
 
       // Use demo: prefix - file is served directly from public folder
-      const demoStoragePath = `demo:${sampleDataset.filePath}`
+      const demoStoragePath = `demo:${sampleDataset.filePath}`;
 
       // Create dataset record with demo path (no actual file upload)
       const datasetPayload = {
@@ -209,42 +214,42 @@ export default function DatasetsPage() {
         description: sampleDataset.description,
         dataset_type: sampleDataset.datasetType,
         tags: sampleDataset.tags,
-        status: 'draft' as const,
+        status: "draft" as const,
         user_id: user.id,
         file_name: sampleDataset.fileName,
         file_size: 5000,
-        file_type: 'csv' as const,
+        file_type: "csv" as const,
         storage_path: demoStoragePath,
         row_count: sampleDataset.rowCount,
         column_count: sampleDataset.columnCount,
-      }
+      };
 
-      const { data: dataset, error: createError } = await createDataset(datasetPayload)
+      const { data: dataset, error: createError } =
+        await createDataset(datasetPayload);
 
       if (createError || !dataset) {
-        throw new Error(createError?.message || "Failed to create dataset record")
+        throw new Error(
+          createError?.message || "Failed to create dataset record",
+        );
       }
 
-      toast({
-        title: "Sample data loaded",
-        description: "Vaccine clinical trial sample dataset has been added to your library.",
-      })
+      toast.success(
+        "Vaccine clinical trial sample dataset has been added to your library.",
+      );
 
       // Refresh datasets
-      loadDatasets()
-      loadTotalStorage()
-      loadUniqueTags()
+      loadDatasets();
+      loadTotalStorage();
+      loadUniqueTags();
     } catch (error) {
-      console.error("Error loading sample data:", error)
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to load sample data",
-        variant: "destructive",
-      })
+      console.error("Error loading sample data:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to load sample data",
+      );
     } finally {
-      setIsLoadingSampleData(false)
+      setIsLoadingSampleData(false);
     }
-  }
+  };
 
   if (isLoading) {
     return (
@@ -257,7 +262,7 @@ export default function DatasetsPage() {
           </Card>
         </div>
       </main>
-    )
+    );
   }
 
   return (
@@ -344,12 +349,18 @@ export default function DatasetsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="created_at-desc">Newest first</SelectItem>
+                    <SelectItem value="created_at-desc">
+                      Newest first
+                    </SelectItem>
                     <SelectItem value="created_at-asc">Oldest first</SelectItem>
                     <SelectItem value="name-asc">Name A-Z</SelectItem>
                     <SelectItem value="name-desc">Name Z-A</SelectItem>
-                    <SelectItem value="file_size-desc">Largest first</SelectItem>
-                    <SelectItem value="file_size-asc">Smallest first</SelectItem>
+                    <SelectItem value="file_size-desc">
+                      Largest first
+                    </SelectItem>
+                    <SelectItem value="file_size-asc">
+                      Smallest first
+                    </SelectItem>
                     <SelectItem value="row_count-desc">Most rows</SelectItem>
                     <SelectItem value="row_count-asc">Fewest rows</SelectItem>
                   </SelectContent>
@@ -359,8 +370,8 @@ export default function DatasetsPage() {
 
             {/* Results Count */}
             <p className="text-sm text-muted-foreground">
-              {filteredDatasets.length} dataset{filteredDatasets.length !== 1 ? "s" : ""}{" "}
-              found
+              {filteredDatasets.length} dataset
+              {filteredDatasets.length !== 1 ? "s" : ""} found
             </p>
 
             {/* Dataset Grid */}
@@ -403,7 +414,8 @@ export default function DatasetsPage() {
                         )}
                       </Button>
                       <p className="text-xs text-muted-foreground text-center max-w-sm">
-                        Try VaxEvidence with a sample vaccine clinical trial dataset containing 50 participant records.
+                        Try VaxEvidence with a sample vaccine clinical trial
+                        dataset containing 50 participant records.
                       </p>
                     </div>
                   )}
@@ -424,5 +436,5 @@ export default function DatasetsPage() {
         </div>
       </div>
     </main>
-  )
+  );
 }

@@ -76,7 +76,6 @@ lib/
 ├── ml/                 # Auto-tagging via keyword extraction
 ├── supabase/           # Supabase clients + CRUD query modules per table
 │   ├── browser.ts      # SSR-aware browser client (@supabase/ssr)
-│   ├── client.ts       # Legacy Supabase browser client
 │   ├── server.ts       # Server client (admin + user-session) + getServerUser()
 │   ├── middleware.ts    # Auth middleware helpers (session refresh)
 │   ├── activity.ts     # Activity log CRUD
@@ -93,7 +92,9 @@ lib/
 
 hooks/                  # use-mobile, use-toast
 supabase/migrations/    # SQL migration files
+docs/                   # Project documentation
 public/demo/            # Demo mode static assets
+proxy.ts                # Auth proxy (Supabase session + route guards, Next.js 16 convention)
 ```
 
 ## Architecture & Patterns
@@ -101,7 +102,7 @@ public/demo/            # Demo mode static assets
 ### Authentication
 
 - **Supabase Auth:** OAuth/passwordless via `@supabase/ssr`, session refresh in `lib/supabase/middleware.ts`
-- **Route protection:** `proxy.ts` guards `/app/*` routes using Supabase session check, redirects unauthenticated to `/auth`
+- **Route protection:** `proxy.ts` guards `/app/*` routes using Supabase session check, redirects unauthenticated to `/auth` (Next.js 16 convention)
 - **OAuth callback:** `app/auth/callback/route.ts` handles OAuth code exchange
 - **Client auth:** `useAuth()` and `useUserId()` hooks from `lib/auth/auth-context.tsx`, using `lib/supabase/browser.ts`
 - **Dev fallback:** `useUserId()` returns a hardcoded UUID (`550e8400-...`) when no session exists (dev convenience only)

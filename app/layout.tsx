@@ -1,11 +1,14 @@
-import type React from "react"
-import type { Metadata, Viewport } from "next"
-import { Inter, Geist_Mono } from "next/font/google"
-import { Analytics } from "@vercel/analytics/next"
-import "./globals.css"
+import type React from "react";
+import type { Metadata, Viewport } from "next";
+import { Inter, Geist_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
+import { Toaster } from "sonner";
+import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster as ShadcnToaster } from "@/components/ui/toaster";
+import "./globals.css";
 
-const _inter = Inter({ subsets: ["latin"] })
-const _geistMono = Geist_Mono({ subsets: ["latin"] })
+const _inter = Inter({ subsets: ["latin"] });
+const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "VaxEvidence | Real-World Evidence Platform for Vaccine Research",
@@ -30,25 +33,34 @@ export const metadata: Metadata = {
     ],
     apple: "/logo-final.svg",
   },
-}
+};
 
 export const viewport: Viewport = {
   themeColor: "#0d9488",
   width: "device-width",
   initialScale: 1,
-}
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <body className={`font-sans antialiased`}>
-        {children}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+          <Toaster richColors position="top-right" />
+          <ShadcnToaster />
+        </ThemeProvider>
         <Analytics />
       </body>
     </html>
-  )
+  );
 }

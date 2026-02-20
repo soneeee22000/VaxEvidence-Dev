@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 
-import { ProtocolTemplateSelector } from "@/components/templates/ProtocolTemplateSelector"
-import { Button } from "@/components/ui/button"
+import { ProtocolTemplateSelector } from "@/components/templates/ProtocolTemplateSelector";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -15,7 +15,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -24,91 +24,102 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { createClient } from "@/lib/supabase/browser"
-import { createProtocol, createTemplateUsage } from "@/lib/supabase/protocols"
-import { getTemplateById } from "@/lib/templates/protocol-templates"
-import { protocolSchema, type ProtocolFormValues } from "@/lib/validators/protocol"
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { createClient } from "@/lib/supabase/browser";
+import { createProtocol, createTemplateUsage } from "@/lib/supabase/protocols";
+import { getTemplateById } from "@/lib/templates/protocol-templates";
+import {
+  protocolSchema,
+  type ProtocolFormValues,
+} from "@/lib/validators/protocol";
 
 const defaultValues: ProtocolFormValues = {
   title: "",
   study_question: "",
   population: "",
+  intervention: "",
   comparator: "",
   outcomes: "",
   design: "",
   status: "draft",
-}
+};
 
 export function NewProtocolClient() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const [error, setError] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
-  const [showTemplateSelector, setShowTemplateSelector] = useState(true)
-  const [userId, setUserId] = useState<string | null>(null)
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
+    null,
+  );
+  const [showTemplateSelector, setShowTemplateSelector] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
 
-  const supabase = createClient()
+  const supabase = createClient();
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) {
-        setUserId(user.id)
+        setUserId(user.id);
       }
-    }
-    getUser()
-  }, [supabase.auth])
+    };
+    getUser();
+  }, [supabase.auth]);
 
   const form = useForm<ProtocolFormValues>({
     resolver: zodResolver(protocolSchema),
     defaultValues,
     mode: "onTouched",
-  })
+  });
 
-  const template = selectedTemplateId ? getTemplateById(selectedTemplateId) : null
-
-  useEffect(() => {
-    const templateFromQuery = searchParams?.get("template")
-    if (!templateFromQuery) return
-    if (templateFromQuery === selectedTemplateId) return
-    const templateToApply = getTemplateById(templateFromQuery)
-    if (!templateToApply) return
-    setSelectedTemplateId(templateFromQuery)
-    setShowTemplateSelector(false)
-  }, [searchParams, selectedTemplateId])
+  const template = selectedTemplateId
+    ? getTemplateById(selectedTemplateId)
+    : null;
 
   useEffect(() => {
-    if (!template) return
+    const templateFromQuery = searchParams?.get("template");
+    if (!templateFromQuery) return;
+    if (templateFromQuery === selectedTemplateId) return;
+    const templateToApply = getTemplateById(templateFromQuery);
+    if (!templateToApply) return;
+    setSelectedTemplateId(templateFromQuery);
+    setShowTemplateSelector(false);
+  }, [searchParams, selectedTemplateId]);
+
+  useEffect(() => {
+    if (!template) return;
     form.reset({
       ...defaultValues,
       title: template.title,
       study_question: template.study_question,
       population: template.population,
+      intervention: (template as any).intervention ?? "",
       comparator: template.comparator,
       outcomes: template.outcomes,
       design: template.study_design,
-    })
-  }, [form, template])
+    });
+  }, [form, template]);
 
   const handleSubmit = async (values: ProtocolFormValues) => {
-    setError(null)
-    setIsSubmitting(true)
+    setError(null);
+    setIsSubmitting(true);
 
     if (!userId) {
-      setError("Not authenticated. Please sign in again.")
-      setIsSubmitting(false)
-      return
+      setError("Not authenticated. Please sign in again.");
+      setIsSubmitting(false);
+      return;
     }
 
     try {
@@ -117,10 +128,10 @@ export function NewProtocolClient() {
         user_id: userId,
         template_id: template?.id,
         template_name: template?.name,
-      })
+      });
 
       if (error) {
-        throw new Error(error.message || "Failed to create protocol")
+        throw new Error(error.message || "Failed to create protocol");
       }
 
       if (data) {
@@ -131,18 +142,20 @@ export function NewProtocolClient() {
               template_id: template.id,
               template_name: template.name,
               created_protocol_id: data.id,
-            })
+            });
           } catch (usageError) {
-            console.warn("Failed to log template usage:", usageError)
+            console.warn("Failed to log template usage:", usageError);
           }
         }
-        router.push(`/app/${data.id}`)
+        router.push(`/app/${data.id}`);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create protocol")
-      setIsSubmitting(false)
+      setError(
+        err instanceof Error ? err.message : "Failed to create protocol",
+      );
+      setIsSubmitting(false);
     }
-  }
+  };
 
   if (showTemplateSelector) {
     return (
@@ -158,8 +171,8 @@ export function NewProtocolClient() {
             <Button
               variant="ghost"
               onClick={() => {
-                setSelectedTemplateId(null)
-                setShowTemplateSelector(false)
+                setSelectedTemplateId(null);
+                setShowTemplateSelector(false);
               }}
             >
               Skip templates
@@ -167,13 +180,13 @@ export function NewProtocolClient() {
           </div>
           <ProtocolTemplateSelector
             onSelectTemplate={(templateId) => {
-              setSelectedTemplateId(templateId)
-              setShowTemplateSelector(false)
+              setSelectedTemplateId(templateId);
+              setShowTemplateSelector(false);
             }}
           />
         </div>
       </main>
-    )
+    );
   }
 
   return (
@@ -182,23 +195,25 @@ export function NewProtocolClient() {
         <Card>
           <CardHeader>
             <CardTitle>Create a protocol</CardTitle>
-            <CardDescription>Define the essentials for your study.</CardDescription>
+            <CardDescription>
+              Define the essentials for your study.
+            </CardDescription>
           </CardHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)}>
               <CardContent className="space-y-6">
                 {template && (
-                  <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                  <div className="rounded-lg border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-foreground">
                     <p className="font-semibold">
                       Pre-filled from template: {template.name}
                     </p>
                     <button
                       type="button"
                       onClick={() => {
-                        setSelectedTemplateId(null)
-                        setShowTemplateSelector(true)
+                        setSelectedTemplateId(null);
+                        setShowTemplateSelector(true);
                       }}
-                      className="mt-1 text-blue-700 underline"
+                      className="mt-1 text-primary underline"
                     >
                       Change template
                     </button>
@@ -265,6 +280,25 @@ export function NewProtocolClient() {
                   />
                   <FormField
                     control={form.control}
+                    name="intervention"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Intervention</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Describe the vaccine or intervention being studied."
+                            rows={3}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <FormField
+                    control={form.control}
                     name="comparator"
                     render={({ field }) => (
                       <FormItem>
@@ -306,7 +340,10 @@ export function NewProtocolClient() {
                       <FormItem>
                         <FormLabel>Study design</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., retrospective cohort study" {...field} />
+                          <Input
+                            placeholder="e.g., retrospective cohort study"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -318,7 +355,10 @@ export function NewProtocolClient() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Status</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger className="w-full">
                               <SelectValue placeholder="Select status" />
@@ -349,5 +389,5 @@ export function NewProtocolClient() {
         </Card>
       </div>
     </main>
-  )
+  );
 }

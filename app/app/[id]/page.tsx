@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import Link from "next/link"
-import { useParams, useRouter } from "next/navigation"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -15,7 +15,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -24,7 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import {
   Form,
   FormControl,
@@ -32,95 +32,136 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import {
   fetchProtocolById,
   updateProtocol,
   deleteProtocol,
   type ProtocolRecord,
-} from "@/lib/supabase/protocols"
-import { protocolSchema, type ProtocolFormValues } from "@/lib/validators/protocol"
+} from "@/lib/supabase/protocols";
+import {
+  protocolSchema,
+  type ProtocolFormValues,
+} from "@/lib/validators/protocol";
 import {
   getLinkedEvidence,
   fetchEvidenceItems,
   linkEvidenceToProtocol,
   unlinkEvidence,
-} from "@/lib/supabase/evidence"
-import type { EvidenceItem } from "@/lib/validators/evidence"
+} from "@/lib/supabase/evidence";
+import type { EvidenceItem } from "@/lib/validators/evidence";
 import {
   getLinkedDatasets,
   fetchDatasets,
   linkDatasetToProtocol,
   unlinkDataset,
   getDatasetFileUrl,
-} from "@/lib/supabase/datasets"
-import type { Dataset } from "@/lib/validators/dataset"
-import { formatFileSize } from "@/lib/validators/dataset"
-import { Plus, X, ExternalLink, Search, Download, Database } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
-import { CommentThread } from "@/components/collaboration/comment-thread"
-import { CommentInput } from "@/components/collaboration/comment-input"
-import { ReviewPanel } from "@/components/collaboration/review-panel"
-import { ExportMenu } from "@/components/export/export-menu"
-import { fetchComments, createComment, updateComment, deleteComment } from "@/lib/supabase/comments"
-import { fetchReviews, requestReview, submitReviewDecision, cancelReview } from "@/lib/supabase/reviews"
-import { buildCommentThreads, type CommentWithUser } from "@/lib/validators/comment"
-import type { ReviewWithDetails, ReviewStatus } from "@/lib/validators/review"
-import { createClient } from "@/lib/supabase/browser"
+} from "@/lib/supabase/datasets";
+import type { Dataset } from "@/lib/validators/dataset";
+import { formatFileSize } from "@/lib/validators/dataset";
+import {
+  Plus,
+  X,
+  ExternalLink,
+  Search,
+  Download,
+  Database,
+} from "lucide-react";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { CommentThread } from "@/components/collaboration/comment-thread";
+import { CommentInput } from "@/components/collaboration/comment-input";
+import { ReviewPanel } from "@/components/collaboration/review-panel";
+import { ExportMenu } from "@/components/export/export-menu";
+import {
+  fetchComments,
+  createComment,
+  updateComment,
+  deleteComment,
+} from "@/lib/supabase/comments";
+import {
+  fetchReviews,
+  requestReview,
+  submitReviewDecision,
+  cancelReview,
+} from "@/lib/supabase/reviews";
+import {
+  buildCommentThreads,
+  type CommentWithUser,
+} from "@/lib/validators/comment";
+import type { ReviewWithDetails, ReviewStatus } from "@/lib/validators/review";
+import { createClient } from "@/lib/supabase/browser";
 
 export default function ProtocolDetailPage() {
-  const router = useRouter()
-  const params = useParams<{ id: string }>()
-  const protocolId = params?.id
-  const { toast } = useToast()
-  const supabase = createClient()
+  const router = useRouter();
+  const params = useParams<{ id: string }>();
+  const protocolId = params?.id;
+  const supabase = createClient();
 
-  const [currentUserId, setCurrentUserId] = useState<string>("")
-  const [protocol, setProtocol] = useState<ProtocolRecord | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [protocol, setProtocol] = useState<ProtocolRecord | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Get current user on mount
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) {
-        setCurrentUserId(user.id)
+        setCurrentUserId(user.id);
       }
-    }
-    getUser()
-  }, [supabase.auth])
+    };
+    getUser();
+  }, [supabase.auth]);
 
   // Evidence linking state
-  const [linkedEvidence, setLinkedEvidence] = useState<any[]>([])
-  const [availableEvidence, setAvailableEvidence] = useState<EvidenceItem[]>([])
-  const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false)
-  const [evidenceSearchQuery, setEvidenceSearchQuery] = useState("")
-  const [selectedEvidenceIds, setSelectedEvidenceIds] = useState<Set<string>>(new Set())
+  const [linkedEvidence, setLinkedEvidence] = useState<any[]>([]);
+  const [availableEvidence, setAvailableEvidence] = useState<EvidenceItem[]>(
+    [],
+  );
+  const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
+  const [evidenceSearchQuery, setEvidenceSearchQuery] = useState("");
+  const [selectedEvidenceIds, setSelectedEvidenceIds] = useState<Set<string>>(
+    new Set(),
+  );
 
   // Dataset linking state
-  const [linkedDatasets, setLinkedDatasets] = useState<any[]>([])
-  const [availableDatasets, setAvailableDatasets] = useState<Dataset[]>([])
-  const [isDatasetDialogOpen, setIsDatasetDialogOpen] = useState(false)
-  const [datasetSearchQuery, setDatasetSearchQuery] = useState("")
-  const [selectedDatasetIds, setSelectedDatasetIds] = useState<Set<string>>(new Set())
+  const [linkedDatasets, setLinkedDatasets] = useState<any[]>([]);
+  const [availableDatasets, setAvailableDatasets] = useState<Dataset[]>([]);
+  const [isDatasetDialogOpen, setIsDatasetDialogOpen] = useState(false);
+  const [datasetSearchQuery, setDatasetSearchQuery] = useState("");
+  const [selectedDatasetIds, setSelectedDatasetIds] = useState<Set<string>>(
+    new Set(),
+  );
 
   // Collaboration state
-  const [comments, setComments] = useState<CommentWithUser[]>([])
-  const [reviews, setReviews] = useState<ReviewWithDetails[]>([])
-  const [isLoadingComments, setIsLoadingComments] = useState(false)
-  const [isLoadingReviews, setIsLoadingReviews] = useState(false)
+  const [comments, setComments] = useState<CommentWithUser[]>([]);
+  const [reviews, setReviews] = useState<ReviewWithDetails[]>([]);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [isLoadingReviews, setIsLoadingReviews] = useState(false);
 
   const form = useForm<ProtocolFormValues>({
     resolver: zodResolver(protocolSchema),
@@ -128,134 +169,136 @@ export default function ProtocolDetailPage() {
       title: "",
       study_question: "",
       population: "",
+      intervention: "",
       comparator: "",
       outcomes: "",
       design: "",
       status: "draft",
     },
     mode: "onTouched",
-  })
+  });
 
   useEffect(() => {
     const loadProtocol = async () => {
       if (!protocolId || typeof protocolId !== "string") {
-        setError("Missing protocol ID.")
-        setIsLoading(false)
-        return
+        setError("Missing protocol ID.");
+        setIsLoading(false);
+        return;
       }
 
-      const { data, error } = await fetchProtocolById(protocolId)
-      
+      const { data, error } = await fetchProtocolById(protocolId);
+
       if (error || !data) {
-        setError(error?.message || "Protocol not found.")
-        setIsLoading(false)
-        return
+        setError(error?.message || "Protocol not found.");
+        setIsLoading(false);
+        return;
       }
-      
-      setProtocol(data)
+
+      setProtocol(data);
       form.reset({
         title: data.title,
         study_question: data.study_question,
         population: data.population,
+        intervention: data.intervention ?? "",
         comparator: data.comparator,
         outcomes: data.outcomes,
         design: data.design,
         status: data.status,
-      })
-      setIsLoading(false)
+      });
+      setIsLoading(false);
 
       // Load linked evidence and datasets
-      loadLinkedEvidence()
-      loadLinkedDatasets()
-      loadComments()
-      loadReviews()
-    }
+      loadLinkedEvidence();
+      loadLinkedDatasets();
+      loadComments();
+      loadReviews();
+    };
 
-    loadProtocol()
-  }, [protocolId, form])
+    loadProtocol();
+  }, [protocolId, form]);
 
   const loadLinkedEvidence = async () => {
-    if (!protocolId || typeof protocolId !== "string") return
+    if (!protocolId || typeof protocolId !== "string") return;
 
     try {
-      const { data, error } = await getLinkedEvidence(protocolId)
+      const { data, error } = await getLinkedEvidence(protocolId);
       if (!error && data) {
-        setLinkedEvidence(data)
+        setLinkedEvidence(data);
       }
     } catch (error) {
-      console.error("Error loading linked evidence:", error)
+      console.error("Error loading linked evidence:", error);
     }
-  }
+  };
 
   const loadLinkedDatasets = async () => {
-    if (!protocolId || typeof protocolId !== "string") return
+    if (!protocolId || typeof protocolId !== "string") return;
 
     try {
-      const { data, error } = await getLinkedDatasets(protocolId)
+      const { data, error } = await getLinkedDatasets(protocolId);
       if (!error && data) {
-        setLinkedDatasets(data)
+        setLinkedDatasets(data);
       }
     } catch (error) {
-      console.error("Error loading linked datasets:", error)
+      console.error("Error loading linked datasets:", error);
     }
-  }
+  };
 
   const loadAvailableEvidence = async () => {
     try {
-      const { data, error } = await fetchEvidenceItems()
+      const { data, error } = await fetchEvidenceItems();
       if (!error && data) {
-        setAvailableEvidence(data)
+        setAvailableEvidence(data);
       }
     } catch (error) {
-      console.error("Error loading evidence:", error)
+      console.error("Error loading evidence:", error);
     }
-  }
+  };
 
   const loadAvailableDatasets = async () => {
     try {
-      const { data, error } = await fetchDatasets()
+      const { data, error } = await fetchDatasets();
       if (!error && data) {
-        setAvailableDatasets(data)
+        setAvailableDatasets(data);
       }
     } catch (error) {
-      console.error("Error loading datasets:", error)
+      console.error("Error loading datasets:", error);
     }
-  }
+  };
 
   const loadComments = async () => {
-    if (!protocolId || typeof protocolId !== "string") return
+    if (!protocolId || typeof protocolId !== "string") return;
 
-    setIsLoadingComments(true)
+    setIsLoadingComments(true);
     try {
-      const { data, error } = await fetchComments("protocol", protocolId)
+      const { data, error } = await fetchComments("protocol", protocolId);
       if (!error && data) {
-        setComments(data as CommentWithUser[])
+        setComments(data as CommentWithUser[]);
       }
     } catch (error) {
-      console.error("Error loading comments:", error)
+      console.error("Error loading comments:", error);
     } finally {
-      setIsLoadingComments(false)
+      setIsLoadingComments(false);
     }
-  }
+  };
 
   const loadReviews = async () => {
-    if (!protocolId || typeof protocolId !== "string") return
+    if (!protocolId || typeof protocolId !== "string") return;
 
-    setIsLoadingReviews(true)
+    setIsLoadingReviews(true);
     try {
-      const { data, error } = await fetchReviews(protocolId)
+      const { data, error } = await fetchReviews(protocolId);
       if (!error && data) {
-        setReviews(data as ReviewWithDetails[])
+        setReviews(data as ReviewWithDetails[]);
       }
     } catch (error) {
-      console.error("Error loading reviews:", error)
+      console.error("Error loading reviews:", error);
     } finally {
-      setIsLoadingReviews(false)
+      setIsLoadingReviews(false);
     }
-  }
+  };
 
   const handleCreateComment = async (content: string) => {
-    if (!protocolId || typeof protocolId !== "string") return
+    if (!protocolId || typeof protocolId !== "string") return;
 
     try {
       const { data, error } = await createComment({
@@ -264,29 +307,22 @@ export default function ProtocolDetailPage() {
         resource_id: protocolId,
         content,
         mentions: [],
-      })
+      });
 
       if (error || !data) {
-        toast({
-          title: "Error",
-          description: "Failed to post comment",
-          variant: "destructive",
-        })
-        return
+        toast.error("Failed to post comment");
+        return;
       }
 
-      toast({
-        title: "Success",
-        description: "Comment posted successfully",
-      })
-      loadComments()
+      toast.success("Comment posted successfully");
+      loadComments();
     } catch (error) {
-      console.error("Error creating comment:", error)
+      console.error("Error creating comment:", error);
     }
-  }
+  };
 
   const handleReplyComment = async (parentId: string, content: string) => {
-    if (!protocolId || typeof protocolId !== "string") return
+    if (!protocolId || typeof protocolId !== "string") return;
 
     try {
       const { data, error } = await createComment({
@@ -296,320 +332,259 @@ export default function ProtocolDetailPage() {
         content,
         parent_id: parentId,
         mentions: [],
-      })
+      });
 
       if (error || !data) {
-        toast({
-          title: "Error",
-          description: "Failed to post reply",
-          variant: "destructive",
-        })
-        return
+        toast.error("Failed to post reply");
+        return;
       }
 
-      toast({
-        title: "Success",
-        description: "Reply posted successfully",
-      })
-      loadComments()
+      toast.success("Reply posted successfully");
+      loadComments();
     } catch (error) {
-      console.error("Error replying to comment:", error)
+      console.error("Error replying to comment:", error);
     }
-  }
+  };
 
   const handleEditComment = async (commentId: string, content: string) => {
     try {
-      const { error } = await updateComment(commentId, { content })
+      const { error } = await updateComment(commentId, { content });
 
       if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to update comment",
-          variant: "destructive",
-        })
-        return
+        toast.error("Failed to update comment");
+        return;
       }
 
-      toast({
-        title: "Success",
-        description: "Comment updated successfully",
-      })
-      loadComments()
+      toast.success("Comment updated successfully");
+      loadComments();
     } catch (error) {
-      console.error("Error updating comment:", error)
+      console.error("Error updating comment:", error);
     }
-  }
+  };
 
   const handleDeleteComment = async (commentId: string) => {
     try {
-      const { error } = await deleteComment(commentId)
+      const { error } = await deleteComment(commentId);
 
       if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to delete comment",
-          variant: "destructive",
-        })
-        return
+        toast.error("Failed to delete comment");
+        return;
       }
 
-      toast({
-        title: "Success",
-        description: "Comment deleted successfully",
-      })
-      loadComments()
+      toast.success("Comment deleted successfully");
+      loadComments();
     } catch (error) {
-      console.error("Error deleting comment:", error)
+      console.error("Error deleting comment:", error);
     }
-  }
+  };
 
   const handleRequestReview = async (reviewerId: string) => {
-    if (!protocolId || typeof protocolId !== "string") return
+    if (!protocolId || typeof protocolId !== "string") return;
 
     try {
       const { data, error } = await requestReview({
         protocol_id: protocolId,
         reviewer_id: reviewerId,
         requester_id: currentUserId,
-      })
+      });
 
       if (error || !data) {
-        toast({
-          title: "Error",
-          description: "Failed to request review",
-          variant: "destructive",
-        })
-        return
+        toast.error("Failed to request review");
+        return;
       }
 
-      toast({
-        title: "Success",
-        description: "Review requested successfully",
-      })
-      loadReviews()
+      toast.success("Review requested successfully");
+      loadReviews();
     } catch (error) {
-      console.error("Error requesting review:", error)
+      console.error("Error requesting review:", error);
     }
-  }
+  };
 
   const handleSubmitReviewDecision = async (
     reviewId: string,
     status: ReviewStatus,
-    decision: string
+    decision: string,
   ) => {
     try {
-      const { error } = await submitReviewDecision(reviewId, { status, decision })
+      const { error } = await submitReviewDecision(reviewId, {
+        status,
+        decision,
+      });
 
       if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to submit review",
-          variant: "destructive",
-        })
-        return
+        toast.error("Failed to submit review");
+        return;
       }
 
-      toast({
-        title: "Success",
-        description: "Review submitted successfully",
-      })
-      loadReviews()
+      toast.success("Review submitted successfully");
+      loadReviews();
     } catch (error) {
-      console.error("Error submitting review:", error)
+      console.error("Error submitting review:", error);
     }
-  }
+  };
 
   const handleCancelReview = async (reviewId: string) => {
     try {
-      const { error } = await cancelReview(reviewId)
+      const { error } = await cancelReview(reviewId);
 
       if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to cancel review",
-          variant: "destructive",
-        })
-        return
+        toast.error("Failed to cancel review");
+        return;
       }
 
-      toast({
-        title: "Success",
-        description: "Review cancelled successfully",
-      })
-      loadReviews()
+      toast.success("Review cancelled successfully");
+      loadReviews();
     } catch (error) {
-      console.error("Error cancelling review:", error)
+      console.error("Error cancelling review:", error);
     }
-  }
+  };
 
   const handleLinkEvidence = async () => {
-    if (!protocolId || typeof protocolId !== "string" || selectedEvidenceIds.size === 0) return
+    if (
+      !protocolId ||
+      typeof protocolId !== "string" ||
+      selectedEvidenceIds.size === 0
+    )
+      return;
 
     try {
       for (const evidenceId of selectedEvidenceIds) {
-        await linkEvidenceToProtocol(protocolId, evidenceId)
+        await linkEvidenceToProtocol(protocolId, evidenceId);
       }
 
-      toast({
-        title: "Success",
-        description: `Linked ${selectedEvidenceIds.size} evidence item(s)`,
-      })
+      toast.success(`Linked ${selectedEvidenceIds.size} evidence item(s)`);
 
-      setSelectedEvidenceIds(new Set())
-      setIsLinkDialogOpen(false)
-      loadLinkedEvidence()
+      setSelectedEvidenceIds(new Set());
+      setIsLinkDialogOpen(false);
+      loadLinkedEvidence();
     } catch (error) {
-      console.error("Error linking evidence:", error)
-      toast({
-        title: "Error",
-        description: "Failed to link evidence",
-        variant: "destructive",
-      })
+      console.error("Error linking evidence:", error);
+      toast.error("Failed to link evidence");
     }
-  }
+  };
 
   const handleUnlinkEvidence = async (linkId: string) => {
     try {
-      const { error } = await unlinkEvidence(linkId)
+      const { error } = await unlinkEvidence(linkId);
       if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to unlink evidence",
-          variant: "destructive",
-        })
-        return
+        toast.error("Failed to unlink evidence");
+        return;
       }
 
-      toast({
-        title: "Success",
-        description: "Evidence unlinked successfully",
-      })
-      loadLinkedEvidence()
+      toast.success("Evidence unlinked successfully");
+      loadLinkedEvidence();
     } catch (error) {
-      console.error("Error unlinking evidence:", error)
+      console.error("Error unlinking evidence:", error);
     }
-  }
+  };
 
   const toggleEvidenceSelection = (evidenceId: string) => {
-    const newSelection = new Set(selectedEvidenceIds)
+    const newSelection = new Set(selectedEvidenceIds);
     if (newSelection.has(evidenceId)) {
-      newSelection.delete(evidenceId)
+      newSelection.delete(evidenceId);
     } else {
-      newSelection.add(evidenceId)
+      newSelection.add(evidenceId);
     }
-    setSelectedEvidenceIds(newSelection)
-  }
+    setSelectedEvidenceIds(newSelection);
+  };
 
   // Dataset linking handlers
   const handleLinkDataset = async () => {
-    if (!protocolId || typeof protocolId !== "string" || selectedDatasetIds.size === 0) return
+    if (
+      !protocolId ||
+      typeof protocolId !== "string" ||
+      selectedDatasetIds.size === 0
+    )
+      return;
 
     try {
       for (const datasetId of selectedDatasetIds) {
-        await linkDatasetToProtocol(protocolId, datasetId)
+        await linkDatasetToProtocol(protocolId, datasetId);
       }
 
-      toast({
-        title: "Success",
-        description: `Linked ${selectedDatasetIds.size} dataset(s)`,
-      })
+      toast.success(`Linked ${selectedDatasetIds.size} dataset(s)`);
 
-      setSelectedDatasetIds(new Set())
-      setIsDatasetDialogOpen(false)
-      loadLinkedDatasets()
+      setSelectedDatasetIds(new Set());
+      setIsDatasetDialogOpen(false);
+      loadLinkedDatasets();
     } catch (error) {
-      console.error("Error linking dataset:", error)
-      toast({
-        title: "Error",
-        description: "Failed to link dataset",
-        variant: "destructive",
-      })
+      console.error("Error linking dataset:", error);
+      toast.error("Failed to link dataset");
     }
-  }
+  };
 
   const handleUnlinkDataset = async (linkId: string) => {
     try {
-      const { error } = await unlinkDataset(linkId)
+      const { error } = await unlinkDataset(linkId);
       if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to unlink dataset",
-          variant: "destructive",
-        })
-        return
+        toast.error("Failed to unlink dataset");
+        return;
       }
 
-      toast({
-        title: "Success",
-        description: "Dataset unlinked successfully",
-      })
-      loadLinkedDatasets()
+      toast.success("Dataset unlinked successfully");
+      loadLinkedDatasets();
     } catch (error) {
-      console.error("Error unlinking dataset:", error)
+      console.error("Error unlinking dataset:", error);
     }
-  }
+  };
 
   const handleDownloadDataset = async (storagePath: string) => {
     try {
-      const { data, error } = await getDatasetFileUrl(storagePath)
+      const { data, error } = await getDatasetFileUrl(storagePath);
       if (error || !data) {
-        toast({
-          title: "Error",
-          description: "Failed to get download link",
-          variant: "destructive",
-        })
-        return
+        toast.error("Failed to get download link");
+        return;
       }
-      window.open(data.signedUrl, "_blank")
+      window.open(data.signedUrl, "_blank");
     } catch (error) {
-      console.error("Error downloading dataset:", error)
+      console.error("Error downloading dataset:", error);
     }
-  }
+  };
 
   const toggleDatasetSelection = (datasetId: string) => {
-    const newSelection = new Set(selectedDatasetIds)
+    const newSelection = new Set(selectedDatasetIds);
     if (newSelection.has(datasetId)) {
-      newSelection.delete(datasetId)
+      newSelection.delete(datasetId);
     } else {
-      newSelection.add(datasetId)
+      newSelection.add(datasetId);
     }
-    setSelectedDatasetIds(newSelection)
-  }
+    setSelectedDatasetIds(newSelection);
+  };
 
   const filteredAvailableEvidence = availableEvidence.filter((item) => {
-    if (!evidenceSearchQuery) return true
-    const query = evidenceSearchQuery.toLowerCase()
+    if (!evidenceSearchQuery) return true;
+    const query = evidenceSearchQuery.toLowerCase();
     return (
       item.title.toLowerCase().includes(query) ||
       item.description.toLowerCase().includes(query) ||
       item.tags.some((tag) => tag.toLowerCase().includes(query))
-    )
-  })
+    );
+  });
 
   const filteredAvailableDatasets = availableDatasets.filter((item) => {
-    if (!datasetSearchQuery) return true
-    const query = datasetSearchQuery.toLowerCase()
+    if (!datasetSearchQuery) return true;
+    const query = datasetSearchQuery.toLowerCase();
     return (
       item.name.toLowerCase().includes(query) ||
       item.description.toLowerCase().includes(query) ||
       item.tags.some((tag) => tag.toLowerCase().includes(query))
-    )
-  })
+    );
+  });
 
   const handleSave = async (values: ProtocolFormValues) => {
-    if (!protocolId || typeof protocolId !== "string") return
-    setError(null)
-    setIsSaving(true)
+    if (!protocolId || typeof protocolId !== "string") return;
+    setError(null);
+    setIsSaving(true);
 
     try {
-      const { data, error } = await updateProtocol(protocolId, values)
+      const { data, error } = await updateProtocol(protocolId, values);
 
       if (error) {
-        throw new Error(error.message || "Failed to save protocol")
+        throw new Error(error.message || "Failed to save protocol");
       }
 
       if (data) {
-        setProtocol(data)
+        setProtocol(data);
         form.reset({
           title: data.title,
           study_question: data.study_question,
@@ -618,34 +593,36 @@ export default function ProtocolDetailPage() {
           outcomes: data.outcomes,
           design: data.design,
           status: data.status,
-        })
+        });
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save protocol")
+      setError(err instanceof Error ? err.message : "Failed to save protocol");
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   const handleDelete = async () => {
-    if (!protocolId || typeof protocolId !== "string") return
-    if (!window.confirm("Delete this protocol? This cannot be undone.")) return
-    
-    setIsDeleting(true)
-    
+    if (!protocolId || typeof protocolId !== "string") return;
+
+    setIsDeleting(true);
+
     try {
-      const { error } = await deleteProtocol(protocolId)
-      
+      const { error } = await deleteProtocol(protocolId);
+
       if (error) {
-        throw new Error(error.message || "Failed to delete protocol")
+        throw new Error(error.message || "Failed to delete protocol");
       }
-      
-      router.push("/app")
+
+      toast.success("Protocol deleted successfully");
+      router.push("/app");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete protocol")
-      setIsDeleting(false)
+      toast.error(
+        err instanceof Error ? err.message : "Failed to delete protocol",
+      );
+      setIsDeleting(false);
     }
-  }
+  };
 
   if (isLoading) {
     return (
@@ -658,7 +635,7 @@ export default function ProtocolDetailPage() {
           </Card>
         </div>
       </main>
-    )
+    );
   }
 
   if (!protocol) {
@@ -680,7 +657,7 @@ export default function ProtocolDetailPage() {
           </Card>
         </div>
       </main>
-    )
+    );
   }
 
   return (
@@ -743,6 +720,25 @@ export default function ProtocolDetailPage() {
                   />
                   <FormField
                     control={form.control}
+                    name="intervention"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Intervention</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Describe the vaccine or intervention being studied."
+                            rows={3}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <FormField
+                    control={form.control}
                     name="comparator"
                     render={({ field }) => (
                       <FormItem>
@@ -788,7 +784,10 @@ export default function ProtocolDetailPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Status</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger className="w-full">
                               <SelectValue placeholder="Select status" />
@@ -816,14 +815,36 @@ export default function ProtocolDetailPage() {
                     protocolTitle={protocol.title}
                     hasEvidence={linkedEvidence.length > 0}
                   />
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={handleDelete} 
-                    disabled={isDeleting}
-                  >
-                    {isDeleting ? "Deleting..." : "Delete"}
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={isDeleting}
+                      >
+                        {isDeleting ? "Deleting..." : "Delete"}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Protocol?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action cannot be undone. This will permanently
+                          delete this protocol and all its linked evidence and
+                          datasets.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleDelete}
+                          disabled={isDeleting}
+                        >
+                          {isDeleting ? "Deleting..." : "Delete"}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                   <Button type="submit" disabled={isSaving}>
                     {isSaving ? "Saving..." : "Save changes"}
                   </Button>
@@ -840,12 +861,20 @@ export default function ProtocolDetailPage() {
               <div>
                 <CardTitle>Linked Evidence</CardTitle>
                 <CardDescription>
-                  Evidence items supporting this protocol ({linkedEvidence.length})
+                  Evidence items supporting this protocol (
+                  {linkedEvidence.length})
                 </CardDescription>
               </div>
-              <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
+              <Dialog
+                open={isLinkDialogOpen}
+                onOpenChange={setIsLinkDialogOpen}
+              >
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" onClick={loadAvailableEvidence}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={loadAvailableEvidence}
+                  >
                     <Plus className="mr-2 h-4 w-4" />
                     Add Evidence
                   </Button>
@@ -870,9 +899,9 @@ export default function ProtocolDetailPage() {
                     <div className="flex-1 overflow-y-auto space-y-2 pr-2">
                       {filteredAvailableEvidence.map((item) => {
                         const isLinked = linkedEvidence.some(
-                          (link: any) => link.evidence_id === item.id
-                        )
-                        const isSelected = selectedEvidenceIds.has(item.id)
+                          (link: any) => link.evidence_id === item.id,
+                        );
+                        const isSelected = selectedEvidenceIds.has(item.id);
 
                         return (
                           <div
@@ -884,16 +913,24 @@ export default function ProtocolDetailPage() {
                                   ? "border-primary bg-primary/5"
                                   : "hover:border-muted-foreground/50"
                             }`}
-                            onClick={() => !isLinked && toggleEvidenceSelection(item.id)}
+                            onClick={() =>
+                              !isLinked && toggleEvidenceSelection(item.id)
+                            }
                           >
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
-                                  <Badge variant="outline" className="text-xs capitalize">
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs capitalize"
+                                  >
                                     {item.type}
                                   </Badge>
                                   {isLinked && (
-                                    <Badge variant="secondary" className="text-xs">
+                                    <Badge
+                                      variant="secondary"
+                                      className="text-xs"
+                                    >
                                       Already linked
                                     </Badge>
                                   )}
@@ -924,7 +961,7 @@ export default function ProtocolDetailPage() {
                               )}
                             </div>
                           </div>
-                        )
+                        );
                       })}
                       {filteredAvailableEvidence.length === 0 && (
                         <p className="text-center text-sm text-muted-foreground py-8">
@@ -937,8 +974,8 @@ export default function ProtocolDetailPage() {
                     <Button
                       variant="outline"
                       onClick={() => {
-                        setIsLinkDialogOpen(false)
-                        setSelectedEvidenceIds(new Set())
+                        setIsLinkDialogOpen(false);
+                        setSelectedEvidenceIds(new Set());
                       }}
                     >
                       Cancel
@@ -947,7 +984,9 @@ export default function ProtocolDetailPage() {
                       onClick={handleLinkEvidence}
                       disabled={selectedEvidenceIds.size === 0}
                     >
-                      Link {selectedEvidenceIds.size > 0 && `(${selectedEvidenceIds.size})`}
+                      Link{" "}
+                      {selectedEvidenceIds.size > 0 &&
+                        `(${selectedEvidenceIds.size})`}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -958,7 +997,8 @@ export default function ProtocolDetailPage() {
             {linkedEvidence.length === 0 ? (
               <div className="rounded-lg border border-dashed p-8 text-center">
                 <p className="text-sm text-muted-foreground">
-                  No evidence linked yet. Click "Add Evidence" to link supporting evidence.
+                  No evidence linked yet. Click "Add Evidence" to link
+                  supporting evidence.
                 </p>
               </div>
             ) : (
@@ -979,7 +1019,9 @@ export default function ProtocolDetailPage() {
                           </Badge>
                         )}
                       </div>
-                      <h4 className="font-medium mb-1">{link.evidence_items.title}</h4>
+                      <h4 className="font-medium mb-1">
+                        {link.evidence_items.title}
+                      </h4>
                       <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
                         {link.evidence_items.description}
                       </p>
@@ -990,20 +1032,27 @@ export default function ProtocolDetailPage() {
                           </p>
                         </div>
                       )}
-                      {link.evidence_items.tags && link.evidence_items.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {link.evidence_items.tags.slice(0, 3).map((tag: string) => (
-                            <Badge key={tag} variant="secondary" className="text-xs">
-                              {tag}
-                            </Badge>
-                          ))}
-                          {link.evidence_items.tags.length > 3 && (
-                            <Badge variant="secondary" className="text-xs">
-                              +{link.evidence_items.tags.length - 3}
-                            </Badge>
-                          )}
-                        </div>
-                      )}
+                      {link.evidence_items.tags &&
+                        link.evidence_items.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {link.evidence_items.tags
+                              .slice(0, 3)
+                              .map((tag: string) => (
+                                <Badge
+                                  key={tag}
+                                  variant="secondary"
+                                  className="text-xs"
+                                >
+                                  {tag}
+                                </Badge>
+                              ))}
+                            {link.evidence_items.tags.length > 3 && (
+                              <Badge variant="secondary" className="text-xs">
+                                +{link.evidence_items.tags.length - 3}
+                              </Badge>
+                            )}
+                          </div>
+                        )}
                     </div>
                     <div className="flex flex-col gap-2">
                       <Button variant="outline" size="sm" asChild>
@@ -1036,9 +1085,16 @@ export default function ProtocolDetailPage() {
                   Data files supporting this protocol ({linkedDatasets.length})
                 </CardDescription>
               </div>
-              <Dialog open={isDatasetDialogOpen} onOpenChange={setIsDatasetDialogOpen}>
+              <Dialog
+                open={isDatasetDialogOpen}
+                onOpenChange={setIsDatasetDialogOpen}
+              >
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" onClick={loadAvailableDatasets}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={loadAvailableDatasets}
+                  >
                     <Plus className="mr-2 h-4 w-4" />
                     Add Dataset
                   </Button>
@@ -1063,9 +1119,9 @@ export default function ProtocolDetailPage() {
                     <div className="flex-1 overflow-y-auto space-y-2 pr-2">
                       {filteredAvailableDatasets.map((item) => {
                         const isLinked = linkedDatasets.some(
-                          (link: any) => link.dataset_id === item.id
-                        )
-                        const isSelected = selectedDatasetIds.has(item.id)
+                          (link: any) => link.dataset_id === item.id,
+                        );
+                        const isSelected = selectedDatasetIds.has(item.id);
 
                         return (
                           <div
@@ -1077,17 +1133,25 @@ export default function ProtocolDetailPage() {
                                   ? "border-primary bg-primary/5"
                                   : "hover:border-muted-foreground/50"
                             }`}
-                            onClick={() => !isLinked && toggleDatasetSelection(item.id)}
+                            onClick={() =>
+                              !isLinked && toggleDatasetSelection(item.id)
+                            }
                           >
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
                                   <Database className="h-3 w-3 text-muted-foreground" />
-                                  <Badge variant="outline" className="text-xs capitalize">
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs capitalize"
+                                  >
                                     {item.dataset_type.replace("_", " ")}
                                   </Badge>
                                   {isLinked && (
-                                    <Badge variant="secondary" className="text-xs">
+                                    <Badge
+                                      variant="secondary"
+                                      className="text-xs"
+                                    >
                                       Already linked
                                     </Badge>
                                   )}
@@ -1101,7 +1165,9 @@ export default function ProtocolDetailPage() {
                                 <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
                                   <span>{formatFileSize(item.file_size)}</span>
                                   {item.row_count && (
-                                    <span>{item.row_count.toLocaleString()} rows</span>
+                                    <span>
+                                      {item.row_count.toLocaleString()} rows
+                                    </span>
                                   )}
                                 </div>
                               </div>
@@ -1124,7 +1190,7 @@ export default function ProtocolDetailPage() {
                               )}
                             </div>
                           </div>
-                        )
+                        );
                       })}
                       {filteredAvailableDatasets.length === 0 && (
                         <p className="text-center text-sm text-muted-foreground py-8">
@@ -1137,8 +1203,8 @@ export default function ProtocolDetailPage() {
                     <Button
                       variant="outline"
                       onClick={() => {
-                        setIsDatasetDialogOpen(false)
-                        setSelectedDatasetIds(new Set())
+                        setIsDatasetDialogOpen(false);
+                        setSelectedDatasetIds(new Set());
                       }}
                     >
                       Cancel
@@ -1147,7 +1213,9 @@ export default function ProtocolDetailPage() {
                       onClick={handleLinkDataset}
                       disabled={selectedDatasetIds.size === 0}
                     >
-                      Link {selectedDatasetIds.size > 0 && `(${selectedDatasetIds.size})`}
+                      Link{" "}
+                      {selectedDatasetIds.size > 0 &&
+                        `(${selectedDatasetIds.size})`}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -1158,7 +1226,8 @@ export default function ProtocolDetailPage() {
             {linkedDatasets.length === 0 ? (
               <div className="rounded-lg border border-dashed p-8 text-center">
                 <p className="text-sm text-muted-foreground">
-                  No datasets linked yet. Click "Add Dataset" to link supporting data files.
+                  No datasets linked yet. Click "Add Dataset" to link supporting
+                  data files.
                 </p>
               </div>
             ) : (
@@ -1188,7 +1257,8 @@ export default function ProtocolDetailPage() {
                         <span>{formatFileSize(link.datasets.file_size)}</span>
                         {link.datasets.row_count && (
                           <span>
-                            {link.datasets.row_count.toLocaleString()} rows × {link.datasets.column_count} cols
+                            {link.datasets.row_count.toLocaleString()} rows ×{" "}
+                            {link.datasets.column_count} cols
                           </span>
                         )}
                       </div>
@@ -1202,7 +1272,11 @@ export default function ProtocolDetailPage() {
                       {link.datasets.tags && link.datasets.tags.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
                           {link.datasets.tags.slice(0, 3).map((tag: string) => (
-                            <Badge key={tag} variant="secondary" className="text-xs">
+                            <Badge
+                              key={tag}
+                              variant="secondary"
+                              className="text-xs"
+                            >
                               {tag}
                             </Badge>
                           ))}
@@ -1218,7 +1292,9 @@ export default function ProtocolDetailPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleDownloadDataset(link.datasets.storage_path)}
+                        onClick={() =>
+                          handleDownloadDataset(link.datasets.storage_path)
+                        }
                       >
                         <Download className="h-3 w-3" />
                       </Button>
@@ -1265,7 +1341,7 @@ export default function ProtocolDetailPage() {
               onSubmit={handleCreateComment}
               placeholder="Share your thoughts about this protocol..."
             />
-            
+
             {isLoadingComments ? (
               <div className="text-center py-8 text-sm text-muted-foreground">
                 Loading comments...
@@ -1283,5 +1359,5 @@ export default function ProtocolDetailPage() {
         </Card>
       </div>
     </main>
-  )
+  );
 }
