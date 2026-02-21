@@ -77,6 +77,7 @@ import {
   Search,
   Download,
   Database,
+  Shield,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -992,6 +993,28 @@ export default function ProtocolDetailPage() {
                     {linkedEvidence.length > 0
                       ? "Continue Screening"
                       : "Start Screening"}
+                  </Link>
+                </Button>
+              </div>
+            </CardHeader>
+          </Card>
+
+          {/* Regulatory Compliance Card */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-blue-400" />
+                    Regulatory Compliance
+                  </CardTitle>
+                  <CardDescription>
+                    CONSORT/STROBE checklists and ICH GCP compliance tracking
+                  </CardDescription>
+                </div>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/app/${protocolId}/regulatory`}>
+                    Open Compliance Hub
                   </Link>
                 </Button>
               </div>
