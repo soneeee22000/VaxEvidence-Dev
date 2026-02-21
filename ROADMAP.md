@@ -71,7 +71,7 @@ Build the **most powerful platform** for vaccine researchers to design protocols
 - [x] Workspace bulk export (ZIP archive with JSON/CSV/PDF)
 - [x] Server-side export with admin client (auth-gated)
 
-**Database**: 9+ tables, RLS enabled on all tables, 6 migrations applied
+**Database**: 12+ tables, RLS enabled on all tables, 9 migrations applied
 
 ---
 
@@ -160,17 +160,17 @@ Build the **most powerful platform** for vaccine researchers to design protocols
 
 ### Phase 8: Systematic Review Workflow (PRISMA)
 
-**Status**: Not Yet Started
+**Status**: COMPLETED
 
 **Why**: This is what researchers actually do for publications. Covidence charges $240-$6K/yr for this.
 
 **Features**:
 
-- PRISMA flow diagram (auto-generated from screening data)
-- Screening pipeline: Identify, Screen, Eligibility, Included
-- Duplicate detection across imported papers
-- Risk of Bias assessment tools (RoB 2, ROBINS-I)
-- Forest plots for meta-analysis
+- PRISMA 2020 flow diagram (auto-generated from screening data, PDF export)
+- Screening pipeline: Identify, Screen, Eligibility, Included (tabbed UI with batch advance)
+- Duplicate detection across imported papers (DOI, PMID, fuzzy title matching)
+- Risk of Bias assessment tools (RoB 2 for RCTs, ROBINS-I for observational) with traffic-light summary
+- Forest plots for meta-analysis (custom SVG with CI whiskers, point estimates, study weights)
 
 ---
 
@@ -268,4 +268,4 @@ Build the **most powerful platform** for vaccine researchers to design protocols
 
 ---
 
-_Last Updated: February 20, 2026_
+_Last Updated: February 21, 2026_
