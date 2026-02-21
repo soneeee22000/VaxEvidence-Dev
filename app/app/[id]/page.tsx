@@ -932,6 +932,8 @@ export default function ProtocolDetailPage() {
                       protocolId={protocolId}
                       protocolTitle={protocol.title}
                       hasEvidence={linkedEvidence.length > 0}
+                      protocol={protocol}
+                      evidenceCount={linkedEvidence.length}
                     />
                     <AlertDialog>
                       <AlertDialogTrigger asChild>

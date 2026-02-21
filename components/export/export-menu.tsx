@@ -7,6 +7,7 @@ import {
   FileType,
   BookOpen,
   GitBranch,
+  Shield,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -16,9 +17,11 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { ExportDialog } from "./export-dialog";
 import { BibliographyDialog } from "./bibliography-dialog";
+import { INDPackageDialog } from "@/components/regulatory/ind-package-dialog";
 
 // =============================================================================
 // EXPORT MENU COMPONENT
@@ -30,16 +33,35 @@ interface ExportMenuProps {
   protocolId: string;
   protocolTitle: string;
   hasEvidence?: boolean;
+  /** Protocol data for IND completeness evaluation */
+  protocol?: {
+    title?: string;
+    study_question?: string;
+    population?: string;
+    intervention?: string;
+    comparator?: string;
+    outcomes?: string;
+    design?: string;
+    status?: string;
+  };
+  evidenceCount?: number;
+  robCount?: number;
+  metaAnalysisCount?: number;
 }
 
 export function ExportMenu({
   protocolId,
   protocolTitle,
   hasEvidence = false,
+  protocol,
+  evidenceCount = 0,
+  robCount = 0,
+  metaAnalysisCount = 0,
 }: ExportMenuProps) {
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exportFormat, setExportFormat] = useState<"pdf" | "word">("pdf");
   const [bibliographyDialogOpen, setBibliographyDialogOpen] = useState(false);
+  const [indDialogOpen, setIndDialogOpen] = useState(false);
 
   const handleExportClick = (format: "pdf" | "word") => {
     setExportFormat(format);
@@ -126,6 +148,14 @@ export function ExportMenu({
             <GitBranch className="mr-2 h-4 w-4" />
             PRISMA Diagram (PDF)
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel className="text-xs text-zinc-500">
+            Regulatory
+          </DropdownMenuLabel>
+          <DropdownMenuItem onClick={() => setIndDialogOpen(true)}>
+            <Shield className="mr-2 h-4 w-4" />
+            FDA IND Package
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -141,6 +171,17 @@ export function ExportMenu({
         open={bibliographyDialogOpen}
         onOpenChange={setBibliographyDialogOpen}
         protocolId={protocolId}
+      />
+
+      <INDPackageDialog
+        open={indDialogOpen}
+        onOpenChange={setIndDialogOpen}
+        protocolId={protocolId}
+        protocolTitle={protocolTitle}
+        protocol={protocol}
+        evidenceCount={evidenceCount}
+        robCount={robCount}
+        metaAnalysisCount={metaAnalysisCount}
       />
     </>
   );
