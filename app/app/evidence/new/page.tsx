@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createEvidence } from "@/lib/supabase/evidence";
+import { logActivity } from "@/lib/supabase/activity";
 import type { EvidenceType, EvidenceStatus } from "@/lib/validators/evidence";
 import {
   evidenceTypes,
@@ -121,6 +122,11 @@ export default function NewEvidencePage() {
         return;
       }
 
+      if (user) {
+        logActivity(user.id, "create", "evidence_item", data.id, {
+          title: title.trim(),
+        }).catch(() => {});
+      }
       queryClient.invalidateQueries({ queryKey: queryKeys.evidence.all });
       toast.success("Evidence created successfully");
       router.push(`/app/evidence/${data.id}`);

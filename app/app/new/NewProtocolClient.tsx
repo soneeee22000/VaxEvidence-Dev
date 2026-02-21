@@ -38,6 +38,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth/auth-context";
 import { createProtocol, createTemplateUsage } from "@/lib/supabase/protocols";
+import { logActivity } from "@/lib/supabase/activity";
 import { getTemplateById } from "@/lib/templates/protocol-templates";
 import {
   protocolSchema,
@@ -137,6 +138,9 @@ export function NewProtocolClient() {
             console.warn("Failed to log template usage:", usageError);
           }
         }
+        logActivity(userId, "create", "protocol", data.id, {
+          title: values.title,
+        }).catch(() => {});
         queryClient.invalidateQueries({ queryKey: queryKeys.protocols.all });
         router.push(`/app/${data.id}`);
       }

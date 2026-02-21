@@ -26,9 +26,16 @@ import { fetchPendingReviewCount } from "@/lib/supabase/reviews";
 function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, signOut } = useAuth();
+  const { user, isLoading, signOut } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [pendingReviewCount, setPendingReviewCount] = useState(0);
+
+  // Client-side auth guard — redirect to login when session is gone
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.replace("/auth");
+    }
+  }, [isLoading, user, router]);
 
   useEffect(() => {
     if (!user) return;
@@ -92,6 +99,11 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
     }
     return pathname?.startsWith(href);
   };
+
+  // Don't render app shell while auth is loading or user is absent
+  if (isLoading || !user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background">

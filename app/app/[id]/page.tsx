@@ -112,6 +112,7 @@ import {
 } from "@/lib/validators/comment";
 import type { ReviewWithDetails, ReviewStatus } from "@/lib/validators/review";
 import { useAuth } from "@/lib/auth/auth-context";
+import { logActivity } from "@/lib/supabase/activity";
 import { VersionHistoryPanel } from "@/components/versioning/version-history-panel";
 import { AiAssistantPanel } from "@/components/ai/AiAssistantPanel";
 import type { PicoOutput } from "@/lib/ai/ai-validators";
@@ -447,6 +448,13 @@ export default function ProtocolDetailPage() {
         await linkEvidenceToProtocol(protocolId, evidenceId);
       }
 
+      if (currentUserId) {
+        for (const evidenceId of selectedEvidenceIds) {
+          logActivity(currentUserId, "link", "evidence_item", evidenceId, {
+            protocol_id: protocolId,
+          }).catch(() => {});
+        }
+      }
       toast.success(`Linked ${selectedEvidenceIds.size} evidence item(s)`);
 
       setSelectedEvidenceIds(new Set());
@@ -466,6 +474,11 @@ export default function ProtocolDetailPage() {
         return;
       }
 
+      if (currentUserId) {
+        logActivity(currentUserId, "unlink", "evidence_item", linkId, {
+          protocol_id: protocolId,
+        }).catch(() => {});
+      }
       toast.success("Evidence unlinked successfully");
       loadLinkedEvidence();
     } catch (error) {
@@ -595,6 +608,11 @@ export default function ProtocolDetailPage() {
 
       if (data) {
         setProtocol(data);
+        if (currentUserId) {
+          logActivity(currentUserId, "update", "protocol", protocolId, {
+            title: data.title,
+          }).catch(() => {});
+        }
         queryClient.invalidateQueries({ queryKey: queryKeys.protocols.all });
         form.reset({
           title: data.title,
@@ -644,6 +662,11 @@ export default function ProtocolDetailPage() {
         throw new Error(error.message || "Failed to delete protocol");
       }
 
+      if (currentUserId) {
+        logActivity(currentUserId, "delete", "protocol", protocolId, {
+          title: protocol?.title,
+        }).catch(() => {});
+      }
       queryClient.invalidateQueries({ queryKey: queryKeys.protocols.all });
       toast.success("Protocol deleted successfully");
       router.push("/app");

@@ -21,6 +21,7 @@ export function EvidenceSynthesisPanel({
 }: EvidenceSynthesisPanelProps) {
   const { complete, completion, isLoading, error } = useCompletion({
     api: "/api/ai/synthesis",
+    streamProtocol: "text",
   });
 
   const handleGenerate = () => {

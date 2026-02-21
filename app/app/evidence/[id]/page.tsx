@@ -42,6 +42,7 @@ import {
   deleteEvidence,
   getLinkedProtocols,
 } from "@/lib/supabase/evidence";
+import { logActivity } from "@/lib/supabase/activity";
 import type { EvidenceItem } from "@/lib/validators/evidence";
 import {
   evidenceTypes,
@@ -250,6 +251,11 @@ export default function EvidenceDetailPage() {
       setEvidence(data);
       setFormData(data);
       setIsEditing(false);
+      if (user && params.id) {
+        logActivity(user.id, "update", "evidence_item", params.id as string, {
+          title: data.title,
+        }).catch(() => {});
+      }
       queryClient.invalidateQueries({ queryKey: queryKeys.evidence.all });
       toast.success("Evidence updated successfully");
     } catch (error) {
