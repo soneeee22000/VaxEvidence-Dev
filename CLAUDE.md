@@ -63,7 +63,7 @@ app/                    # Next.js App Router
 
 components/
 ├── ui/                 # ~56 shadcn/ui primitives (DO NOT manually edit)
-├── collaboration/      # Comments, reviews, activity feed
+├── collaboration/      # Comments, reviews, activity feed, presence avatars, field cursors, notifications
 ├── datasets/           # Dataset cards, filters, upload
 ├── evidence/           # Evidence cards, filters, import dialogs, PubMed/trial search
 ├── export/             # Export dialogs and menus (incl. PRISMA PDF)
@@ -78,6 +78,13 @@ components/
 lib/
 ├── api/                # External API clients (PubMed, CrossRef, ClinicalTrials.gov)
 ├── auth/               # Auth context (useAuth, useUserId) from auth-context.tsx
+├── collaboration/      # Real-time collaboration (Phase 10)
+│   ├── types.ts                     # PresenceState, CollaboratorInfo, COLLAB_FIELDS
+│   ├── constants.ts                 # 8 OKLCH collaborator colors, getUserColor() hash
+│   ├── supabase-yjs-provider.ts     # Yjs <-> Supabase Broadcast transport
+│   ├── yjs-form-bridge.ts           # Yjs Y.Map <-> react-hook-form bidirectional sync
+│   ├── presence-context.tsx         # React context: channel, presence, Yjs doc, bridge
+│   └── use-realtime-comments.ts     # Hook: postgres_changes on comments table
 ├── demo/               # Sample data for demo mode (sample-datasets.ts)
 ├── export/             # PDF/Word/CSV/ZIP generators + bibliography + PRISMA PDF
 ├── ml/                 # Auto-tagging via keyword extraction
@@ -87,10 +94,11 @@ lib/
 │   ├── server.ts       # Server client (admin + user-session) + getServerUser()
 │   ├── middleware.ts    # Auth middleware helpers (session refresh)
 │   ├── activity.ts     # Activity log CRUD
-│   ├── comments.ts     # Comments CRUD
+│   ├── comments.ts     # Comments CRUD (+ @mention notification creation)
 │   ├── datasets.ts     # Datasets CRUD
 │   ├── evidence.ts     # Evidence CRUD
 │   ├── meta-analysis.ts # Meta-analysis entries CRUD
+│   ├── notifications.ts # Notification CRUD (fetch, unread count, mark read, create)
 │   ├── protocols.ts    # Protocols CRUD
 │   ├── reviews.ts      # Reviews CRUD
 │   ├── risk-of-bias.ts # Risk of bias assessments CRUD
@@ -98,7 +106,7 @@ lib/
 ├── templates/          # Protocol template definitions
 ├── utils/              # Utility modules
 │   └── file-parser.ts  # File parsing utilities
-├── validators/         # Zod schemas (protocol, evidence, dataset, comment, review, activity, waitlist, screening, risk-of-bias, meta-analysis)
+├── validators/         # Zod schemas (protocol, evidence, dataset, comment, review, activity, waitlist, screening, risk-of-bias, meta-analysis, notification)
 └── utils.ts            # cn() helper (clsx + tailwind-merge)
 
 hooks/                  # use-mobile, use-toast

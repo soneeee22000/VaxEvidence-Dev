@@ -1,5 +1,33 @@
 # Release Notes
 
+## 2026-02-22
+
+### Added — Phase 10: Real-Time Collaboration
+
+- **Live Presence**: Stacked collaborator avatar circles in the protocol header showing who's currently viewing. Deterministic OKLCH color assignment per user with email tooltips.
+- **Field-Level Cursors**: Colored `ring-2` border and floating name pill around PICO form fields when another user is editing that field. All 8 protocol fields wrapped with `FieldPresenceIndicator`.
+- **Yjs CRDT Protocol Editing**: Simultaneous editing of PICO fields across browser tabs/users using Yjs `Y.Map<string>` with field-level last-writer-wins. Custom `SupabaseYjsProvider` transports Yjs updates via Supabase Broadcast (base64 encoded). `YjsFormBridge` provides bidirectional sync between Yjs and react-hook-form with origin tracking to prevent infinite loops.
+- **Late Joiner Sync**: New users broadcast `request-sync`; connected peers respond with full Yjs state via `sync-response`. Form values update automatically.
+- **Save Conflict Handling**: After save, broadcaster sends `protocol-saved` event. Other clients reload from DB, re-init Yjs doc, and show toast: "Protocol saved by [user]".
+- **Real-Time Comment Sync**: Comments appear instantly for all viewers via `postgres_changes` subscription on the `comments` table, replacing manual refresh.
+- **In-App Notifications**: Bell icon in the app header with unread count badge. Popover dropdown showing notification list with mark-as-read and mark-all-read. Real-time unread count updates via `postgres_changes` on `notifications` table. Toast on new @mention.
+- **@Mention Autocomplete**: Typing `@` in comment input triggers a user suggestion dropdown (fetched from `profiles` table). Keyboard navigation (arrows, Enter/Tab, Escape). Mentioned users receive in-app notifications.
+- **Notification CRUD**: `fetchNotifications`, `fetchUnreadCount`, `markAsRead`, `markAllAsRead`, `createNotification` in `lib/supabase/notifications.ts`.
+- **React Query Keys**: Added `queryKeys.notifications` with `all`, `byUser`, and `unreadCount` factories.
+
+### Database
+
+- 1 new migration:
+  - `20260222_create_notifications.sql` — notifications table with `user_id`, `type`, `title`, `body`, `resource_type`, `resource_id`, `protocol_id`, `is_read`, `created_by`. RLS: users SELECT/UPDATE own, any authenticated INSERT. Indexed on `(user_id, is_read, created_at DESC)`. Added to `supabase_realtime` publication.
+
+### Architecture
+
+- Single Supabase Realtime channel per protocol (`protocol:{id}`) carries Presence, Broadcast (Yjs updates, field focus/blur, save events), and postgres_changes (comments).
+- Only `yjs` added as new dependency — transport uses existing `@supabase/supabase-js` Realtime.
+- `PresenceBridge` pattern connects `usePresence()` context to parent component refs without restructuring the component tree.
+
+---
+
 ## 2026-02-21
 
 ### Added — Phase 8: Systematic Review Workflow (PRISMA)

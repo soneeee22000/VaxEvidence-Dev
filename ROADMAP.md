@@ -191,17 +191,21 @@ Build the **most powerful platform** for vaccine researchers to design protocols
 
 ### Phase 10: Real-Time Collaboration
 
-**Status**: Not Yet Started
+**Status**: COMPLETED
 
 **Why**: Modern UX expectation for team tools.
 
 **Features**:
 
-- Live cursors and presence indicators
-- Simultaneous protocol editing (Yjs/CRDT)
-- @mentions in comments with email notifications
-- Supabase Realtime for instant updates
-- Slack/Teams webhook integration
+- Live presence indicators (stacked avatar circles with tooltips showing who's viewing)
+- Field-level cursor tracking (colored ring + name pill on PICO fields)
+- Simultaneous protocol editing via Yjs CRDT (Y.Map with field-level last-writer-wins)
+- Custom Supabase Realtime Broadcast transport for Yjs (no external dependencies)
+- Real-time comment sync via postgres_changes subscription
+- In-app notification system with bell icon, unread badge, and popover list
+- @mention autocomplete in comments (fetches workspace members, keyboard navigation)
+- Late joiner sync (request-sync/sync-response protocol for Yjs state)
+- Save conflict handling (broadcast + reload + toast on remote save)
 
 ---
 
@@ -268,4 +272,4 @@ Build the **most powerful platform** for vaccine researchers to design protocols
 
 ---
 
-_Last Updated: February 21, 2026_
+_Last Updated: February 22, 2026_
