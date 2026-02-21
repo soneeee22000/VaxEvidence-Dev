@@ -53,6 +53,12 @@ export const queryKeys = {
     byProtocol: (protocolId: string) =>
       ["metaAnalysis", "protocol", protocolId] as const,
   },
+  notifications: {
+    all: ["notifications"] as const,
+    byUser: (userId: string) => ["notifications", "user", userId] as const,
+    unreadCount: (userId: string) =>
+      ["notifications", "unread", userId] as const,
+  },
 };
 
 /**

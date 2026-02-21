@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/browser";
+import { createNotification } from "@/lib/supabase/notifications";
 
 import type {
   CommentCreateValues,
@@ -112,18 +113,23 @@ export const fetchComments = async (
 };
 
 export const createComment = async (
-  payload: CommentCreateValues & { user_id: string },
+  payload: CommentCreateValues & {
+    user_id: string;
+    mentionUserIds?: string[];
+  },
 ): SupabaseResult<CommentWithUser> => {
   const client = getClient();
   if (!client) return notConfigured<CommentWithUser>();
+
+  const { mentionUserIds, ...insertPayload } = payload;
 
   const { data, error } = await safeCall(() =>
     client
       .from("comments")
       .insert({
-        ...payload,
-        parent_id: payload.parent_id ?? null,
-        mentions: payload.mentions ?? [],
+        ...insertPayload,
+        parent_id: insertPayload.parent_id ?? null,
+        mentions: insertPayload.mentions ?? [],
       })
       .select("*")
       .single(),
@@ -131,6 +137,24 @@ export const createComment = async (
 
   if (error || !data) return { data: null, error };
   const row = data as any;
+
+  // Create notification for each mentioned user (fire-and-forget)
+  if (mentionUserIds && mentionUserIds.length > 0) {
+    for (const mentionedUserId of mentionUserIds) {
+      if (mentionedUserId === payload.user_id) continue;
+      createNotification({
+        user_id: mentionedUserId,
+        type: "mention",
+        title: `You were mentioned in a comment`,
+        body: (row.content as string).slice(0, 200),
+        resource_type: row.resource_type,
+        resource_id: row.resource_id,
+        protocol_id: row.resource_type === "protocol" ? row.resource_id : null,
+        created_by: payload.user_id,
+      }).catch(() => {});
+    }
+  }
+
   return {
     data: {
       ...(row as any),

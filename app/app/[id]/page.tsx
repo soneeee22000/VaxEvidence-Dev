@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -95,7 +95,6 @@ import { CommentInput } from "@/components/collaboration/comment-input";
 import { ReviewPanel } from "@/components/collaboration/review-panel";
 import { ExportMenu } from "@/components/export/export-menu";
 import {
-  fetchComments,
   createComment,
   updateComment,
   deleteComment,
@@ -116,6 +115,13 @@ import { logActivity } from "@/lib/supabase/activity";
 import { VersionHistoryPanel } from "@/components/versioning/version-history-panel";
 import { AiAssistantPanel } from "@/components/ai/AiAssistantPanel";
 import type { PicoOutput } from "@/lib/ai/ai-validators";
+import {
+  PresenceProvider,
+  usePresence,
+} from "@/lib/collaboration/presence-context";
+import { CollaboratorAvatars } from "@/components/collaboration/collaborator-avatars";
+import { FieldPresenceIndicator } from "@/components/collaboration/field-presence-indicator";
+import { useRealtimeComments } from "@/lib/collaboration/use-realtime-comments";
 
 export default function ProtocolDetailPage() {
   const router = useRouter();
@@ -152,11 +158,16 @@ export default function ProtocolDetailPage() {
     new Set(),
   );
 
-  // Collaboration state
-  const [comments, setComments] = useState<CommentWithUser[]>([]);
+  // Collaboration state — reviews still manual, comments now real-time
   const [reviews, setReviews] = useState<ReviewWithDetails[]>([]);
-  const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [isLoadingReviews, setIsLoadingReviews] = useState(false);
+
+  // Real-time comments via postgres_changes
+  const {
+    comments,
+    isLoading: isLoadingComments,
+    refetch: refetchComments,
+  } = useRealtimeComments(protocolId);
 
   const form = useForm<ProtocolFormValues>({
     resolver: zodResolver(protocolSchema),
@@ -202,10 +213,9 @@ export default function ProtocolDetailPage() {
       });
       setIsLoading(false);
 
-      // Load linked evidence and datasets
+      // Load linked evidence, datasets, and reviews
       loadLinkedEvidence();
       loadLinkedDatasets();
-      loadComments();
       loadReviews();
     };
 
@@ -260,22 +270,6 @@ export default function ProtocolDetailPage() {
     }
   };
 
-  const loadComments = async () => {
-    if (!protocolId || typeof protocolId !== "string") return;
-
-    setIsLoadingComments(true);
-    try {
-      const { data, error } = await fetchComments("protocol", protocolId);
-      if (!error && data) {
-        setComments(data as CommentWithUser[]);
-      }
-    } catch (error) {
-      console.error("Error loading comments:", error);
-    } finally {
-      setIsLoadingComments(false);
-    }
-  };
-
   const loadReviews = async () => {
     if (!protocolId || typeof protocolId !== "string") return;
 
@@ -292,7 +286,10 @@ export default function ProtocolDetailPage() {
     }
   };
 
-  const handleCreateComment = async (content: string) => {
+  const handleCreateComment = async (
+    content: string,
+    mentionUserIds?: string[],
+  ) => {
     if (!protocolId || typeof protocolId !== "string") return;
 
     try {
@@ -302,6 +299,7 @@ export default function ProtocolDetailPage() {
         resource_id: protocolId,
         content,
         mentions: [],
+        mentionUserIds,
       });
 
       if (error || !data) {
@@ -310,7 +308,7 @@ export default function ProtocolDetailPage() {
       }
 
       toast.success("Comment posted successfully");
-      loadComments();
+      refetchComments();
     } catch (error) {
       console.error("Error creating comment:", error);
     }
@@ -335,7 +333,7 @@ export default function ProtocolDetailPage() {
       }
 
       toast.success("Reply posted successfully");
-      loadComments();
+      refetchComments();
     } catch (error) {
       console.error("Error replying to comment:", error);
     }
@@ -351,7 +349,7 @@ export default function ProtocolDetailPage() {
       }
 
       toast.success("Comment updated successfully");
-      loadComments();
+      refetchComments();
     } catch (error) {
       console.error("Error updating comment:", error);
     }
@@ -367,7 +365,7 @@ export default function ProtocolDetailPage() {
       }
 
       toast.success("Comment deleted successfully");
-      loadComments();
+      refetchComments();
     } catch (error) {
       console.error("Error deleting comment:", error);
     }
@@ -594,6 +592,38 @@ export default function ProtocolDetailPage() {
     );
   });
 
+  // Ref for broadcasting save events via presence context (set by PresenceBridge)
+  const broadcastSaveRef = useRef<(email: string) => void>(() => {});
+
+  // Listen for remote save events (from other collaborators)
+  useEffect(() => {
+    const handleRemoteSave = async (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      toast.info(`Protocol saved by ${detail.savedBy}`);
+      // Reload protocol from DB to get latest state
+      if (protocolId) {
+        const { data } = await fetchProtocolById(protocolId);
+        if (data) {
+          setProtocol(data);
+          form.reset({
+            title: data.title,
+            study_question: data.study_question,
+            population: data.population,
+            intervention: data.intervention ?? "",
+            comparator: data.comparator,
+            outcomes: data.outcomes,
+            design: data.design,
+            status: data.status,
+          });
+        }
+      }
+    };
+
+    window.addEventListener("protocol-saved-remote", handleRemoteSave);
+    return () =>
+      window.removeEventListener("protocol-saved-remote", handleRemoteSave);
+  }, [protocolId, form]);
+
   const handleSave = async (values: ProtocolFormValues) => {
     if (!protocolId || typeof protocolId !== "string") return;
     setError(null);
@@ -624,6 +654,9 @@ export default function ProtocolDetailPage() {
           design: data.design,
           status: data.status,
         });
+
+        // Broadcast save event to other collaborators
+        broadcastSaveRef.current(currentUserEmail);
 
         // Auto-version on status transition to "final"
         const previousStatus = protocol?.status;
@@ -715,739 +748,806 @@ export default function ProtocolDetailPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background px-4 py-12">
-      <div className="mx-auto w-full max-w-3xl">
-        <Card>
-          <CardHeader>
-            <CardTitle>Protocol details</CardTitle>
-            <CardDescription>
-              Last updated {new Date(protocol.updated_at).toLocaleString()}
-            </CardDescription>
-          </CardHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSave)}>
-              <CardContent className="space-y-6">
-                {error && (
-                  <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                    {error}
-                  </p>
-                )}
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Protocol title</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="study_question"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Study question</FormLabel>
-                      <FormControl>
-                        <Textarea rows={4} {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="grid gap-4 md:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="population"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Population</FormLabel>
-                        <FormControl>
-                          <Textarea rows={3} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="intervention"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Intervention</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Describe the vaccine or intervention being studied."
-                            rows={3}
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+    <PresenceProvider
+      protocolId={protocolId}
+      userId={currentUserId}
+      email={currentUserEmail}
+      form={form}
+    >
+      <PresenceBridge broadcastSaveRef={broadcastSaveRef} />
+      <main className="min-h-screen bg-background px-4 py-12">
+        <div className="mx-auto w-full max-w-3xl">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Protocol details</CardTitle>
+                  <CardDescription>
+                    Last updated{" "}
+                    {new Date(protocol.updated_at).toLocaleString()}
+                  </CardDescription>
                 </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="comparator"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Comparator</FormLabel>
-                        <FormControl>
-                          <Textarea rows={3} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <FormField
-                  control={form.control}
-                  name="outcomes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Outcomes</FormLabel>
-                      <FormControl>
-                        <Textarea rows={4} {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                <CollaboratorAvatars />
+              </div>
+            </CardHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(handleSave)}>
+                <CardContent className="space-y-6">
+                  {error && (
+                    <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                      {error}
+                    </p>
                   )}
-                />
-                <div className="grid gap-4 md:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="design"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Study design</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Status</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
+                  <FieldPresenceIndicator fieldName="title">
+                    <FormField
+                      control={form.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Protocol title</FormLabel>
                           <FormControl>
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
+                            <Input {...field} />
                           </FormControl>
-                          <SelectContent>
-                            <SelectItem value="draft">Draft</SelectItem>
-                            <SelectItem value="in_review">In review</SelectItem>
-                            <SelectItem value="final">Final</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </CardContent>
-              <CardFooter className="flex flex-wrap justify-between gap-3">
-                <Button asChild variant="ghost">
-                  <Link href="/app">Back to dashboard</Link>
-                </Button>
-                <div className="flex flex-wrap gap-2">
-                  <ExportMenu
-                    protocolId={protocolId}
-                    protocolTitle={protocol.title}
-                    hasEvidence={linkedEvidence.length > 0}
-                  />
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={isDeleting}
-                      >
-                        {isDeleting ? "Deleting..." : "Delete"}
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Protocol?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This action cannot be undone. This will permanently
-                          delete this protocol and all its linked evidence and
-                          datasets.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={handleDelete}
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </FieldPresenceIndicator>
+                  <FieldPresenceIndicator fieldName="study_question">
+                    <FormField
+                      control={form.control}
+                      name="study_question"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Study question</FormLabel>
+                          <FormControl>
+                            <Textarea rows={4} {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </FieldPresenceIndicator>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <FieldPresenceIndicator fieldName="population">
+                      <FormField
+                        control={form.control}
+                        name="population"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Population</FormLabel>
+                            <FormControl>
+                              <Textarea rows={3} {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </FieldPresenceIndicator>
+                    <FieldPresenceIndicator fieldName="intervention">
+                      <FormField
+                        control={form.control}
+                        name="intervention"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Intervention</FormLabel>
+                            <FormControl>
+                              <Textarea
+                                placeholder="Describe the vaccine or intervention being studied."
+                                rows={3}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </FieldPresenceIndicator>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <FieldPresenceIndicator fieldName="comparator">
+                      <FormField
+                        control={form.control}
+                        name="comparator"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Comparator</FormLabel>
+                            <FormControl>
+                              <Textarea rows={3} {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </FieldPresenceIndicator>
+                  </div>
+                  <FieldPresenceIndicator fieldName="outcomes">
+                    <FormField
+                      control={form.control}
+                      name="outcomes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Outcomes</FormLabel>
+                          <FormControl>
+                            <Textarea rows={4} {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </FieldPresenceIndicator>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <FieldPresenceIndicator fieldName="design">
+                      <FormField
+                        control={form.control}
+                        name="design"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Study design</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </FieldPresenceIndicator>
+                    <FieldPresenceIndicator fieldName="status">
+                      <FormField
+                        control={form.control}
+                        name="status"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Status</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Select status" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="draft">Draft</SelectItem>
+                                <SelectItem value="in_review">
+                                  In review
+                                </SelectItem>
+                                <SelectItem value="final">Final</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </FieldPresenceIndicator>
+                  </div>
+                </CardContent>
+                <CardFooter className="flex flex-wrap justify-between gap-3">
+                  <Button asChild variant="ghost">
+                    <Link href="/app">Back to dashboard</Link>
+                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <ExportMenu
+                      protocolId={protocolId}
+                      protocolTitle={protocol.title}
+                      hasEvidence={linkedEvidence.length > 0}
+                    />
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
                           disabled={isDeleting}
                         >
                           {isDeleting ? "Deleting..." : "Delete"}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                  <Button type="submit" disabled={isSaving}>
-                    {isSaving ? "Saving..." : "Save changes"}
-                  </Button>
-                </div>
-              </CardFooter>
-            </form>
-          </Form>
-        </Card>
-
-        {/* Version History */}
-        {protocolId && <VersionHistoryPanel protocolId={protocolId} />}
-
-        {/* Systematic Review Card */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Systematic Review</CardTitle>
-                <CardDescription>
-                  PRISMA-compliant screening, risk of bias, and meta-analysis
-                </CardDescription>
-              </div>
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`/app/${protocolId}/screening`}>
-                  {linkedEvidence.length > 0
-                    ? "Continue Screening"
-                    : "Start Screening"}
-                </Link>
-              </Button>
-            </div>
-          </CardHeader>
-        </Card>
-
-        {/* Linked Evidence Section */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Linked Evidence</CardTitle>
-                <CardDescription>
-                  Evidence items supporting this protocol (
-                  {linkedEvidence.length})
-                </CardDescription>
-              </div>
-              <Dialog
-                open={isLinkDialogOpen}
-                onOpenChange={setIsLinkDialogOpen}
-              >
-                <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={loadAvailableEvidence}
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Evidence
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
-                  <DialogHeader>
-                    <DialogTitle>Link Evidence to Protocol</DialogTitle>
-                    <DialogDescription>
-                      Select evidence items to link to this protocol
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="flex-1 overflow-hidden flex flex-col space-y-4">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        placeholder="Search evidence..."
-                        value={evidenceSearchQuery}
-                        onChange={(e) => setEvidenceSearchQuery(e.target.value)}
-                        className="pl-9"
-                      />
-                    </div>
-                    <div className="flex-1 overflow-y-auto space-y-2 pr-2">
-                      {filteredAvailableEvidence.map((item) => {
-                        const isLinked = linkedEvidence.some(
-                          (link: any) => link.evidence_id === item.id,
-                        );
-                        const isSelected = selectedEvidenceIds.has(item.id);
-
-                        return (
-                          <div
-                            key={item.id}
-                            className={`rounded-lg border p-3 cursor-pointer transition-colors ${
-                              isLinked
-                                ? "opacity-50 cursor-not-allowed"
-                                : isSelected
-                                  ? "border-primary bg-primary/5"
-                                  : "hover:border-muted-foreground/50"
-                            }`}
-                            onClick={() =>
-                              !isLinked && toggleEvidenceSelection(item.id)
-                            }
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Protocol?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This action cannot be undone. This will permanently
+                            delete this protocol and all its linked evidence and
+                            datasets.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={handleDelete}
+                            disabled={isDeleting}
                           >
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <Badge
-                                    variant="outline"
-                                    className="text-xs capitalize"
-                                  >
-                                    {item.type}
-                                  </Badge>
-                                  {isLinked && (
-                                    <Badge
-                                      variant="secondary"
-                                      className="text-xs"
-                                    >
-                                      Already linked
-                                    </Badge>
-                                  )}
-                                </div>
-                                <p className="font-medium text-sm line-clamp-1">
-                                  {item.title}
-                                </p>
-                                <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
-                                  {item.description}
-                                </p>
-                              </div>
-                              {isSelected && !isLinked && (
-                                <div className="flex-shrink-0 h-5 w-5 rounded-full bg-primary flex items-center justify-center">
-                                  <svg
-                                    className="h-3 w-3 text-primary-foreground"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M5 13l4 4L19 7"
-                                    />
-                                  </svg>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {filteredAvailableEvidence.length === 0 && (
-                        <p className="text-center text-sm text-muted-foreground py-8">
-                          No evidence found
-                        </p>
-                      )}
-                    </div>
+                            {isDeleting ? "Deleting..." : "Delete"}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                    <Button type="submit" disabled={isSaving}>
+                      {isSaving ? "Saving..." : "Save changes"}
+                    </Button>
                   </div>
-                  <DialogFooter>
+                </CardFooter>
+              </form>
+            </Form>
+          </Card>
+
+          {/* Version History */}
+          {protocolId && <VersionHistoryPanel protocolId={protocolId} />}
+
+          {/* Systematic Review Card */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Systematic Review</CardTitle>
+                  <CardDescription>
+                    PRISMA-compliant screening, risk of bias, and meta-analysis
+                  </CardDescription>
+                </div>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/app/${protocolId}/screening`}>
+                    {linkedEvidence.length > 0
+                      ? "Continue Screening"
+                      : "Start Screening"}
+                  </Link>
+                </Button>
+              </div>
+            </CardHeader>
+          </Card>
+
+          {/* Linked Evidence Section */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Linked Evidence</CardTitle>
+                  <CardDescription>
+                    Evidence items supporting this protocol (
+                    {linkedEvidence.length})
+                  </CardDescription>
+                </div>
+                <Dialog
+                  open={isLinkDialogOpen}
+                  onOpenChange={setIsLinkDialogOpen}
+                >
+                  <DialogTrigger asChild>
                     <Button
                       variant="outline"
-                      onClick={() => {
-                        setIsLinkDialogOpen(false);
-                        setSelectedEvidenceIds(new Set());
-                      }}
+                      size="sm"
+                      onClick={loadAvailableEvidence}
                     >
-                      Cancel
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Evidence
                     </Button>
-                    <Button
-                      onClick={handleLinkEvidence}
-                      disabled={selectedEvidenceIds.size === 0}
-                    >
-                      Link{" "}
-                      {selectedEvidenceIds.size > 0 &&
-                        `(${selectedEvidenceIds.size})`}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {linkedEvidence.length === 0 ? (
-              <div className="rounded-lg border border-dashed p-8 text-center">
-                <p className="text-sm text-muted-foreground">
-                  No evidence linked yet. Click &ldquo;Add Evidence&rdquo; to
-                  link supporting evidence.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {linkedEvidence.map((link: any) => (
-                  <div
-                    key={link.id}
-                    className="flex items-start justify-between gap-4 rounded-lg border p-4"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge variant="outline" className="text-xs capitalize">
-                          {link.evidence_items.type}
-                        </Badge>
-                        {link.evidence_items.status === "published" && (
-                          <Badge variant="secondary" className="text-xs">
-                            Published
-                          </Badge>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+                    <DialogHeader>
+                      <DialogTitle>Link Evidence to Protocol</DialogTitle>
+                      <DialogDescription>
+                        Select evidence items to link to this protocol
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex-1 overflow-hidden flex flex-col space-y-4">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          placeholder="Search evidence..."
+                          value={evidenceSearchQuery}
+                          onChange={(e) =>
+                            setEvidenceSearchQuery(e.target.value)
+                          }
+                          className="pl-9"
+                        />
+                      </div>
+                      <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+                        {filteredAvailableEvidence.map((item) => {
+                          const isLinked = linkedEvidence.some(
+                            (link: any) => link.evidence_id === item.id,
+                          );
+                          const isSelected = selectedEvidenceIds.has(item.id);
+
+                          return (
+                            <div
+                              key={item.id}
+                              className={`rounded-lg border p-3 cursor-pointer transition-colors ${
+                                isLinked
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : isSelected
+                                    ? "border-primary bg-primary/5"
+                                    : "hover:border-muted-foreground/50"
+                              }`}
+                              onClick={() =>
+                                !isLinked && toggleEvidenceSelection(item.id)
+                              }
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs capitalize"
+                                    >
+                                      {item.type}
+                                    </Badge>
+                                    {isLinked && (
+                                      <Badge
+                                        variant="secondary"
+                                        className="text-xs"
+                                      >
+                                        Already linked
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="font-medium text-sm line-clamp-1">
+                                    {item.title}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                                    {item.description}
+                                  </p>
+                                </div>
+                                {isSelected && !isLinked && (
+                                  <div className="flex-shrink-0 h-5 w-5 rounded-full bg-primary flex items-center justify-center">
+                                    <svg
+                                      className="h-3 w-3 text-primary-foreground"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                      stroke="currentColor"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M5 13l4 4L19 7"
+                                      />
+                                    </svg>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {filteredAvailableEvidence.length === 0 && (
+                          <p className="text-center text-sm text-muted-foreground py-8">
+                            No evidence found
+                          </p>
                         )}
                       </div>
-                      <h4 className="font-medium mb-1">
-                        {link.evidence_items.title}
-                      </h4>
-                      <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                        {link.evidence_items.description}
-                      </p>
-                      {link.note && (
-                        <div className="mt-2 rounded-md bg-muted/50 p-2">
-                          <p className="text-xs text-muted-foreground">
-                            <strong>Note:</strong> {link.note}
-                          </p>
-                        </div>
-                      )}
-                      {link.evidence_items.tags &&
-                        link.evidence_items.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {link.evidence_items.tags
-                              .slice(0, 3)
-                              .map((tag: string) => (
-                                <Badge
-                                  key={tag}
-                                  variant="secondary"
-                                  className="text-xs"
-                                >
-                                  {tag}
-                                </Badge>
-                              ))}
-                            {link.evidence_items.tags.length > 3 && (
-                              <Badge variant="secondary" className="text-xs">
-                                +{link.evidence_items.tags.length - 3}
-                              </Badge>
-                            )}
-                          </div>
-                        )}
                     </div>
-                    <div className="flex flex-col gap-2">
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={`/app/evidence/${link.evidence_id}`}>
-                          <ExternalLink className="h-3 w-3" />
-                        </Link>
-                      </Button>
+                    <DialogFooter>
                       <Button
                         variant="outline"
-                        size="sm"
-                        onClick={() => handleUnlinkEvidence(link.id)}
+                        onClick={() => {
+                          setIsLinkDialogOpen(false);
+                          setSelectedEvidenceIds(new Set());
+                        }}
                       >
-                        <X className="h-3 w-3" />
+                        Cancel
                       </Button>
-                    </div>
-                  </div>
-                ))}
+                      <Button
+                        onClick={handleLinkEvidence}
+                        disabled={selectedEvidenceIds.size === 0}
+                      >
+                        Link{" "}
+                        {selectedEvidenceIds.size > 0 &&
+                          `(${selectedEvidenceIds.size})`}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Linked Datasets Section */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Linked Datasets</CardTitle>
-                <CardDescription>
-                  Data files supporting this protocol ({linkedDatasets.length})
-                </CardDescription>
-              </div>
-              <Dialog
-                open={isDatasetDialogOpen}
-                onOpenChange={setIsDatasetDialogOpen}
-              >
-                <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={loadAvailableDatasets}
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Dataset
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
-                  <DialogHeader>
-                    <DialogTitle>Link Dataset to Protocol</DialogTitle>
-                    <DialogDescription>
-                      Select datasets to link to this protocol
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="flex-1 overflow-hidden flex flex-col space-y-4">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        placeholder="Search datasets..."
-                        value={datasetSearchQuery}
-                        onChange={(e) => setDatasetSearchQuery(e.target.value)}
-                        className="pl-9"
-                      />
-                    </div>
-                    <div className="flex-1 overflow-y-auto space-y-2 pr-2">
-                      {filteredAvailableDatasets.map((item) => {
-                        const isLinked = linkedDatasets.some(
-                          (link: any) => link.dataset_id === item.id,
-                        );
-                        const isSelected = selectedDatasetIds.has(item.id);
-
-                        return (
-                          <div
-                            key={item.id}
-                            className={`rounded-lg border p-3 cursor-pointer transition-colors ${
-                              isLinked
-                                ? "opacity-50 cursor-not-allowed"
-                                : isSelected
-                                  ? "border-primary bg-primary/5"
-                                  : "hover:border-muted-foreground/50"
-                            }`}
-                            onClick={() =>
-                              !isLinked && toggleDatasetSelection(item.id)
-                            }
+            </CardHeader>
+            <CardContent>
+              {linkedEvidence.length === 0 ? (
+                <div className="rounded-lg border border-dashed p-8 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    No evidence linked yet. Click &ldquo;Add Evidence&rdquo; to
+                    link supporting evidence.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {linkedEvidence.map((link: any) => (
+                    <div
+                      key={link.id}
+                      className="flex items-start justify-between gap-4 rounded-lg border p-4"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge
+                            variant="outline"
+                            className="text-xs capitalize"
                           >
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <Database className="h-3 w-3 text-muted-foreground" />
-                                  <Badge
-                                    variant="outline"
-                                    className="text-xs capitalize"
-                                  >
-                                    {item.dataset_type.replace("_", " ")}
-                                  </Badge>
-                                  {isLinked && (
-                                    <Badge
-                                      variant="secondary"
-                                      className="text-xs"
-                                    >
-                                      Already linked
-                                    </Badge>
-                                  )}
-                                </div>
-                                <p className="font-medium text-sm line-clamp-1">
-                                  {item.name}
-                                </p>
-                                <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
-                                  {item.description}
-                                </p>
-                                <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                                  <span>{formatFileSize(item.file_size)}</span>
-                                  {item.row_count && (
-                                    <span>
-                                      {item.row_count.toLocaleString()} rows
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              {isSelected && !isLinked && (
-                                <div className="flex-shrink-0 h-5 w-5 rounded-full bg-primary flex items-center justify-center">
-                                  <svg
-                                    className="h-3 w-3 text-primary-foreground"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M5 13l4 4L19 7"
-                                    />
-                                  </svg>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {filteredAvailableDatasets.length === 0 && (
-                        <p className="text-center text-sm text-muted-foreground py-8">
-                          No datasets found
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setIsDatasetDialogOpen(false);
-                        setSelectedDatasetIds(new Set());
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleLinkDataset}
-                      disabled={selectedDatasetIds.size === 0}
-                    >
-                      Link{" "}
-                      {selectedDatasetIds.size > 0 &&
-                        `(${selectedDatasetIds.size})`}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {linkedDatasets.length === 0 ? (
-              <div className="rounded-lg border border-dashed p-8 text-center">
-                <p className="text-sm text-muted-foreground">
-                  No datasets linked yet. Click &ldquo;Add Dataset&rdquo; to
-                  link supporting data files.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {linkedDatasets.map((link: any) => (
-                  <div
-                    key={link.id}
-                    className="flex items-start justify-between gap-4 rounded-lg border p-4"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Database className="h-4 w-4 text-muted-foreground" />
-                        <Badge variant="outline" className="text-xs capitalize">
-                          {link.datasets.dataset_type.replace("_", " ")}
-                        </Badge>
-                        {link.datasets.status === "validated" && (
-                          <Badge variant="default" className="text-xs">
-                            Validated
+                            {link.evidence_items.type}
                           </Badge>
-                        )}
-                      </div>
-                      <h4 className="font-medium mb-1">{link.datasets.name}</h4>
-                      <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                        {link.datasets.description}
-                      </p>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
-                        <span>{formatFileSize(link.datasets.file_size)}</span>
-                        {link.datasets.row_count && (
-                          <span>
-                            {link.datasets.row_count.toLocaleString()} rows ×{" "}
-                            {link.datasets.column_count} cols
-                          </span>
-                        )}
-                      </div>
-                      {link.note && (
-                        <div className="mt-2 rounded-md bg-muted/50 p-2">
-                          <p className="text-xs text-muted-foreground">
-                            <strong>Note:</strong> {link.note}
-                          </p>
-                        </div>
-                      )}
-                      {link.datasets.tags && link.datasets.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {link.datasets.tags.slice(0, 3).map((tag: string) => (
-                            <Badge
-                              key={tag}
-                              variant="secondary"
-                              className="text-xs"
-                            >
-                              {tag}
-                            </Badge>
-                          ))}
-                          {link.datasets.tags.length > 3 && (
+                          {link.evidence_items.status === "published" && (
                             <Badge variant="secondary" className="text-xs">
-                              +{link.datasets.tags.length - 3}
+                              Published
                             </Badge>
                           )}
                         </div>
-                      )}
+                        <h4 className="font-medium mb-1">
+                          {link.evidence_items.title}
+                        </h4>
+                        <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                          {link.evidence_items.description}
+                        </p>
+                        {link.note && (
+                          <div className="mt-2 rounded-md bg-muted/50 p-2">
+                            <p className="text-xs text-muted-foreground">
+                              <strong>Note:</strong> {link.note}
+                            </p>
+                          </div>
+                        )}
+                        {link.evidence_items.tags &&
+                          link.evidence_items.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {link.evidence_items.tags
+                                .slice(0, 3)
+                                .map((tag: string) => (
+                                  <Badge
+                                    key={tag}
+                                    variant="secondary"
+                                    className="text-xs"
+                                  >
+                                    {tag}
+                                  </Badge>
+                                ))}
+                              {link.evidence_items.tags.length > 3 && (
+                                <Badge variant="secondary" className="text-xs">
+                                  +{link.evidence_items.tags.length - 3}
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={`/app/evidence/${link.evidence_id}`}>
+                            <ExternalLink className="h-3 w-3" />
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleUnlinkEvidence(link.id)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex flex-col gap-2">
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Linked Datasets Section */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Linked Datasets</CardTitle>
+                  <CardDescription>
+                    Data files supporting this protocol ({linkedDatasets.length}
+                    )
+                  </CardDescription>
+                </div>
+                <Dialog
+                  open={isDatasetDialogOpen}
+                  onOpenChange={setIsDatasetDialogOpen}
+                >
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={loadAvailableDatasets}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Dataset
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+                    <DialogHeader>
+                      <DialogTitle>Link Dataset to Protocol</DialogTitle>
+                      <DialogDescription>
+                        Select datasets to link to this protocol
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex-1 overflow-hidden flex flex-col space-y-4">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          placeholder="Search datasets..."
+                          value={datasetSearchQuery}
+                          onChange={(e) =>
+                            setDatasetSearchQuery(e.target.value)
+                          }
+                          className="pl-9"
+                        />
+                      </div>
+                      <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+                        {filteredAvailableDatasets.map((item) => {
+                          const isLinked = linkedDatasets.some(
+                            (link: any) => link.dataset_id === item.id,
+                          );
+                          const isSelected = selectedDatasetIds.has(item.id);
+
+                          return (
+                            <div
+                              key={item.id}
+                              className={`rounded-lg border p-3 cursor-pointer transition-colors ${
+                                isLinked
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : isSelected
+                                    ? "border-primary bg-primary/5"
+                                    : "hover:border-muted-foreground/50"
+                              }`}
+                              onClick={() =>
+                                !isLinked && toggleDatasetSelection(item.id)
+                              }
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <Database className="h-3 w-3 text-muted-foreground" />
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs capitalize"
+                                    >
+                                      {item.dataset_type.replace("_", " ")}
+                                    </Badge>
+                                    {isLinked && (
+                                      <Badge
+                                        variant="secondary"
+                                        className="text-xs"
+                                      >
+                                        Already linked
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="font-medium text-sm line-clamp-1">
+                                    {item.name}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                                    {item.description}
+                                  </p>
+                                  <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                                    <span>
+                                      {formatFileSize(item.file_size)}
+                                    </span>
+                                    {item.row_count && (
+                                      <span>
+                                        {item.row_count.toLocaleString()} rows
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                {isSelected && !isLinked && (
+                                  <div className="flex-shrink-0 h-5 w-5 rounded-full bg-primary flex items-center justify-center">
+                                    <svg
+                                      className="h-3 w-3 text-primary-foreground"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                      stroke="currentColor"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M5 13l4 4L19 7"
+                                      />
+                                    </svg>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {filteredAvailableDatasets.length === 0 && (
+                          <p className="text-center text-sm text-muted-foreground py-8">
+                            No datasets found
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <DialogFooter>
                       <Button
                         variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          handleDownloadDataset(link.datasets.storage_path)
-                        }
+                        onClick={() => {
+                          setIsDatasetDialogOpen(false);
+                          setSelectedDatasetIds(new Set());
+                        }}
                       >
-                        <Download className="h-3 w-3" />
-                      </Button>
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={`/app/datasets/${link.dataset_id}`}>
-                          <ExternalLink className="h-3 w-3" />
-                        </Link>
+                        Cancel
                       </Button>
                       <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleUnlinkDataset(link.id)}
+                        onClick={handleLinkDataset}
+                        disabled={selectedDatasetIds.size === 0}
                       >
-                        <X className="h-3 w-3" />
+                        Link{" "}
+                        {selectedDatasetIds.size > 0 &&
+                          `(${selectedDatasetIds.size})`}
                       </Button>
-                    </div>
-                  </div>
-                ))}
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent>
+              {linkedDatasets.length === 0 ? (
+                <div className="rounded-lg border border-dashed p-8 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    No datasets linked yet. Click &ldquo;Add Dataset&rdquo; to
+                    link supporting data files.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {linkedDatasets.map((link: any) => (
+                    <div
+                      key={link.id}
+                      className="flex items-start justify-between gap-4 rounded-lg border p-4"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Database className="h-4 w-4 text-muted-foreground" />
+                          <Badge
+                            variant="outline"
+                            className="text-xs capitalize"
+                          >
+                            {link.datasets.dataset_type.replace("_", " ")}
+                          </Badge>
+                          {link.datasets.status === "validated" && (
+                            <Badge variant="default" className="text-xs">
+                              Validated
+                            </Badge>
+                          )}
+                        </div>
+                        <h4 className="font-medium mb-1">
+                          {link.datasets.name}
+                        </h4>
+                        <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                          {link.datasets.description}
+                        </p>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
+                          <span>{formatFileSize(link.datasets.file_size)}</span>
+                          {link.datasets.row_count && (
+                            <span>
+                              {link.datasets.row_count.toLocaleString()} rows ×{" "}
+                              {link.datasets.column_count} cols
+                            </span>
+                          )}
+                        </div>
+                        {link.note && (
+                          <div className="mt-2 rounded-md bg-muted/50 p-2">
+                            <p className="text-xs text-muted-foreground">
+                              <strong>Note:</strong> {link.note}
+                            </p>
+                          </div>
+                        )}
+                        {link.datasets.tags &&
+                          link.datasets.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {link.datasets.tags
+                                .slice(0, 3)
+                                .map((tag: string) => (
+                                  <Badge
+                                    key={tag}
+                                    variant="secondary"
+                                    className="text-xs"
+                                  >
+                                    {tag}
+                                  </Badge>
+                                ))}
+                              {link.datasets.tags.length > 3 && (
+                                <Badge variant="secondary" className="text-xs">
+                                  +{link.datasets.tags.length - 3}
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            handleDownloadDataset(link.datasets.storage_path)
+                          }
+                        >
+                          <Download className="h-3 w-3" />
+                        </Button>
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={`/app/datasets/${link.dataset_id}`}>
+                            <ExternalLink className="h-3 w-3" />
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleUnlinkDataset(link.id)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-        {/* AI Research Assistant */}
-        {protocolId && (
-          <AiAssistantPanel
-            protocolId={protocolId}
-            studyQuestion={form.getValues("study_question")}
-            linkedEvidenceCount={linkedEvidence.length}
-            linkedPmids={linkedPmids}
-            onPicoGenerated={handlePicoGenerated}
-            onEvidenceImported={loadLinkedEvidence}
-          />
-        )}
-
-        {/* Reviews Section */}
-        <ReviewPanel
-          reviews={reviews}
-          currentUserId={currentUserId}
-          protocolId={protocolId}
-          onRequestReview={handleRequestReview}
-          onSubmitDecision={handleSubmitReviewDecision}
-          onCancelReview={handleCancelReview}
-        />
-
-        {/* Comments Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Comments</CardTitle>
-            <CardDescription>
-              Discuss this protocol with your team
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <CommentInput
-              onSubmit={handleCreateComment}
-              placeholder="Share your thoughts about this protocol..."
+          {/* AI Research Assistant */}
+          {protocolId && (
+            <AiAssistantPanel
+              protocolId={protocolId}
+              studyQuestion={form.getValues("study_question")}
+              linkedEvidenceCount={linkedEvidence.length}
+              linkedPmids={linkedPmids}
+              onPicoGenerated={handlePicoGenerated}
+              onEvidenceImported={loadLinkedEvidence}
             />
+          )}
 
-            {isLoadingComments ? (
-              <div className="text-center py-8 text-sm text-muted-foreground">
-                Loading comments...
-              </div>
-            ) : (
-              <CommentThread
-                comments={buildCommentThreads(comments)}
-                currentUserId={currentUserId}
-                onReply={handleReplyComment}
-                onEdit={handleEditComment}
-                onDelete={handleDeleteComment}
+          {/* Reviews Section */}
+          <ReviewPanel
+            reviews={reviews}
+            currentUserId={currentUserId}
+            protocolId={protocolId}
+            onRequestReview={handleRequestReview}
+            onSubmitDecision={handleSubmitReviewDecision}
+            onCancelReview={handleCancelReview}
+          />
+
+          {/* Comments Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Comments</CardTitle>
+              <CardDescription>
+                Discuss this protocol with your team
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <CommentInput
+                onSubmit={handleCreateComment}
+                placeholder="Share your thoughts about this protocol..."
               />
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </main>
+
+              {isLoadingComments ? (
+                <div className="text-center py-8 text-sm text-muted-foreground">
+                  Loading comments...
+                </div>
+              ) : (
+                <CommentThread
+                  comments={buildCommentThreads(comments)}
+                  currentUserId={currentUserId}
+                  onReply={handleReplyComment}
+                  onEdit={handleEditComment}
+                  onDelete={handleDeleteComment}
+                />
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    </PresenceProvider>
   );
+}
+
+/**
+ * Tiny bridge component that sits inside PresenceProvider to connect
+ * the broadcastSave function to the parent's ref (avoids restructuring
+ * the entire component tree).
+ */
+function PresenceBridge({
+  broadcastSaveRef,
+}: {
+  broadcastSaveRef: React.MutableRefObject<(email: string) => void>;
+}) {
+  const { broadcastSave } = usePresence();
+  useEffect(() => {
+    broadcastSaveRef.current = broadcastSave;
+  }, [broadcastSave, broadcastSaveRef]);
+  return null;
 }

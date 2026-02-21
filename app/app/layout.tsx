@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { fetchPendingReviewCount } from "@/lib/supabase/reviews";
+import { NotificationDropdown } from "@/components/collaboration/notification-dropdown";
 
 function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -153,6 +154,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
             })}
           </nav>
           <div className="flex items-center gap-4">
+            <NotificationDropdown userId={user.id} />
             <span className="text-sm text-muted-foreground hidden md:block">
               {user?.email ?? "Loading..."}
             </span>
