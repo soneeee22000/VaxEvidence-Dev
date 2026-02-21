@@ -179,7 +179,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Fire-and-forget AI quality scoring (non-blocking)
-    if (process.env.OPENAI_API_KEY) {
+    if (
+      process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
+      process.env.OPENAI_API_KEY
+    ) {
       scoreEvidenceQuality(data)
         .then(async (score) => {
           await supabaseAdmin
