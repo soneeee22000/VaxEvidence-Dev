@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-VaxEvidence is a Real-World Evidence (RWE) platform for vaccine research scientists. It enables collaborative creation of regulatory-ready study protocols (PICO-based), evidence management, dataset handling, and export/reporting. Built for FDA/EMA compliance.
+VaxEvidence is a Real-World Evidence (RWE) platform for vaccine research scientists. It enables collaborative creation of regulatory-ready study protocols (PICO-based), evidence management, dataset handling, PRISMA-compliant systematic reviews, and export/reporting. Built for FDA/EMA compliance.
 
 ## Tech Stack
 
@@ -41,10 +41,14 @@ app/                    # Next.js App Router
 │   │   ├── protocol/[id]/  # Protocol PDF export + /word sub-route
 │   │   └── workspace/      # Full workspace ZIP export
 │   ├── import/         # Evidence import
+│   ├── meta-analysis/  # Meta-analysis CRUD + /[id] detail
+│   ├── risk-of-bias/   # RoB assessment CRUD + /[id] detail
+│   ├── screening/      # Screening decisions CRUD + /[id] + /duplicates
 │   ├── search/         # PubMed/ClinicalTrials.gov search
 │   └── waitlist/       # Waitlist signup
 ├── app/                # Authenticated pages
 │   ├── [id]/           # Individual protocol view
+│   │   └── screening/  # Systematic review screening page
 │   ├── activity/       # Activity log page
 │   ├── datasets/       # Dataset listing + /new + /[id]
 │   ├── evidence/       # Evidence library + /new + /[id]
@@ -62,7 +66,10 @@ components/
 ├── collaboration/      # Comments, reviews, activity feed
 ├── datasets/           # Dataset cards, filters, upload
 ├── evidence/           # Evidence cards, filters, import dialogs, PubMed/trial search
-├── export/             # Export dialogs and menus
+├── export/             # Export dialogs and menus (incl. PRISMA PDF)
+├── meta-analysis/      # Forest plot (SVG), data entry table, panel
+├── risk-of-bias/       # RoB assessment form, traffic-light summary, domain badge
+├── screening/          # Screening pipeline, cards, stats bar, PRISMA diagram, duplicate detector
 ├── landing/            # Marketing page sections
 ├── templates/          # Protocol template selector
 ├── theme-provider.tsx  # next-themes provider wrapper
@@ -72,8 +79,9 @@ lib/
 ├── api/                # External API clients (PubMed, CrossRef, ClinicalTrials.gov)
 ├── auth/               # Auth context (useAuth, useUserId) from auth-context.tsx
 ├── demo/               # Sample data for demo mode (sample-datasets.ts)
-├── export/             # PDF/Word/CSV/ZIP generators + bibliography (APA/MLA/Chicago/BibTeX/RIS)
+├── export/             # PDF/Word/CSV/ZIP generators + bibliography + PRISMA PDF
 ├── ml/                 # Auto-tagging via keyword extraction
+├── screening/          # Duplicate detection (DOI/PMID/fuzzy title) + PRISMA count computation
 ├── supabase/           # Supabase clients + CRUD query modules per table
 │   ├── browser.ts      # SSR-aware browser client (@supabase/ssr)
 │   ├── server.ts       # Server client (admin + user-session) + getServerUser()
@@ -82,12 +90,15 @@ lib/
 │   ├── comments.ts     # Comments CRUD
 │   ├── datasets.ts     # Datasets CRUD
 │   ├── evidence.ts     # Evidence CRUD
+│   ├── meta-analysis.ts # Meta-analysis entries CRUD
 │   ├── protocols.ts    # Protocols CRUD
-│   └── reviews.ts      # Reviews CRUD
+│   ├── reviews.ts      # Reviews CRUD
+│   ├── risk-of-bias.ts # Risk of bias assessments CRUD
+│   └── screening.ts    # Screening decisions CRUD
 ├── templates/          # Protocol template definitions
 ├── utils/              # Utility modules
 │   └── file-parser.ts  # File parsing utilities
-├── validators/         # Zod schemas (protocol, evidence, dataset, comment, review, activity, waitlist)
+├── validators/         # Zod schemas (protocol, evidence, dataset, comment, review, activity, waitlist, screening, risk-of-bias, meta-analysis)
 └── utils.ts            # cn() helper (clsx + tailwind-merge)
 
 hooks/                  # use-mobile, use-toast
@@ -192,3 +203,9 @@ Export API routes (`/api/export/*`) use `getSupabaseAdmin()` from `lib/supabase/
 3. Query with `getSupabaseAdmin().from("table")...` (bypasses RLS via service role)
 
 Junction table names: `protocol_evidence_links` (not `protocol_evidence`), `protocol_dataset_links` (not `protocol_datasets`).
+
+## Systematic Review Tables
+
+- `screening_decisions` — per-evidence, per-stage screening decisions. Unique on `(protocol_id, evidence_id, stage)`. Stages: `identification`, `screening`, `eligibility`, `included`. Decisions: `pending`, `include`, `exclude`, `duplicate`.
+- `risk_of_bias_assessments` — RoB 2 (RCTs) or ROBINS-I (observational) assessments. Unique on `(protocol_id, evidence_id, tool)`. Domains stored as JSONB: `{ "domain_name": { "judgment": "low", "justification": "..." } }`.
+- `meta_analysis_entries` — study-level effect sizes for forest plots. Fields: `study_label`, `effect_size`, `ci_lower`, `ci_upper`, `weight`, `subgroup`.
