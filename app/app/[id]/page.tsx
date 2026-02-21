@@ -911,6 +911,27 @@ export default function ProtocolDetailPage() {
         {/* Version History */}
         {protocolId && <VersionHistoryPanel protocolId={protocolId} />}
 
+        {/* Systematic Review Card */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Systematic Review</CardTitle>
+                <CardDescription>
+                  PRISMA-compliant screening, risk of bias, and meta-analysis
+                </CardDescription>
+              </div>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/app/${protocolId}/screening`}>
+                  {linkedEvidence.length > 0
+                    ? "Continue Screening"
+                    : "Start Screening"}
+                </Link>
+              </Button>
+            </div>
+          </CardHeader>
+        </Card>
+
         {/* Linked Evidence Section */}
         <Card>
           <CardHeader>

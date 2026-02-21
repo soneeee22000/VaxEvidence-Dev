@@ -36,6 +36,23 @@ export const queryKeys = {
     list: (params: ProtocolListParams) =>
       ["protocols", "list", params] as const,
   },
+  screening: {
+    all: ["screening"] as const,
+    byProtocol: (protocolId: string) =>
+      ["screening", "protocol", protocolId] as const,
+    counts: (protocolId: string) =>
+      ["screening", "counts", protocolId] as const,
+  },
+  riskOfBias: {
+    all: ["riskOfBias"] as const,
+    byProtocol: (protocolId: string) =>
+      ["riskOfBias", "protocol", protocolId] as const,
+  },
+  metaAnalysis: {
+    all: ["metaAnalysis"] as const,
+    byProtocol: (protocolId: string) =>
+      ["metaAnalysis", "protocol", protocolId] as const,
+  },
 };
 
 /**
