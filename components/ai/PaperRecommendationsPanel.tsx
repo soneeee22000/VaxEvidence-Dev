@@ -62,7 +62,8 @@ export function PaperRecommendationsPanel({
       });
 
       if (!response.ok) {
-        throw new Error("Recommendation generation failed");
+        const errData = await response.json().catch(() => null);
+        throw new Error(errData?.error || "Recommendation generation failed");
       }
 
       const { data } = await response.json();
@@ -72,7 +73,11 @@ export function PaperRecommendationsPanel({
       );
     } catch (err) {
       console.error("Recommendations error:", err);
-      toast.error("Failed to generate recommendations");
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Failed to generate recommendations",
+      );
     } finally {
       setIsLoading(false);
     }

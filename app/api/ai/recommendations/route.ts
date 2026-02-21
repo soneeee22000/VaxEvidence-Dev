@@ -39,7 +39,13 @@ const PUBMED_RESULTS_PER_QUERY = 10;
 const MAX_PAPERS_TO_RANK = 15;
 
 /** Maximum papers to fetch abstracts for (most expensive PubMed calls). */
-const MAX_ABSTRACT_FETCHES = 10;
+const MAX_ABSTRACT_FETCHES = 5;
+
+/** Delay between sequential PubMed requests to avoid 429 rate limits. */
+const PUBMED_DELAY_MS = 350;
+
+/** Sleep helper. */
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function POST(request: NextRequest) {
   const user = await getServerUser();
@@ -85,12 +91,15 @@ export async function POST(request: NextRequest) {
       schema: searchQueriesSchema,
     });
 
-    // Step 2: Search PubMed with each query in parallel
-    const pmidArrays = await Promise.all(
-      queryResult.queries.map((q) =>
-        searchPubMed(q, PUBMED_RESULTS_PER_QUERY).catch(() => [] as string[]),
-      ),
-    );
+    // Step 2: Search PubMed sequentially to avoid 429 rate limits
+    const pmidArrays: string[][] = [];
+    for (const q of queryResult.queries) {
+      const pmids = await searchPubMed(q, PUBMED_RESULTS_PER_QUERY).catch(
+        () => [] as string[],
+      );
+      pmidArrays.push(pmids);
+      await sleep(PUBMED_DELAY_MS);
+    }
 
     // Deduplicate and exclude already-linked papers
     const excludeSet = new Set(exclude_pmids);
@@ -108,15 +117,19 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Fetch summaries for all unique PMIDs
+    // Fetch summaries for all unique PMIDs (single batch call)
     const toRank = uniquePmids.slice(0, MAX_PAPERS_TO_RANK);
+    await sleep(PUBMED_DELAY_MS);
     const articles = await fetchPubMedSummaries(toRank);
 
-    // Fetch abstracts for top papers (needed for ranking quality)
+    // Fetch abstracts sequentially to respect PubMed rate limits
     const toFetchAbstracts = toRank.slice(0, MAX_ABSTRACT_FETCHES);
-    const abstracts = await Promise.all(
-      toFetchAbstracts.map((pmid) => fetchPubMedAbstract(pmid).catch(() => "")),
-    );
+    const abstracts: string[] = [];
+    for (const pmid of toFetchAbstracts) {
+      const abstract = await fetchPubMedAbstract(pmid).catch(() => "");
+      abstracts.push(abstract);
+      await sleep(PUBMED_DELAY_MS);
+    }
 
     // Merge abstracts into articles
     const articlesWithAbstracts = articles.map((article) => {
@@ -147,9 +160,10 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (err) {
-    console.error("Recommendations error:", err);
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("Recommendations error:", message, err);
     return NextResponse.json(
-      { error: "AI recommendation generation failed" },
+      { error: `Recommendation failed: ${message}` },
       { status: 500 },
     );
   }
