@@ -25,6 +25,12 @@ vi.mock("@/lib/ai/ai-client", () => ({
   aiModel: "gpt-4o-mock",
 }));
 
+const mockVerifyProtocolOwnership = vi.fn();
+vi.mock("@/lib/api/verify-protocol-ownership", () => ({
+  verifyProtocolOwnership: (...args: unknown[]) =>
+    mockVerifyProtocolOwnership(...args),
+}));
+
 vi.mock("@/lib/api/pubmed", () => ({
   searchPubMed: vi.fn().mockResolvedValue(["11111111", "22222222"]),
   fetchPubMedSummaries: vi.fn().mockResolvedValue([
@@ -169,12 +175,10 @@ describe("POST /api/ai/gap-analysis", () => {
 
   it("returns 404 when protocol not found", async () => {
     mockGetServerUser.mockResolvedValue({ id: "u-1" });
-
-    const chain = createMockChain({
-      data: null,
-      error: { message: "Not found" },
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: null,
+      error: { message: "Protocol not found", status: 404 },
     });
-    mockGetSupabaseAdmin.mockReturnValue({ from: () => chain });
 
     const { POST } = await import("@/app/api/ai/gap-analysis/route");
     const res = await POST(
@@ -188,6 +192,10 @@ describe("POST /api/ai/gap-analysis", () => {
 
   it("returns gap analysis on success", async () => {
     mockGetServerUser.mockResolvedValue({ id: "u-1" });
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: { id: "u-1" },
+      error: null,
+    });
 
     const protocolChain = createMockChain({
       data: {
@@ -203,10 +211,8 @@ describe("POST /api/ai/gap-analysis", () => {
     });
     const linksChain = createMockChain({ data: [], error: null });
 
-    let callCount = 0;
     mockGetSupabaseAdmin.mockReturnValue({
       from: (table: string) => {
-        callCount++;
         if (table === "protocols") return protocolChain;
         return linksChain;
       },
@@ -343,12 +349,10 @@ describe("POST /api/ai/synthesis", () => {
 
   it("returns 404 when protocol not found", async () => {
     mockGetServerUser.mockResolvedValue({ id: "u-1" });
-
-    const chain = createMockChain({
-      data: null,
-      error: { message: "Not found" },
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: null,
+      error: { message: "Protocol not found", status: 404 },
     });
-    mockGetSupabaseAdmin.mockReturnValue({ from: () => chain });
 
     const { POST } = await import("@/app/api/ai/synthesis/route");
     const res = await POST(
@@ -362,6 +366,10 @@ describe("POST /api/ai/synthesis", () => {
 
   it("returns streaming response on success", async () => {
     mockGetServerUser.mockResolvedValue({ id: "u-1" });
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: { id: "u-1" },
+      error: null,
+    });
 
     const protocolChain = createMockChain({
       data: {
