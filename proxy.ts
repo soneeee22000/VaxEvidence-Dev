@@ -48,6 +48,11 @@ export async function proxy(request: NextRequest) {
     return applySecurityHeaders(NextResponse.next({ request }));
   }
 
+  // Allow /demo routes through without auth (public demo mode)
+  if (pathname.startsWith("/demo")) {
+    return applySecurityHeaders(NextResponse.next({ request }));
+  }
+
   // Update Supabase session and get current user
   const { response, user } = await updateSession(request);
 
@@ -69,5 +74,11 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/app/:path*", "/auth", "/api/v1/:path*", "/api/auth/sso/:path*"],
+  matcher: [
+    "/app/:path*",
+    "/auth",
+    "/demo/:path*",
+    "/api/v1/:path*",
+    "/api/auth/sso/:path*",
+  ],
 };

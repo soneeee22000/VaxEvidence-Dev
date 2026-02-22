@@ -9,7 +9,13 @@ import {
   useSpring,
   useTransform,
 } from "framer-motion";
-import { ArrowRight, CheckCircle, Clock, Zap } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle,
+  Clock,
+  FlaskConical,
+  Zap,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LottiePulse from "@/components/landing/lottie-pulse";
 import { fadeUp, stagger, viewportOnce } from "@/components/landing/motion";
@@ -69,6 +75,19 @@ export default function HeroSection() {
                   <Link href="/auth">
                     Start Free Trial
                     <ArrowRight className="ml-2 w-4 h-4" />
+                  </Link>
+                </Button>
+              </motion.div>
+              <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}>
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  className="text-base"
+                  asChild
+                >
+                  <Link href="/demo">
+                    <FlaskConical className="mr-2 w-4 h-4" />
+                    Try Demo
                   </Link>
                 </Button>
               </motion.div>

@@ -41,6 +41,9 @@ export default function LandingNav() {
             <a href="#how-it-works" className="nav-link">
               How It Works
             </a>
+            <Link href="/demo" className="nav-link">
+              Try Demo
+            </Link>
             <div className="flex items-center gap-2">
               <ThemeToggle />
               <Button asChild size="sm" variant="outline">
@@ -98,6 +101,13 @@ export default function LandingNav() {
                 >
                   How It Works
                 </a>
+                <Link
+                  href="/demo"
+                  className="nav-link"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Try Demo
+                </Link>
                 <Button
                   asChild
                   size="sm"
