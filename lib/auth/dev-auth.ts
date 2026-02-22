@@ -12,7 +12,6 @@ const IS_DEV = process.env.NODE_ENV === "development";
 // Hardcoded dev credentials
 const DEV_CREDENTIALS = {
   username: "admin",
-  // eslint-disable-next-line no-secrets/no-secrets -- dev-only placeholder, gated by IS_DEV
   pass: "12345",
 } as const;
 
