@@ -8,6 +8,8 @@ import {
   BookOpen,
   GitBranch,
   Shield,
+  FileArchive,
+  Database,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -22,6 +24,8 @@ import {
 import { ExportDialog } from "./export-dialog";
 import { BibliographyDialog } from "./bibliography-dialog";
 import { INDPackageDialog } from "@/components/regulatory/ind-package-dialog";
+import { ECTDPreviewDialog } from "@/components/regulatory/ectd-preview-dialog";
+import { SDTMPreviewDialog } from "@/components/regulatory/sdtm-preview-dialog";
 
 // =============================================================================
 // EXPORT MENU COMPONENT
@@ -45,6 +49,7 @@ interface ExportMenuProps {
     status?: string;
   };
   evidenceCount?: number;
+  screeningCount?: number;
   robCount?: number;
   metaAnalysisCount?: number;
 }
@@ -55,6 +60,7 @@ export function ExportMenu({
   hasEvidence = false,
   protocol,
   evidenceCount = 0,
+  screeningCount = 0,
   robCount = 0,
   metaAnalysisCount = 0,
 }: ExportMenuProps) {
@@ -62,6 +68,8 @@ export function ExportMenu({
   const [exportFormat, setExportFormat] = useState<"pdf" | "word">("pdf");
   const [bibliographyDialogOpen, setBibliographyDialogOpen] = useState(false);
   const [indDialogOpen, setIndDialogOpen] = useState(false);
+  const [ectdDialogOpen, setEctdDialogOpen] = useState(false);
+  const [sdtmDialogOpen, setSdtmDialogOpen] = useState(false);
 
   const handleExportClick = (format: "pdf" | "word") => {
     setExportFormat(format);
@@ -156,6 +164,14 @@ export function ExportMenu({
             <Shield className="mr-2 h-4 w-4" />
             FDA IND Package
           </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setEctdDialogOpen(true)}>
+            <FileArchive className="mr-2 h-4 w-4" />
+            eCTD Module 5
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setSdtmDialogOpen(true)}>
+            <Database className="mr-2 h-4 w-4" />
+            SDTM Templates
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -182,6 +198,26 @@ export function ExportMenu({
         evidenceCount={evidenceCount}
         robCount={robCount}
         metaAnalysisCount={metaAnalysisCount}
+      />
+
+      <ECTDPreviewDialog
+        open={ectdDialogOpen}
+        onOpenChange={setEctdDialogOpen}
+        protocolId={protocolId}
+        protocolTitle={protocolTitle}
+        protocol={protocol}
+        evidenceCount={evidenceCount}
+        screeningCount={screeningCount}
+        robCount={robCount}
+        metaAnalysisCount={metaAnalysisCount}
+      />
+
+      <SDTMPreviewDialog
+        open={sdtmDialogOpen}
+        onOpenChange={setSdtmDialogOpen}
+        protocolId={protocolId}
+        protocolTitle={protocolTitle}
+        protocol={protocol}
       />
     </>
   );
