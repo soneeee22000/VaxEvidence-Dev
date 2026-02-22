@@ -101,7 +101,7 @@ export const fetchComments = async (
 
   const { data, error } = await safeCall(() =>
     client
-      .from("comments")
+      .from("comments_with_user")
       .select("*")
       .eq("resource_type", resourceType)
       .eq("resource_id", resourceId)
