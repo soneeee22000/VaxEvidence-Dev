@@ -227,18 +227,19 @@ Build the **most powerful platform** for vaccine researchers to design protocols
 
 ### Phase 12: Enterprise & Integrations
 
-**Status**: Not Yet Started
+**Status**: COMPLETED
 
 **Why**: Enterprise procurement requirements.
 
 **Features**:
 
-- SSO (SAML/OIDC) for enterprise IT
-- Zotero/Mendeley two-way sync
-- REDCap data import (clinical trial data)
-- Public REST API with API keys and webhooks
-- Data residency options (US, EU, APAC)
-- SOC 2 Type II / HIPAA compliance
+- Public REST API with API key authentication, rate limiting, and OpenAPI docs (v1 endpoints for protocols, evidence, datasets, screening)
+- Webhook system with HMAC-SHA256 signing, exponential backoff retry, and 8 event types
+- SAML SSO via Supabase Auth SSO admin API with JIT workspace provisioning
+- Zotero/Mendeley two-way library sync (bidirectional field mapping)
+- REDCap clinical data import with auto-detect field mapping and preview
+- Compliance hardening: immutable audit logs, data classification (PHI/PII tagging), SOC 2/HIPAA compliance dashboard
+- Settings page with 6 tabs (API Keys, Webhooks, SSO, Integrations, Audit Log, Compliance)
 
 ---
 
