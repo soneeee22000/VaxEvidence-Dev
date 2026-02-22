@@ -13,6 +13,11 @@ const buildDescription = (work: { abstract?: string; doi: string }) => {
 };
 
 export async function GET(request: NextRequest) {
+  const user = await getServerUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const doi = request.nextUrl.searchParams.get("doi");
   if (!doi || !DOI_REGEX.test(doi)) {
     return NextResponse.json({ error: "Valid DOI required" }, { status: 400 });

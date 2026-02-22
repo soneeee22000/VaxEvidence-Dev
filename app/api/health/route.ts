@@ -35,7 +35,6 @@ export async function GET() {
 
   return NextResponse.json({
     status,
-    version: process.env.npm_package_version ?? "0.0.0",
     uptime: `${Math.floor(uptimeMs / 1000)}s`,
     db: {
       connected: dbConnected,

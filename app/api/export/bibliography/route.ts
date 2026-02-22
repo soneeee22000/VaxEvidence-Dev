@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin, getServerUser } from "@/lib/supabase/server";
+import { verifyProtocolOwnership } from "@/lib/api/verify-protocol-ownership";
 import {
   generateBibliography,
   generateRegulatoryDocumentList,
 } from "@/lib/export/bibliography";
+import {
+  checkIpRateLimit,
+  getIpRateLimitHeaders,
+} from "@/lib/api/ip-rate-limiter";
 import type { BibliographyFormat } from "@/lib/export/types";
+import { bibliographyExportSchema } from "@/lib/validators/export";
 
 /**
  * Export bibliography for a protocol's evidence
@@ -17,26 +23,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { protocolId, format } = body;
-
-    if (!protocolId) {
+    const rl = checkIpRateLimit(request, 5, 60_000);
+    if (!rl.allowed) {
       return NextResponse.json(
-        { error: "Protocol ID is required" },
-        { status: 400 },
+        { error: "Rate limit exceeded" },
+        { status: 429, headers: getIpRateLimitHeaders(rl) },
       );
     }
 
-    if (
-      !format ||
-      !["bibtex", "apa", "mla", "chicago", "ris"].includes(format)
-    ) {
+    const body = await request.json();
+    const parsed = bibliographyExportSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        {
-          error:
-            "Invalid format. Must be one of: bibtex, apa, mla, chicago, ris",
-        },
-        { status: 400 },
+        { error: "Invalid export params", details: parsed.error.flatten() },
+        { status: 422 },
+      );
+    }
+    const { protocolId, format } = parsed.data;
+
+    const { error: ownershipError } = await verifyProtocolOwnership(protocolId);
+    if (ownershipError) {
+      return NextResponse.json(
+        { error: ownershipError.message },
+        { status: ownershipError.status },
       );
     }
 

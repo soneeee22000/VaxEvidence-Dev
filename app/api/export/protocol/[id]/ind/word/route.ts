@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin, getServerUser } from "@/lib/supabase/server";
 import { generateINDPackageWord } from "@/lib/export/ind-word-generator";
+import {
+  checkIpRateLimit,
+  getIpRateLimitHeaders,
+} from "@/lib/api/ip-rate-limiter";
 import type { INDPackageData } from "@/lib/export/ind-package-generator";
 
 /**
@@ -8,13 +12,21 @@ import type { INDPackageData } from "@/lib/export/ind-package-generator";
  * POST /api/export/protocol/[id]/ind/word
  */
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const user = await getServerUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rl = checkIpRateLimit(request, 5, 60_000);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Rate limit exceeded" },
+        { status: 429, headers: getIpRateLimitHeaders(rl) },
+      );
     }
 
     const { id: protocolId } = await params;

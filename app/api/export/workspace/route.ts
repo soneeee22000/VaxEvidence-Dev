@@ -4,6 +4,10 @@ import {
   generateWorkspaceArchive,
   generateJSONExport,
 } from "@/lib/export/archive-generator";
+import {
+  checkIpRateLimit,
+  getIpRateLimitHeaders,
+} from "@/lib/api/ip-rate-limiter";
 
 /**
  * Export entire workspace as ZIP archive
@@ -14,6 +18,14 @@ export async function POST(request: NextRequest) {
     const user = await getServerUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rl = checkIpRateLimit(request, 5, 60_000);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Rate limit exceeded" },
+        { status: 429, headers: getIpRateLimitHeaders(rl) },
+      );
     }
 
     const body = await request.json();

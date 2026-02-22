@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { getServerUser, getSupabaseAdmin } from "@/lib/supabase/server";
+import { verifyProtocolOwnership } from "@/lib/api/verify-protocol-ownership";
+import {
+  checkIpRateLimit,
+  getIpRateLimitHeaders,
+} from "@/lib/api/ip-rate-limiter";
 import { aiModel } from "@/lib/ai/ai-client";
 import {
   searchQueriesSchema,
@@ -53,6 +58,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const rl = checkIpRateLimit(request, 10, 60_000);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Rate limit exceeded" },
+      { status: 429, headers: getIpRateLimitHeaders(rl) },
+    );
+  }
+
   let body: unknown;
   try {
     body = await request.json();
@@ -68,8 +81,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const admin = getSupabaseAdmin();
   const { protocol_id, exclude_pmids } = parsed.data;
+
+  const { error: ownershipError } = await verifyProtocolOwnership(protocol_id);
+  if (ownershipError) {
+    return NextResponse.json(
+      { error: ownershipError.message },
+      { status: ownershipError.status },
+    );
+  }
+
+  const admin = getSupabaseAdmin();
 
   // Fetch protocol
   const { data: protocol, error: protocolError } = await admin

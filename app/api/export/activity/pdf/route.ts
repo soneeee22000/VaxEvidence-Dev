@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin, getServerUser } from "@/lib/supabase/server";
 import { generateAuditLogPDF } from "@/lib/export/pdf-generator";
+import {
+  checkIpRateLimit,
+  getIpRateLimitHeaders,
+} from "@/lib/api/ip-rate-limiter";
 import type { ActivityFilters } from "@/lib/validators/activity";
+import { activityExportFiltersSchema } from "@/lib/validators/export";
 
 /**
  * Export activity log as PDF
@@ -14,25 +19,40 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const rl = checkIpRateLimit(request, 5, 60_000);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Rate limit exceeded" },
+        { status: 429, headers: getIpRateLimitHeaders(rl) },
+      );
+    }
+
     const body = await request.json();
+    const parsed = activityExportFiltersSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid export filters", details: parsed.error.flatten() },
+        { status: 422 },
+      );
+    }
     const filters: ActivityFilters = {
-      user_id: body.userId,
-      action_type: body.actionType,
-      resource_type: body.resourceType,
-      from_date: body.fromDate,
-      to_date: body.toDate,
-      limit: body.limit || 500,
+      user_id: user.id,
+      action_type: parsed.data.actionType,
+      resource_type: parsed.data.resourceType,
+      from_date: parsed.data.fromDate,
+      to_date: parsed.data.toDate,
+      limit: parsed.data.limit || 500,
     };
 
     const admin = getSupabaseAdmin();
 
-    // Build query with filters
+    // Build query with filters — always scope to authenticated user
     let query = admin
       .from("activity_logs")
       .select("*")
       .order("created_at", { ascending: false });
 
-    if (filters.user_id) query = query.eq("user_id", filters.user_id);
+    query = query.eq("user_id", user.id);
     if (filters.action_type && filters.action_type.length > 0)
       query = query.in("action", filters.action_type as string[]);
     if (filters.resource_type && filters.resource_type.length > 0)

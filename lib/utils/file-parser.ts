@@ -5,7 +5,7 @@
 // =============================================================================
 
 import Papa from "papaparse";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 /**
  * Parsed data result
@@ -80,27 +80,29 @@ export async function parseCSV(file: File): Promise<ParsedData> {
 export async function parseExcel(file: File): Promise<ParsedData> {
   try {
     const arrayBuffer = await file.arrayBuffer();
-    const workbook = XLSX.read(arrayBuffer, { type: "array" });
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(arrayBuffer);
 
     // Get first sheet
-    const firstSheetName = workbook.SheetNames[0];
-    if (!firstSheetName) {
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet || worksheet.rowCount === 0) {
       return {
         data: [],
         rowCount: 0,
         columnCount: 0,
         columns: [],
-        error: "No sheets found in Excel file",
+        error: worksheet ? "Sheet is empty" : "No sheets found in Excel file",
       };
     }
 
-    const worksheet = workbook.Sheets[firstSheetName];
-    const data = XLSX.utils.sheet_to_json(worksheet) as Record<
-      string,
-      unknown
-    >[];
+    // Extract header row (row 1)
+    const headerRow = worksheet.getRow(1);
+    const columns: string[] = [];
+    headerRow.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+      columns[colNumber - 1] = String(cell.value ?? `Column${colNumber}`);
+    });
 
-    if (data.length === 0) {
+    if (columns.length === 0) {
       return {
         data: [],
         rowCount: 0,
@@ -110,7 +112,19 @@ export async function parseExcel(file: File): Promise<ParsedData> {
       };
     }
 
-    const columns = Object.keys(data[0]);
+    // Extract data rows (row 2 onwards)
+    const data: Record<string, unknown>[] = [];
+    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+      if (rowNumber === 1) return; // skip header
+      const record: Record<string, unknown> = {};
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        const colName = columns[colNumber - 1];
+        if (colName) {
+          record[colName] = cell.value;
+        }
+      });
+      data.push(record);
+    });
 
     return {
       data,

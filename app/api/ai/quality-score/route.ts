@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getServerUser, getSupabaseAdmin } from "@/lib/supabase/server";
+import {
+  checkIpRateLimit,
+  getIpRateLimitHeaders,
+} from "@/lib/api/ip-rate-limiter";
 import { scoreEvidenceQuality } from "@/lib/ai/quality-scorer";
 
 /**
@@ -17,6 +21,14 @@ export async function POST(request: NextRequest) {
   const user = await getServerUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rl = checkIpRateLimit(request, 10, 60_000);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Rate limit exceeded" },
+      { status: 429, headers: getIpRateLimitHeaders(rl) },
+    );
   }
 
   let body: unknown;

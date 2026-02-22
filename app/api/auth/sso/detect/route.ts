@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
+import {
+  checkIpRateLimit,
+  getIpRateLimitHeaders,
+} from "@/lib/api/ip-rate-limiter";
 
 // =============================================================================
 // SSO DOMAIN DETECTION
@@ -15,6 +19,14 @@ import { getSupabaseAdmin } from "@/lib/supabase/server";
  * configuration. Returns whether SSO is available and the provider display name.
  */
 export async function POST(request: NextRequest) {
+  const rl = checkIpRateLimit(request, 5, 60_000);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Rate limit exceeded" },
+      { status: 429, headers: getIpRateLimitHeaders(rl) },
+    );
+  }
+
   let payload: Record<string, unknown>;
   try {
     payload = (await request.json()) as Record<string, unknown>;

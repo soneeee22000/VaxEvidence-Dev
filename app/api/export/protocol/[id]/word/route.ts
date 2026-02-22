@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin, getServerUser } from "@/lib/supabase/server";
 import { generateProtocolWord } from "@/lib/export/word-generator";
+import {
+  checkIpRateLimit,
+  getIpRateLimitHeaders,
+} from "@/lib/api/ip-rate-limiter";
 import type { ProtocolExportOptions } from "@/lib/export/types";
+import { protocolExportOptionsSchema } from "@/lib/validators/export";
 
 /**
  * Export protocol as Word document
@@ -17,6 +22,14 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const rl = checkIpRateLimit(request, 5, 60_000);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Rate limit exceeded" },
+        { status: 429, headers: getIpRateLimitHeaders(rl) },
+      );
+    }
+
     const { id: protocolId } = await params;
 
     if (!protocolId) {
@@ -26,15 +39,16 @@ export async function POST(
       );
     }
 
-    // Parse export options from request body
+    // Parse and validate export options from request body
     const body = await request.json();
-    const options: ProtocolExportOptions = {
-      includeEvidence: body.includeEvidence ?? true,
-      includeDatasets: body.includeDatasets ?? true,
-      includeComments: body.includeComments ?? false,
-      includeReviews: body.includeReviews ?? false,
-      templateStyle: body.templateStyle ?? "professional",
-    };
+    const parsed = protocolExportOptionsSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid export options", details: parsed.error.flatten() },
+        { status: 422 },
+      );
+    }
+    const options: ProtocolExportOptions = parsed.data;
 
     const admin = getSupabaseAdmin();
 
@@ -50,6 +64,10 @@ export async function POST(
         { error: "Protocol not found" },
         { status: 404 },
       );
+    }
+
+    if (protocol.user_id !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Fetch linked data
