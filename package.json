@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit"
   },
@@ -97,6 +98,7 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^5.1.4",
     "baseline-browser-mapping": "^2.10.0",
+    "dotenv": "^17.3.1",
     "eslint": "^9.39.2",
     "eslint-config-next": "^16.1.2",
     "jsdom": "^28.1.0",

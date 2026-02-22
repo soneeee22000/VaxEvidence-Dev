@@ -75,7 +75,7 @@ Build the **most powerful platform** for vaccine researchers to design protocols
 
 ---
 
-## NEXT UP: Planned Features
+## COMPLETED: Post-MVP Features
 
 ### Phase 3: Multi-Tenant Teams & RBAC
 
@@ -243,20 +243,24 @@ Build the **most powerful platform** for vaccine researchers to design protocols
 
 ---
 
-## Recommended Build Order
+## Build History
 
-| Priority | Phase | Feature                   | Why Now                       |
-| -------- | ----- | ------------------------- | ----------------------------- |
-| 1        | 3     | Teams & RBAC              | Can't monetize without it     |
-| 2        | 4     | Versioning & Audit Trail  | FDA compliance requirement    |
-| 3        | 5     | Pagination & Performance  | Breaks at scale               |
-| 4        | 6     | Test Suite & CI           | Technical debt is compounding |
-| 5        | 7     | AI Research Assistant     | Core differentiator           |
-| 6        | 9     | Billing (Stripe)          | Start generating revenue      |
-| 7        | 8     | PRISMA Workflow           | Publication-grade features    |
-| 8        | 10    | Real-Time Collaboration   | Modern team UX                |
-| 9        | 11    | Regulatory Packages       | Enterprise sales unlock       |
-| 10       | 12    | Enterprise & Integrations | Scale to large orgs           |
+All 12 phases completed. Phases were built in this order:
+
+| Order | Phase | Feature                   | Rationale                     |
+| ----- | ----- | ------------------------- | ----------------------------- |
+| 1     | 1-2   | Core MVP (7 features)     | Foundation                    |
+| 2     | 3     | Teams & RBAC              | Can't monetize without it     |
+| 3     | 4     | Versioning & Audit Trail  | FDA compliance requirement    |
+| 4     | 5     | Pagination & Performance  | Breaks at scale               |
+| 5     | 6     | Test Suite & CI           | Technical debt is compounding |
+| 6     | 7     | AI Research Assistant     | Core differentiator           |
+| 7     | 8     | PRISMA Workflow           | Publication-grade features    |
+| 8     | 10    | Real-Time Collaboration   | Modern team UX                |
+| 9     | 11    | Regulatory Packages       | Enterprise sales unlock       |
+| 10    | 12    | Enterprise & Integrations | Scale to large orgs           |
+
+**Next:** Phase 9 (Billing / Stripe) is the only phase not yet started.
 
 ---
 
@@ -273,4 +277,4 @@ Build the **most powerful platform** for vaccine researchers to design protocols
 
 ---
 
-_Last Updated: February 22, 2026_
+_Last Updated: February 23, 2026_

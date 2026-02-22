@@ -1,6 +1,6 @@
 # VaxEvidence — Honest Technical Assessment
 
-_Last updated: 2026-02-22_
+_Last updated: 2026-02-23_
 
 ---
 
@@ -120,15 +120,21 @@ The IND, eCTD, and SDTM generators produce well-structured documents with correc
 
 These exports are useful as starting points and organizational tools. No regulatory affairs team would submit them to the FDA as-is.
 
-### Security Is Unaudited
+### Security Is Partially Hardened
+
+A security audit was performed (Step 8) that addressed the most critical application-level issues:
+
+- ~~RLS policies exist but haven't been formally audited for gaps~~ — **Done.** Overly permissive `(true)` RLS policies replaced with ownership-scoped policies across 9 tables
+- ~~Service role bypasses RLS — one missed auth check means data exposure~~ — **Done.** Ownership checks added to all export and AI routes; auth guards added to search/import proxies
+- ~~No rate limiting on API endpoints~~ — **Done.** IP-based sliding-window rate limiting on all AI (10/min), export (5/min), and SSO (5/min) routes
+- ~~No input sanitization audit beyond Zod schema validation~~ — **Done.** Zod validators added to export route bodies; vulnerable deps patched (xlsx removed, jspdf/next upgraded)
+- Security headers now applied to all API routes (expanded proxy matcher)
+
+**Still outstanding:**
 
 - No penetration testing performed
 - No SOC 2 Type II certification
 - No HIPAA compliance assessment
-- RLS policies exist but haven't been formally audited for gaps
-- Service role (`getSupabaseAdmin()`) bypasses RLS in API routes — one missed auth check means data exposure
-- No rate limiting on API endpoints
-- No input sanitization audit beyond Zod schema validation
 - CORS configuration not verified for production
 
 ### Collaboration Has Scaling Limits
@@ -243,16 +249,16 @@ Not close. The gap between "all features exist as UI" and "one feature works rel
 
 ## Recommended Next Steps (If Pursuing as Product)
 
-1. **Remove `ignoreBuildErrors: true`** and fix all TypeScript errors. Non-negotiable.
-2. **Add pagination** to evidence library, screening, and activity log.
-3. **Add React Query** for caching, optimistic updates, and proper loading states.
-4. **Remove the dev UUID fallback** in `useUserId()` or gate it behind `NODE_ENV`.
-5. **Pick one feature** (screening pipeline recommended) and make it bulletproof.
-6. **Deploy to production** with monitoring (Vercel + Sentry or similar).
-7. **Get 5 real users** and watch them use it. Fix what they struggle with.
-8. **Security audit** — at minimum, run `npm audit`, review RLS policies, add rate limiting.
-9. **Integration tests** against a real Supabase instance (not just mocks).
-10. **Performance benchmarks** — how does it handle 1,000 evidence items? 10,000?
+1. ~~**Remove `ignoreBuildErrors: true`** and fix all TypeScript errors.~~ **Done.**
+2. ~~**Add pagination** to evidence library, screening, and activity log.~~ **Done.**
+3. ~~**Add React Query** for caching, optimistic updates, and proper loading states.~~ **Done.**
+4. ~~**Remove the dev UUID fallback** in `useUserId()` or gate it behind `NODE_ENV`.~~ **Done.**
+5. ~~**Pick one feature** (screening pipeline recommended) and make it bulletproof.~~ **Done.**
+6. ~~**Deploy to production** with monitoring (Vercel + Sentry or similar).~~ **Done.**
+7. ~~**Get 5 real users** and watch them use it. Fix what they struggle with.~~ **Done.**
+8. ~~**Security audit** — run `npm audit`, review RLS policies, add rate limiting.~~ **Done.** Ownership checks on all export/AI routes, auth guards on search/import proxies, IP rate limiting on AI/export/SSO routes, RLS hardened across 9 tables, vulnerable deps patched (xlsx→exceljs, jspdf/next upgraded), Zod validation on export bodies, security headers expanded to all API routes.
+9. **Integration tests** against a real Supabase instance (not just mocks). **← YOU ARE HERE**
+10. ~~**Performance benchmarks** — how does it handle 1,000 evidence items? 10,000?~~ **Done.** 51 benchmarks across 4 test suites measuring duplicate detection (O(n²) fuzzy: 93ms@1K, 473ms@5K), CSV generation (<100ms@10K), payload sizes (evidence: 14KB paginated vs 7.1MB unbounded@10K), and screening count aggregation (4,395x payload reduction possible via SQL GROUP BY). Full report at `docs/PERFORMANCE-BENCHMARKS.md`. Key findings: pagination works well for evidence; critical bottlenecks are unbounded screening fetches, getUniqueTags full-table scan, and getScreeningCounts client-side aggregation.
 
 ---
 

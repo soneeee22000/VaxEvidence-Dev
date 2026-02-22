@@ -1,6 +1,6 @@
 # VaxEvidence
 
-A Real-World Evidence (RWE) platform for vaccine research scientists. Enables collaborative creation of regulatory-ready study protocols (PICO-based), evidence management, dataset handling, and export/reporting. Built for FDA/EMA compliance.
+A Real-World Evidence (RWE) platform for vaccine research scientists. Enables collaborative creation of regulatory-ready study protocols (PICO-based), PRISMA-compliant systematic reviews, risk-of-bias assessment, meta-analysis, regulatory submissions (FDA IND, eCTD, SDTM), and real-time team collaboration. Built for FDA/EMA compliance.
 
 ## Tech Stack
 
@@ -8,22 +8,28 @@ A Real-World Evidence (RWE) platform for vaccine research scientists. Enables co
 - **Styling:** Tailwind CSS v4, CSS variables (OKLCH), dark mode default
 - **UI Components:** shadcn/ui (New York style) + Radix UI + Lucide icons
 - **Database:** Supabase (PostgreSQL + Auth + RLS + Storage) with `@supabase/ssr`
+- **Data Fetching:** @tanstack/react-query v5 (caching, pagination, optimistic updates)
 - **Forms:** react-hook-form + Zod validation
-- **Exports:** jsPDF, @react-pdf/renderer, docx, papaparse, xlsx, citation-js, archiver
-- **Charts:** recharts
+- **Real-time:** yjs (CRDT) + Supabase Realtime (Broadcast + Presence)
+- **AI:** Vercel AI SDK v6, OpenAI, Google AI
+- **Exports:** jsPDF, @react-pdf/renderer, docx, papaparse, exceljs, citation-js, archiver
+- **Charts:** recharts (dashboards) + custom SVG (forest plots)
+- **Monitoring:** @sentry/nextjs v10 (error tracking, source maps)
+- **Testing:** vitest (~1,400 unit tests), Playwright (49 E2E tests), performance benchmarks (51 tests)
 - **Animations:** framer-motion, lottie-react
-- **Theming:** next-themes (dark mode default)
-- **Notifications:** sonner
 - **Package Manager:** pnpm
 
 ## Getting Started
 
 ```bash
 pnpm install
-pnpm dev          # Start dev server (http://localhost:3000)
-pnpm build        # Production build
-pnpm lint         # ESLint
-pnpm start        # Start production server
+pnpm dev              # Start dev server (http://localhost:3000)
+pnpm build            # Production build
+pnpm lint             # ESLint
+pnpm start            # Start production server
+pnpm test             # Run unit tests
+pnpm test:e2e         # Run Playwright E2E tests
+pnpm typecheck        # TypeScript strict check
 ```
 
 ## Environment Variables
@@ -45,45 +51,11 @@ IP_HASH_SALT=                         # Optional (waitlist IP anonymization)
 
 1. **Create** protocols and define research questions using PICO framework
 2. **Import** evidence from PubMed, ClinicalTrials.gov, or add manually
-3. **Organize** datasets with upload, preview, and visualization
-4. **Collaborate** with threaded comments, reviews, and activity tracking
-5. **Export** protocols (PDF/Word), bibliographies (APA/BibTeX/RIS), activity logs, and full workspace archives
-
-## Project Structure
-
-```
-app/                    # Next.js App Router
-├── api/                # API routes (evidence, export, search, import, waitlist)
-├── app/                # Authenticated pages (dashboard, evidence, datasets, etc.)
-├── auth/               # Login + OAuth callback
-├── layout.tsx          # Root layout
-└── page.tsx            # Landing page
-
-components/
-├── ui/                 # ~56 shadcn/ui primitives
-├── collaboration/      # Comments, reviews, activity feed
-├── datasets/           # Dataset cards, filters, upload
-├── evidence/           # Evidence cards, filters, import, PubMed/trial search
-├── export/             # Export dialogs and menus
-├── landing/            # Marketing page sections
-└── templates/          # Protocol template selector
-
-lib/
-├── api/                # External API clients (PubMed, CrossRef, ClinicalTrials.gov)
-├── auth/               # Auth context (useAuth, useUserId)
-├── demo/               # Sample data for demo mode
-├── export/             # PDF/Word/CSV/ZIP generators + bibliography
-├── ml/                 # Auto-tagging via keyword extraction
-├── supabase/           # Supabase clients + CRUD modules per table
-├── templates/          # Protocol template definitions
-├── validators/         # Zod schemas
-└── utils.ts            # cn() helper
-
-hooks/                  # use-mobile, use-toast
-supabase/migrations/    # SQL migration files
-docs/                   # Project documentation
-proxy.ts                # Auth proxy (Supabase session + route guards)
-```
+3. **Screen** studies through a PRISMA-compliant 4-stage pipeline with duplicate detection
+4. **Assess** risk of bias using RoB 2 (RCTs) or ROBINS-I (observational) tools
+5. **Analyze** with meta-analysis forest plots (effect sizes, confidence intervals, subgroups)
+6. **Collaborate** in real-time with Yjs CRDT editing, presence indicators, and @mention notifications
+7. **Export** regulatory-ready packages: FDA IND, eCTD Module 5, SDTM templates, or standard PDF/Word/CSV
 
 ## Features
 
@@ -91,6 +63,7 @@ proxy.ts                # Auth proxy (Supabase session + route guards)
 
 - PICO-based protocol design (Population, Intervention, Comparator, Outcomes)
 - Protocol templates for common study types
+- Version history with diff viewer
 - Status tracking: draft, in_review, final
 - Link evidence and datasets to protocols
 
@@ -101,19 +74,51 @@ proxy.ts                # Auth proxy (Supabase session + route guards)
 - DOI/PMID quick import (CrossRef)
 - ClinicalTrials.gov search and import
 - Auto-tagging from title/abstract keywords
-- Advanced filtering by type, tags, date
+- Server-side pagination, search, and advanced filtering
 
-### Dataset Management
+### Systematic Review (PRISMA)
 
-- CSV/Excel upload with Supabase Storage
-- Data preview (first 50 rows) and basic charts
-- Link datasets to protocols
+- 4-stage screening pipeline: identification, screening, eligibility, included
+- Duplicate detection (DOI, PMID, fuzzy title matching via Dice coefficient)
+- Per-study include/exclude decisions with exclusion reasons
+- PRISMA flow diagram with live counts
+- PRISMA PDF export
 
-### Collaboration
+### Risk-of-Bias Assessment
 
-- Threaded comments on protocols, evidence, datasets
+- RoB 2 tool for randomized controlled trials (5 domains)
+- ROBINS-I tool for observational studies (7 domains)
+- Traffic-light summary visualization
+- Per-domain judgment with justification
+
+### Meta-Analysis
+
+- Study-level effect size data entry
+- Custom SVG forest plots with CI whiskers
+- Subgroup analysis support
+- Pooled effect size calculation
+
+### Real-Time Collaboration
+
+- Yjs CRDT for conflict-free concurrent editing
+- Supabase Broadcast transport (no WebSocket server needed)
+- Presence indicators and field-level cursors
+- Threaded comments with @mention notifications
 - Review workflows (request, approve, reject, request changes)
 - Activity feed with automatic logging
+
+### Regulatory Compliance
+
+- **CONSORT 2010** checklist (37 sub-items) for RCT reporting
+- **STROBE** checklist (~40 items, 3 study-type variants) for observational studies
+- **ICH E6(R2) GCP** compliance tracker (68 items across 3 categories)
+- Interactive checklist UI with progress tracking
+
+### Regulatory Exports
+
+- **FDA IND Package** (PDF + Word) per 21 CFR 312.23 — 10 sections with protocol auto-population
+- **eCTD Module 5** (PDF + Word) per ICH M4E(R2) — 15 sections with screening data integration
+- **CDISC SDTM Templates** (ZIP) — 10 domains (v3.3) with auto-population from protocol PICO
 
 ### Reporting & Export
 
@@ -123,22 +128,99 @@ proxy.ts                # Auth proxy (Supabase session + route guards)
 - Activity audit log export (CSV and PDF)
 - Workspace bulk export (ZIP archive)
 
+### AI Research Assistant
+
+- PICO auto-generation from research questions
+- Literature synthesis and summary
+- Paper recommendations
+
+### Enterprise (UI Shells)
+
+- API key management with create/revoke
+- Webhook configuration with event selection
+- SSO/SAML configuration form
+- Audit log viewer
+- Compliance dashboard
+- Integration provider cards
+
+### Dataset Management
+
+- CSV/Excel upload with Supabase Storage
+- Data preview (first 50 rows) and basic charts
+- Link datasets to protocols
+
+## Project Structure
+
+```
+app/                    # Next.js App Router
+├── api/                # 21 API route groups (evidence, screening, export, ai, v1, etc.)
+├── app/                # Authenticated pages (dashboard, evidence, datasets, screening, regulatory, settings)
+├── auth/               # Login + OAuth callback
+├── layout.tsx          # Root layout
+└── page.tsx            # Landing page
+
+components/             # 20 component directories
+├── ui/                 # ~56 shadcn/ui primitives
+├── ai/                 # AI assistant panel
+├── collaboration/      # Comments, reviews, presence, notifications
+├── regulatory/         # IND/eCTD/SDTM dialogs, checklists, GCP
+├── screening/          # Pipeline, PRISMA diagram, duplicate detector
+├── settings/           # Enterprise settings tabs
+└── ...                 # + datasets, evidence, export, meta-analysis, risk-of-bias, etc.
+
+lib/                    # 22 library modules
+├── query/              # React Query hooks + client config
+├── regulatory/         # Regulatory definitions (IND, CONSORT, STROBE, GCP, eCTD, SDTM)
+├── collaboration/      # Yjs provider, presence context, form bridge
+├── supabase/           # 20 CRUD modules + client setup
+├── export/             # PDF/Word/CSV/ZIP + IND/eCTD/SDTM generators
+└── ...                 # + ai, analytics, audit, security, screening, validators, etc.
+
+__tests__/              # vitest unit + integration tests (~1,400 tests)
+├── benchmarks/         # Performance benchmarks (51 tests)
+└── ...                 # 16 sub-directories (api, screening, security, supabase, etc.)
+e2e/                    # Playwright E2E tests (49 tests)
+supabase/migrations/    # SQL migration files
+docs/                   # Project documentation
+proxy.ts                # Auth proxy (Next.js 16 convention)
+```
+
+## Testing
+
+```bash
+pnpm test                # Unit tests (vitest, ~1,400 tests)
+pnpm test:coverage       # Unit tests with v8 coverage
+pnpm test:integration    # Integration tests (separate config)
+pnpm test:e2e            # Playwright E2E tests (49 tests)
+pnpm vitest run __tests__/benchmarks/  # Performance benchmarks (51 tests)
+```
+
 ## Documentation
 
 See [`docs/`](docs/) for detailed documentation:
 
+- `PERFORMANCE-BENCHMARKS.md` — Performance benchmark results and optimization recommendations
+- `PRD-PHASE-11.md` — Phase 11 (Regulatory) product requirements
 - `SMOKE_CHECKLIST.md` — Manual QA checklist
 - `MVP_FEATURES.md` — Feature specifications
 - `REPORTING_EXPORT_IMPLEMENTATION.md` — Export system details
 - `SCIENTIFIC_DATABASE_INTEGRATION_MVP.md` — Database integration specs
-- `template-integration-guide.md` — Protocol template guide
 
 ## Roadmap
 
-See [`ROADMAP.md`](ROADMAP.md) for the full product roadmap. Next priorities:
+See [`ROADMAP.md`](ROADMAP.md) for the full product roadmap. All 12 development phases are complete:
 
-1. Multi-tenant teams & RBAC
-2. Protocol versioning & audit trail (21 CFR Part 11)
-3. Pagination & performance
-4. Test suite & CI pipeline
-5. AI research assistant
+| Phase | Feature                                                | Status |
+| ----- | ------------------------------------------------------ | ------ |
+| 1-2   | Core platform (protocols, evidence, datasets, exports) | Done   |
+| 3     | Multi-tenant workspaces & RBAC                         | Done   |
+| 4     | Protocol versioning & audit trail                      | Done   |
+| 5     | Pagination & React Query caching                       | Done   |
+| 6     | Test suite & CI pipeline                               | Done   |
+| 7     | AI research assistant                                  | Done   |
+| 8     | Systematic review / PRISMA screening                   | Done   |
+| 10    | Real-time collaboration (Yjs, presence)                | Done   |
+| 11    | Regulatory submissions (IND, eCTD, SDTM, checklists)   | Done   |
+| 12    | Enterprise (API keys, webhooks, SSO, audit)            | Done   |
+
+**Next:** Phase 9 (Billing / Stripe) is planned but not yet started.

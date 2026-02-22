@@ -11,7 +11,7 @@ export default defineConfig({
     globals: true,
     environment: "node",
     include: ["__tests__/**/*.test.ts", "__tests__/**/*.test.tsx"],
-    exclude: ["node_modules", ".next", "e2e"],
+    exclude: ["node_modules", ".next", "e2e", "__tests__/integration"],
     coverage: {
       provider: "v8",
       include: ["lib/**/*.ts"],

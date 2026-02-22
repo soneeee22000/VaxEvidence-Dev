@@ -11,21 +11,32 @@ VaxEvidence is a Real-World Evidence (RWE) platform for vaccine research scienti
 - **UI Components:** shadcn/ui (New York style) + Radix UI primitives + Lucide icons
 - **Database:** Supabase (PostgreSQL + Auth + RLS + Storage) with `@supabase/ssr` for SSR-aware clients
 - **Forms:** react-hook-form + Zod validation
-- **Exports:** jsPDF, @react-pdf/renderer, docx, papaparse, xlsx, citation-js, archiver
+- **Data Fetching:** @tanstack/react-query v5 (caching, pagination, optimistic updates)
+- **Exports:** jsPDF, @react-pdf/renderer, docx, papaparse, exceljs, citation-js, archiver
 - **Charts:** recharts
 - **Animations:** framer-motion, lottie-react
 - **Theming:** next-themes (dark mode default)
 - **Notifications:** sonner (toast notifications)
+- **Real-time:** yjs (CRDT), Supabase Realtime (Broadcast + Presence)
+- **AI:** ai SDK v6, @ai-sdk/openai, @ai-sdk/google
 - **Analytics:** @vercel/analytics
+- **Monitoring:** @sentry/nextjs v10 (error tracking, source maps)
+- **Testing:** vitest (unit), @playwright/test (E2E)
 - **Package Manager:** pnpm
 
 ## Commands
 
 ```bash
-pnpm dev          # Start dev server
-pnpm build        # Production build
-pnpm lint         # ESLint (flat config, eslint-config-next)
-pnpm start        # Start production server
+pnpm dev              # Start dev server
+pnpm build            # Production build
+pnpm lint             # ESLint (flat config, eslint-config-next)
+pnpm start            # Start production server
+pnpm test             # Run unit tests (vitest)
+pnpm test:watch       # Run tests in watch mode
+pnpm test:coverage    # Run tests with v8 coverage
+pnpm test:integration # Run integration tests (vitest, separate config)
+pnpm test:e2e         # Run E2E tests (Playwright)
+pnpm typecheck        # TypeScript check without emit
 ```
 
 ## Project Structure
@@ -33,26 +44,41 @@ pnpm start        # Start production server
 ```
 app/                    # Next.js App Router
 ├── api/                # API routes
+│   ├── ai/             # AI research assistant (PICO, synthesis, recommendations)
+│   ├── analytics/      # Analytics events
+│   ├── auth/           # Auth helpers
+│   ├── cron/           # Scheduled jobs
 │   ├── evidence/       # Evidence CRUD + /[id] detail
 │   ├── export/         # Export routes
 │   │   ├── activity/csv/   # Activity log CSV export
 │   │   ├── activity/pdf/   # Activity log PDF export
 │   │   ├── bibliography/   # Bibliography export (APA/MLA/Chicago/BibTeX/RIS)
-│   │   ├── protocol/[id]/  # Protocol PDF export + /word sub-route
+│   │   ├── protocol/[id]/  # Protocol PDF/Word + /ind + /ectd + /sdtm
 │   │   └── workspace/      # Full workspace ZIP export
+│   ├── feedback/       # User feedback submission
+│   ├── gcp-compliance/ # GCP compliance CRUD
+│   ├── health/         # Health check endpoint
 │   ├── import/         # Evidence import
+│   ├── integrations/   # External integrations CRUD
+│   ├── invitations/    # Workspace invitation management
 │   ├── meta-analysis/  # Meta-analysis CRUD + /[id] detail
+│   ├── protocols/      # Protocol CRUD + versioning
+│   ├── reporting-checklist/ # CONSORT/STROBE checklist CRUD
 │   ├── risk-of-bias/   # RoB assessment CRUD + /[id] detail
 │   ├── screening/      # Screening decisions CRUD + /[id] + /duplicates
 │   ├── search/         # PubMed/ClinicalTrials.gov search
-│   └── waitlist/       # Waitlist signup
+│   ├── v1/             # Public REST API (API key auth, Phase 12)
+│   ├── waitlist/       # Waitlist signup
+│   └── workspaces/     # Workspace management CRUD
 ├── app/                # Authenticated pages
 │   ├── [id]/           # Individual protocol view
-│   │   └── screening/  # Systematic review screening page
+│   │   ├── screening/  # Systematic review screening page
+│   │   └── regulatory/ # Regulatory compliance hub (CONSORT/STROBE/GCP)
 │   ├── activity/       # Activity log page
 │   ├── datasets/       # Dataset listing + /new + /[id]
 │   ├── evidence/       # Evidence library + /new + /[id]
 │   ├── new/            # New protocol creation
+│   ├── settings/       # Enterprise settings (6 tabs: general, API keys, webhooks, SSO, audit, compliance)
 │   ├── templates/      # Protocol template browser
 │   ├── layout.tsx      # Authenticated layout (sidebar + auth guard)
 │   └── page.tsx        # Dashboard
@@ -63,20 +89,30 @@ app/                    # Next.js App Router
 
 components/
 ├── ui/                 # ~56 shadcn/ui primitives (DO NOT manually edit)
+├── ai/                 # AI assistant panel, PICO generator
 ├── collaboration/      # Comments, reviews, activity feed, presence avatars, field cursors, notifications
 ├── datasets/           # Dataset cards, filters, upload
+├── demo/               # Demo mode components
 ├── evidence/           # Evidence cards, filters, import dialogs, PubMed/trial search
-├── export/             # Export dialogs and menus (incl. PRISMA PDF)
+├── export/             # Export dialogs and menus (incl. PRISMA PDF, IND, eCTD, SDTM)
+├── feedback/           # Feedback widget
+├── landing/            # Marketing page sections
 ├── meta-analysis/      # Forest plot (SVG), data entry table, panel
+├── onboarding/         # Guided onboarding flow
+├── regulatory/         # IND/eCTD/SDTM preview dialogs, checklist panel, GCP compliance
 ├── risk-of-bias/       # RoB assessment form, traffic-light summary, domain badge
 ├── screening/          # Screening pipeline, cards, stats bar, PRISMA diagram, duplicate detector
-├── landing/            # Marketing page sections
+├── settings/           # Enterprise settings tabs (API keys, webhooks, SSO, audit, compliance, integrations)
 ├── templates/          # Protocol template selector
+├── versioning/         # Protocol version history, diff viewer
 ├── theme-provider.tsx  # next-themes provider wrapper
 └── theme-toggle.tsx    # Dark/light mode toggle
 
 lib/
+├── ai/                 # AI service layer (prompts, streaming)
+├── analytics/          # Event tracking utilities
 ├── api/                # External API clients (PubMed, CrossRef, ClinicalTrials.gov)
+├── audit/              # Audit log helpers
 ├── auth/               # Auth context (useAuth, useUserId) from auth-context.tsx
 ├── collaboration/      # Real-time collaboration (Phase 10)
 │   ├── types.ts                     # PresenceState, CollaboratorInfo, COLLAB_FIELDS
@@ -85,31 +121,66 @@ lib/
 │   ├── yjs-form-bridge.ts           # Yjs Y.Map <-> react-hook-form bidirectional sync
 │   ├── presence-context.tsx         # React context: channel, presence, Yjs doc, bridge
 │   └── use-realtime-comments.ts     # Hook: postgres_changes on comments table
+├── config.ts           # App configuration constants
 ├── demo/               # Sample data for demo mode (sample-datasets.ts)
-├── export/             # PDF/Word/CSV/ZIP generators + bibliography + PRISMA PDF
+├── export/             # PDF/Word/CSV/ZIP generators + bibliography + PRISMA PDF + IND/eCTD/SDTM
+├── import/             # Evidence import parsers
 ├── ml/                 # Auto-tagging via keyword extraction
+├── onboarding/         # Onboarding state management
+├── query/              # React Query layer (Phase 5)
+│   ├── query-client.ts              # QueryClient config (30s stale, 5min GC)
+│   ├── query-provider.tsx           # QueryClientProvider + ReactQueryDevtools
+│   └── hooks.ts                     # Custom hooks: useEvidenceList, useDatasetList, useProtocolList, etc.
+├── regulatory/         # Regulatory definitions (Phase 11)
+│   ├── ind-sections.ts              # FDA IND 21 CFR 312.23 (10 sections)
+│   ├── consort-checklist.ts         # CONSORT 2010 (37 sub-items)
+│   ├── strobe-checklist.ts          # STROBE (~40 items, 3 study-type variants)
+│   ├── gcp-principles.ts            # ICH E6(R2) GCP principles (13)
+│   ├── gcp-protocol-sections.ts     # GCP protocol sections (20)
+│   ├── gcp-essential-documents.ts   # GCP essential documents (35)
+│   ├── ectd-module5-structure.ts    # ICH M4E(R2) eCTD Module 5 (15 sections)
+│   ├── sdtm-domains.ts             # CDISC SDTM v3.3 (10 domains)
+│   └── sdtm-trial-design.ts        # SDTM auto-population from protocol PICO
 ├── screening/          # Duplicate detection (DOI/PMID/fuzzy title) + PRISMA count computation
+├── security/           # Rate limiting, input sanitization
+├── storage/            # Supabase Storage helpers
 ├── supabase/           # Supabase clients + CRUD query modules per table
 │   ├── browser.ts      # SSR-aware browser client (@supabase/ssr)
 │   ├── server.ts       # Server client (admin + user-session) + getServerUser()
 │   ├── middleware.ts    # Auth middleware helpers (session refresh)
 │   ├── activity.ts     # Activity log CRUD
+│   ├── audit-logs.ts   # Audit log CRUD
 │   ├── comments.ts     # Comments CRUD (+ @mention notification creation)
 │   ├── datasets.ts     # Datasets CRUD
 │   ├── evidence.ts     # Evidence CRUD
-│   ├── meta-analysis.ts # Meta-analysis entries CRUD
-│   ├── notifications.ts # Notification CRUD (fetch, unread count, mark read, create)
-│   ├── protocols.ts    # Protocols CRUD
-│   ├── reviews.ts      # Reviews CRUD
-│   ├── risk-of-bias.ts # Risk of bias assessments CRUD
-│   └── screening.ts    # Screening decisions CRUD
+│   ├── gcp-compliance.ts    # GCP compliance CRUD
+│   ├── integrations.ts      # External integrations CRUD
+│   ├── meta-analysis.ts     # Meta-analysis entries CRUD
+│   ├── notifications.ts     # Notification CRUD (fetch, unread count, mark read, create)
+│   ├── protocols.ts         # Protocols CRUD
+│   ├── protocol-versions.ts # Protocol version history CRUD
+│   ├── reporting-checklists.ts  # CONSORT/STROBE checklist CRUD
+│   ├── reviews.ts           # Reviews CRUD
+│   ├── risk-of-bias.ts      # Risk of bias assessments CRUD
+│   ├── screening.ts         # Screening decisions CRUD
+│   ├── workspace-members.ts # Workspace member management
+│   └── workspaces.ts        # Workspace CRUD
 ├── templates/          # Protocol template definitions
+├── types/              # Shared TypeScript types (pagination, etc.)
 ├── utils/              # Utility modules
 │   └── file-parser.ts  # File parsing utilities
 ├── validators/         # Zod schemas (protocol, evidence, dataset, comment, review, activity, waitlist, screening, risk-of-bias, meta-analysis, notification)
 └── utils.ts            # cn() helper (clsx + tailwind-merge)
 
 hooks/                  # use-mobile, use-toast
+__tests__/              # Unit + integration tests (vitest, ~1,400 tests)
+├── benchmarks/         # Performance benchmarks (4 suites, 51 tests)
+├── api/                # API route tests
+├── screening/          # Screening logic tests
+├── security/           # Security audit tests
+├── supabase/           # CRUD module tests
+└── ...                 # 16 sub-directories total
+e2e/                    # Playwright E2E tests (49 tests)
 supabase/migrations/    # SQL migration files
 docs/                   # Project documentation
 public/demo/            # Demo mode static assets
@@ -196,11 +267,10 @@ IP_HASH_SALT                          # Optional (waitlist IP anonymization)
 
 ## Known Constraints
 
-- `next.config.mjs` has `ignoreBuildErrors: true` — TS errors won't block builds
 - Images are unoptimized (`images: { unoptimized: true }`)
-- No pagination yet — evidence library loads all items
-- No caching layer (no React Query/SWR) — direct Supabase queries
-- No test suite currently in place
+- Screening decisions, linked evidence, and `getUniqueTags()` are still unbounded (no pagination) — see `docs/PERFORMANCE-BENCHMARKS.md`
+- Enterprise features (SSO, webhooks, API keys) are UI shells — backend integrations not wired
+- Regulatory exports (IND, eCTD, SDTM) produce structured templates, not submission-ready packages
 
 ## Important: Server vs Browser Client in API Routes
 
