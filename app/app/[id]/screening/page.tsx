@@ -28,6 +28,7 @@ import {
   FlaskConical,
 } from "lucide-react";
 import { toast } from "sonner";
+import { trackEvent } from "@/lib/analytics/track-event";
 
 /** Screening page for a protocol's systematic review workflow. */
 export default function ScreeningPage() {
@@ -150,9 +151,10 @@ export default function ScreeningPage() {
         const json = await res.json();
         throw new Error(json.error);
       }
+      trackEvent("screening_decision", { decision, protocolId });
       invalidateScreening();
     },
-    [invalidateScreening],
+    [invalidateScreening, protocolId],
   );
 
   /** Revert a decision back to pending. */
