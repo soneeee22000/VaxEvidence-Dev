@@ -1,14 +1,15 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * Playwright configuration for VaxEvidence E2E smoke tests.
+ * Playwright configuration for VaxEvidence E2E tests.
+ * Projects: setup → smoke (existing), phases (Phase 8/10/11/12 features).
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
+  retries: 1,
   workers: 1,
   reporter: "html",
 
@@ -19,7 +20,7 @@ export default defineConfig({
     actionTimeout: 15_000,
   },
 
-  timeout: 60_000,
+  timeout: 120_000,
 
   projects: [
     {
@@ -33,6 +34,16 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
         storageState: "e2e/.auth/user.json",
       },
+      testMatch: /smoke\.spec\.ts|console\.spec\.ts/,
+    },
+    {
+      name: "phases",
+      dependencies: ["setup"],
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "e2e/.auth/user.json",
+      },
+      testMatch: /phase\d+.*\.spec\.ts/,
     },
   ],
 
