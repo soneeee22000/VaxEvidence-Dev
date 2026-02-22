@@ -20,7 +20,8 @@ import { useProtocolList } from "@/lib/query/hooks";
 import { useDebouncedSearch } from "@/hooks/use-debounced-search";
 import { buildPaginationMeta } from "@/lib/types/pagination";
 import { useAuth } from "@/lib/auth/auth-context";
-import { Search } from "lucide-react";
+import { useOnboarding } from "@/lib/onboarding/onboarding-context";
+import { Search, Loader2 } from "lucide-react";
 
 const DASHBOARD_PAGE_SIZE = 12;
 
@@ -28,6 +29,7 @@ function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user: authUser, signOut } = useAuth();
+  const { isOnboarding } = useOnboarding();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   const initialPage = parseInt(searchParams.get("page") ?? "1", 10) || 1;
@@ -135,16 +137,30 @@ function DashboardContent() {
 
             {protocols.length === 0 && !isLoading && !isError && (
               <div className="rounded-lg border border-dashed border-muted px-4 py-6 text-center text-muted-foreground">
-                <p className="text-base font-medium text-foreground">
-                  {search
-                    ? "No protocols match your search"
-                    : "No protocols yet"}
-                </p>
-                <p className="mt-1 text-sm">
-                  {search
-                    ? "Try a different search term."
-                    : "Create your first study protocol to get started."}
-                </p>
+                {isOnboarding ? (
+                  <>
+                    <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
+                    <p className="mt-3 text-base font-medium text-foreground">
+                      Setting up your workspace...
+                    </p>
+                    <p className="mt-1 text-sm">
+                      We are creating a sample protocol to help you get started.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-base font-medium text-foreground">
+                      {search
+                        ? "No protocols match your search"
+                        : "No protocols yet"}
+                    </p>
+                    <p className="mt-1 text-sm">
+                      {search
+                        ? "Try a different search term."
+                        : "Create your first study protocol to get started."}
+                    </p>
+                  </>
+                )}
               </div>
             )}
 

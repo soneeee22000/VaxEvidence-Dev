@@ -25,6 +25,9 @@ import {
 import { useState, useEffect } from "react";
 import { fetchPendingReviewCount } from "@/lib/supabase/reviews";
 import { NotificationDropdown } from "@/components/collaboration/notification-dropdown";
+import { OnboardingProvider } from "@/lib/onboarding/onboarding-context";
+import { OnboardingOverlay } from "@/components/onboarding/onboarding-overlay";
+import { FeedbackWidget } from "@/components/feedback/feedback-widget";
 
 function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -68,12 +71,14 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
       label: "Protocols",
       icon: FileText,
       exact: true,
+      onboardingId: "nav-protocols",
     },
     {
       href: "/app/templates",
       label: "Templates",
       icon: LayoutTemplate,
       exact: false,
+      onboardingId: "nav-templates",
     },
     {
       href: "/app/datasets",
@@ -86,6 +91,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
       label: "Evidence Library",
       icon: BookOpen,
       exact: false,
+      onboardingId: "nav-evidence",
     },
     {
       href: "/app/activity",
@@ -145,6 +151,9 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
                 <Link
                   key={link.href}
                   href={link.href}
+                  data-onboarding-id={
+                    "onboardingId" in link ? link.onboardingId : undefined
+                  }
                   className={`flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary relative ${
                     active ? "text-foreground" : "text-muted-foreground"
                   }`}
@@ -183,6 +192,9 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <main>{children}</main>
+
+      <OnboardingOverlay />
+      <FeedbackWidget />
     </div>
   );
 }
@@ -191,7 +203,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <QueryProvider>
       <AuthProvider>
-        <AppLayoutContent>{children}</AppLayoutContent>
+        <OnboardingProvider>
+          <AppLayoutContent>{children}</AppLayoutContent>
+        </OnboardingProvider>
       </AuthProvider>
     </QueryProvider>
   );
