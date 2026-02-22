@@ -89,9 +89,9 @@ export async function seedDataset(userId: string): Promise<SeededDataset> {
       dataset_type: "clinical_trial",
       file_name: "test-data.csv",
       file_size: 1024,
-      file_type: "text/csv",
+      file_type: "csv",
       storage_path: `test/${Date.now()}/test-data.csv`,
-      status: "active",
+      status: "draft",
     })
     .select()
     .single();
@@ -142,8 +142,8 @@ export async function seedRoBAssessment(
     .insert({
       protocol_id: protocolId,
       evidence_id: evidenceId,
-      tool: "RoB2",
-      overall_judgment: "pending",
+      tool: "rob2",
+      overall_judgment: "low",
       domains: {},
     })
     .select("id")

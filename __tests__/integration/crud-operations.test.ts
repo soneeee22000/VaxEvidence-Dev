@@ -174,7 +174,7 @@ describe.skipIf(!isConfigured)("CRUD Integration Tests", () => {
       const { data, error } = await client
         .from("evidence_items")
         .update({
-          status: "reviewed",
+          status: "published",
           updated_at: new Date().toISOString(),
         })
         .eq("id", evidenceId)
@@ -182,7 +182,7 @@ describe.skipIf(!isConfigured)("CRUD Integration Tests", () => {
         .single();
 
       expect(error).toBeNull();
-      expect(data!.status).toBe("reviewed");
+      expect(data!.status).toBe("published");
     });
 
     it("filters evidence by type", async () => {
@@ -351,7 +351,7 @@ describe.skipIf(!isConfigured)("CRUD Integration Tests", () => {
         .insert({
           protocol_id: protocolId,
           evidence_id: evidenceId,
-          tool: "RoB2",
+          tool: "rob2",
           overall_judgment: "low",
           domains: {
             randomization: { judgment: "low", justification: "Adequate" },

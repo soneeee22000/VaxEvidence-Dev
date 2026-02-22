@@ -117,7 +117,7 @@ describe.skipIf(!isConfigured)("Data Integrity Integration Tests", () => {
         .insert({
           protocol_id: protocolId,
           evidence_id: evidenceId,
-          tool: "RoB2",
+          tool: "rob2",
           overall_judgment: "low",
           domains: {},
         });
@@ -128,7 +128,7 @@ describe.skipIf(!isConfigured)("Data Integrity Integration Tests", () => {
         .insert({
           protocol_id: protocolId,
           evidence_id: evidenceId,
-          tool: "RoB2",
+          tool: "rob2",
           overall_judgment: "high",
           domains: {},
         });
@@ -141,15 +141,15 @@ describe.skipIf(!isConfigured)("Data Integrity Integration Tests", () => {
       // Use admin to insert since RLS checks protocol ownership
       const { error: err1 } = await admin.from("reporting_checklists").insert({
         protocol_id: protocolId,
-        checklist_type: "CONSORT",
-        entries: {},
+        checklist_type: "consort",
+        items: {},
       });
       expect(err1).toBeNull();
 
       const { error: err2 } = await admin.from("reporting_checklists").insert({
         protocol_id: protocolId,
-        checklist_type: "CONSORT",
-        entries: { updated: true },
+        checklist_type: "consort",
+        items: { updated: true },
       });
       expect(err2).not.toBeNull();
       expect(err2!.code).toBe("23505");
@@ -165,13 +165,17 @@ describe.skipIf(!isConfigured)("Data Integrity Integration Tests", () => {
       const admin = getAdminClient();
       const { error: err1 } = await admin.from("gcp_compliance").insert({
         protocol_id: protocolId,
-        entries: {},
+        principles: {},
+        protocol_sections: {},
+        essential_documents: {},
       });
       expect(err1).toBeNull();
 
       const { error: err2 } = await admin.from("gcp_compliance").insert({
         protocol_id: protocolId,
-        entries: { updated: true },
+        principles: {},
+        protocol_sections: {},
+        essential_documents: {},
       });
       expect(err2).not.toBeNull();
       expect(err2!.code).toBe("23505");
@@ -307,9 +311,9 @@ describe.skipIf(!isConfigured)("Data Integrity Integration Tests", () => {
           dataset_type: "clinical_trial",
           file_name: "test.csv",
           file_size: 512,
-          file_type: "text/csv",
+          file_type: "csv",
           storage_path: `test/${Date.now()}/test.csv`,
-          status: "active",
+          status: "draft",
         })
         .select("id")
         .single();

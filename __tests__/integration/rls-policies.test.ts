@@ -257,7 +257,7 @@ describe.skipIf(!isConfigured)("RLS Policy Integration Tests", () => {
           .insert({
             protocol_id: protocolA.id,
             evidence_id: evidenceA.id,
-            tool: "ROBINS-I",
+            tool: "robins_i",
             overall_judgment: "low",
             domains: {},
           });
@@ -303,7 +303,9 @@ describe.skipIf(!isConfigured)("RLS Policy Integration Tests", () => {
           .from("gcp_compliance")
           .insert({
             protocol_id: protocolA.id,
-            entries: {},
+            principles: {},
+            protocol_sections: {},
+            essential_documents: {},
           })
           .select("id")
           .single();
@@ -326,7 +328,9 @@ describe.skipIf(!isConfigured)("RLS Policy Integration Tests", () => {
       it("User B cannot insert GCP compliance for User A's protocol", async () => {
         const { error } = await clientB.from("gcp_compliance").insert({
           protocol_id: protocolA.id,
-          entries: {},
+          principles: {},
+          protocol_sections: {},
+          essential_documents: {},
         });
         expect(error).not.toBeNull();
       });
@@ -341,8 +345,8 @@ describe.skipIf(!isConfigured)("RLS Policy Integration Tests", () => {
           .from("reporting_checklists")
           .insert({
             protocol_id: protocolA.id,
-            checklist_type: "CONSORT",
-            entries: {},
+            checklist_type: "consort",
+            items: {},
           })
           .select("id")
           .single();
@@ -365,8 +369,8 @@ describe.skipIf(!isConfigured)("RLS Policy Integration Tests", () => {
       it("User B cannot insert checklist for User A's protocol", async () => {
         const { error } = await clientB.from("reporting_checklists").insert({
           protocol_id: protocolA.id,
-          checklist_type: "STROBE",
-          entries: {},
+          checklist_type: "strobe_cohort",
+          items: {},
         });
         expect(error).not.toBeNull();
       });
