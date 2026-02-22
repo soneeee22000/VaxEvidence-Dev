@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 export default function LandingFooter() {
@@ -7,9 +8,11 @@ export default function LandingFooter() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
           <div className="sm:col-span-2 lg:col-span-1">
             <Link href="/" className="flex items-center gap-2 mb-4">
-              <img
+              <Image
                 src="/logo-final.svg"
                 alt="VaxEvidence Logo"
+                width={32}
+                height={32}
                 className="w-8 h-8"
               />
               <span className="text-lg font-bold text-foreground">

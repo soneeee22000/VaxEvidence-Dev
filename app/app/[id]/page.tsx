@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -185,6 +185,48 @@ export default function ProtocolDetailPage() {
     mode: "onTouched",
   });
 
+  const loadLinkedEvidence = useCallback(async () => {
+    if (!protocolId || typeof protocolId !== "string") return;
+
+    try {
+      const { data, error } = await getLinkedEvidence(protocolId);
+      if (!error && data) {
+        setLinkedEvidence(data);
+      }
+    } catch (error) {
+      console.error("Error loading linked evidence:", error);
+    }
+  }, [protocolId]);
+
+  const loadLinkedDatasets = useCallback(async () => {
+    if (!protocolId || typeof protocolId !== "string") return;
+
+    try {
+      const { data, error } = await getLinkedDatasets(protocolId);
+      if (!error && data) {
+        setLinkedDatasets(data);
+      }
+    } catch (error) {
+      console.error("Error loading linked datasets:", error);
+    }
+  }, [protocolId]);
+
+  const loadReviews = useCallback(async () => {
+    if (!protocolId || typeof protocolId !== "string") return;
+
+    setIsLoadingReviews(true);
+    try {
+      const { data, error } = await fetchReviews(protocolId);
+      if (!error && data) {
+        setReviews(data as ReviewWithDetails[]);
+      }
+    } catch (error) {
+      console.error("Error loading reviews:", error);
+    } finally {
+      setIsLoadingReviews(false);
+    }
+  }, [protocolId]);
+
   useEffect(() => {
     const loadProtocol = async () => {
       if (!protocolId || typeof protocolId !== "string") {
@@ -221,33 +263,7 @@ export default function ProtocolDetailPage() {
     };
 
     loadProtocol();
-  }, [protocolId, form]);
-
-  const loadLinkedEvidence = async () => {
-    if (!protocolId || typeof protocolId !== "string") return;
-
-    try {
-      const { data, error } = await getLinkedEvidence(protocolId);
-      if (!error && data) {
-        setLinkedEvidence(data);
-      }
-    } catch (error) {
-      console.error("Error loading linked evidence:", error);
-    }
-  };
-
-  const loadLinkedDatasets = async () => {
-    if (!protocolId || typeof protocolId !== "string") return;
-
-    try {
-      const { data, error } = await getLinkedDatasets(protocolId);
-      if (!error && data) {
-        setLinkedDatasets(data);
-      }
-    } catch (error) {
-      console.error("Error loading linked datasets:", error);
-    }
-  };
+  }, [protocolId, form, loadLinkedEvidence, loadLinkedDatasets, loadReviews]);
 
   const loadAvailableEvidence = async () => {
     try {
@@ -268,22 +284,6 @@ export default function ProtocolDetailPage() {
       }
     } catch (error) {
       console.error("Error loading datasets:", error);
-    }
-  };
-
-  const loadReviews = async () => {
-    if (!protocolId || typeof protocolId !== "string") return;
-
-    setIsLoadingReviews(true);
-    try {
-      const { data, error } = await fetchReviews(protocolId);
-      if (!error && data) {
-        setReviews(data as ReviewWithDetails[]);
-      }
-    } catch (error) {
-      console.error("Error loading reviews:", error);
-    } finally {
-      setIsLoadingReviews(false);
     }
   };
 

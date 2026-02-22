@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,13 +12,13 @@ import { PrismaFlowDiagram } from "@/components/screening/prisma-flow-diagram";
 import { RobSummaryTable } from "@/components/risk-of-bias/rob-summary-table";
 import { MetaAnalysisPanel } from "@/components/meta-analysis/meta-analysis-panel";
 import type {
-  ScreeningDecisionWithEvidence,
   ScreeningStageCounts,
   ScreeningStage,
 } from "@/lib/validators/screening";
 import { screeningStages } from "@/lib/validators/screening";
 import { fetchProtocolById } from "@/lib/supabase/protocols";
 import { getLinkedEvidence } from "@/lib/supabase/evidence";
+import { useScreeningDecisions, queryKeys } from "@/lib/query/hooks";
 import {
   ArrowLeft,
   Loader2,
@@ -31,102 +32,73 @@ import { toast } from "sonner";
 /** Screening page for a protocol's systematic review workflow. */
 export default function ScreeningPage() {
   const { id: protocolId } = useParams<{ id: string }>();
-  const router = useRouter();
+  const queryClient = useQueryClient();
 
   const [protocolTitle, setProtocolTitle] = useState("");
-  const [decisions, setDecisions] = useState<ScreeningDecisionWithEvidence[]>(
-    [],
-  );
-  const [counts, setCounts] = useState<ScreeningStageCounts>({
-    identification: {
-      total: 0,
-      pending: 0,
-      include: 0,
-      exclude: 0,
-      duplicate: 0,
-    },
-    screening: { total: 0, pending: 0, include: 0, exclude: 0, duplicate: 0 },
-    eligibility: { total: 0, pending: 0, include: 0, exclude: 0, duplicate: 0 },
-    included: { total: 0, pending: 0, include: 0, exclude: 0, duplicate: 0 },
-  });
-  const [isLoading, setIsLoading] = useState(true);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   const [activeTab, setActiveTab] = useState("screening");
+  const hasInitialized = useRef(false);
 
-  /** Fetch all screening decisions and recompute counts. */
-  const loadDecisions = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/screening?protocol_id=${protocolId}`);
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
+  const { data: decisions = [], isLoading: isLoadingDecisions } =
+    useScreeningDecisions(protocolId);
 
-      const data = json.data as ScreeningDecisionWithEvidence[];
-      setDecisions(data);
-
-      // Recompute counts
-      const newCounts: ScreeningStageCounts = {
-        identification: {
-          total: 0,
-          pending: 0,
-          include: 0,
-          exclude: 0,
-          duplicate: 0,
-        },
-        screening: {
-          total: 0,
-          pending: 0,
-          include: 0,
-          exclude: 0,
-          duplicate: 0,
-        },
-        eligibility: {
-          total: 0,
-          pending: 0,
-          include: 0,
-          exclude: 0,
-          duplicate: 0,
-        },
-        included: {
-          total: 0,
-          pending: 0,
-          include: 0,
-          exclude: 0,
-          duplicate: 0,
-        },
-      };
-      for (const d of data) {
-        const stage = d.stage as ScreeningStage;
-        if (newCounts[stage]) {
-          newCounts[stage].total++;
-          const key = d.decision as keyof (typeof newCounts)[typeof stage];
-          if (key in newCounts[stage]) {
-            (newCounts[stage] as Record<string, number>)[key]++;
-          }
+  /** Compute stage counts from decisions array. */
+  const counts = useMemo<ScreeningStageCounts>(() => {
+    const result: ScreeningStageCounts = {
+      identification: {
+        total: 0,
+        pending: 0,
+        include: 0,
+        exclude: 0,
+        duplicate: 0,
+      },
+      screening: { total: 0, pending: 0, include: 0, exclude: 0, duplicate: 0 },
+      eligibility: {
+        total: 0,
+        pending: 0,
+        include: 0,
+        exclude: 0,
+        duplicate: 0,
+      },
+      included: { total: 0, pending: 0, include: 0, exclude: 0, duplicate: 0 },
+    };
+    for (const d of decisions) {
+      const stage = d.stage as ScreeningStage;
+      if (result[stage]) {
+        result[stage].total++;
+        const key = d.decision as keyof (typeof result)[typeof stage];
+        if (key in result[stage]) {
+          (result[stage] as Record<string, number>)[key]++;
         }
       }
-      setCounts(newCounts);
-    } catch (err) {
-      toast.error("Failed to load screening decisions");
     }
-  }, [protocolId]);
+    return result;
+  }, [decisions]);
 
-  /** Initialize: load protocol, linked evidence, and existing decisions. */
+  /** Helper to invalidate screening queries after mutations. */
+  const invalidateScreening = useCallback(async () => {
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.screening.byProtocol(protocolId),
+    });
+  }, [queryClient, protocolId]);
+
+  /** Initialize: load protocol title, auto-initialize from linked evidence if needed. */
   useEffect(() => {
+    if (hasInitialized.current) return;
+    if (isLoadingDecisions) return;
+
+    hasInitialized.current = true;
+
     async function init() {
-      setIsLoading(true);
+      setIsInitializing(true);
       try {
         // Load protocol title
         const { data: protocol } = await fetchProtocolById(protocolId);
         if (protocol) setProtocolTitle(protocol.title);
 
-        // Load existing decisions
-        const res = await fetch(`/api/screening?protocol_id=${protocolId}`);
-        const json = await res.json();
-        const existingDecisions = (json.data ??
-          []) as ScreeningDecisionWithEvidence[];
-
         // If no decisions exist, auto-initialize from linked evidence
-        if (existingDecisions.length === 0) {
+        if (decisions.length === 0) {
           const { data: linkedEvidence } = await getLinkedEvidence(protocolId);
           if (linkedEvidence && linkedEvidence.length > 0) {
             const evidenceIds = linkedEvidence.map((e: { id: string }) => e.id);
@@ -139,18 +111,17 @@ export default function ScreeningPage() {
                 stage: "identification",
               }),
             });
+            invalidateScreening();
           }
         }
-
-        await loadDecisions();
       } catch {
         toast.error("Failed to initialize screening");
       } finally {
-        setIsLoading(false);
+        setIsInitializing(false);
       }
     }
     init();
-  }, [protocolId, loadDecisions]);
+  }, [protocolId, decisions.length, isLoadingDecisions, invalidateScreening]);
 
   /** Handle include/exclude/duplicate decision. */
   const handleDecision = useCallback(
@@ -173,9 +144,9 @@ export default function ScreeningPage() {
         const json = await res.json();
         throw new Error(json.error);
       }
-      await loadDecisions();
+      invalidateScreening();
     },
-    [loadDecisions],
+    [invalidateScreening],
   );
 
   /** Revert a decision back to pending. */
@@ -194,9 +165,9 @@ export default function ScreeningPage() {
         const json = await res.json();
         throw new Error(json.error);
       }
-      await loadDecisions();
+      invalidateScreening();
     },
-    [loadDecisions],
+    [invalidateScreening],
   );
 
   /** Advance included items from current stage to next stage. */
@@ -225,12 +196,12 @@ export default function ScreeningPage() {
         const json = await res.json();
         throw new Error(json.error);
       }
-      await loadDecisions();
+      invalidateScreening();
     },
-    [protocolId, decisions, loadDecisions],
+    [protocolId, decisions, invalidateScreening],
   );
 
-  if (isLoading) {
+  if (isLoadingDecisions || isInitializing) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -312,7 +283,7 @@ export default function ScreeningPage() {
         onOpenChange={setShowDuplicateDialog}
         protocolId={protocolId}
         decisions={decisions.filter((d) => d.stage === "identification")}
-        onResolved={loadDecisions}
+        onResolved={invalidateScreening}
       />
     </div>
   );

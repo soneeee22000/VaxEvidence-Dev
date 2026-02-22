@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ForestPlot } from "@/components/meta-analysis/forest-plot";
 import { MetaAnalysisTable } from "@/components/meta-analysis/meta-analysis-table";
-import type { MetaAnalysisEntryRecord } from "@/lib/validators/meta-analysis";
+import { useMetaAnalysisEntries, queryKeys } from "@/lib/query/hooks";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -15,26 +16,16 @@ interface MetaAnalysisPanelProps {
 
 /** Container for meta-analysis data entry and forest plot. */
 export function MetaAnalysisPanel({ protocolId }: MetaAnalysisPanelProps) {
-  const [entries, setEntries] = useState<MetaAnalysisEntryRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data: entries = [], isLoading } = useMetaAnalysisEntries(protocolId);
   const [logScale, setLogScale] = useState(false);
 
-  const loadEntries = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/meta-analysis?protocol_id=${protocolId}`);
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
-      setEntries(json.data ?? []);
-    } catch {
-      toast.error("Failed to load meta-analysis data");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [protocolId]);
-
-  useEffect(() => {
-    loadEntries();
-  }, [loadEntries]);
+  /** Invalidate query cache after mutation. */
+  const invalidateEntries = () => {
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.metaAnalysis.byProtocol(protocolId),
+    });
+  };
 
   const handleAdd = async (entry: {
     study_label: string;
@@ -54,7 +45,7 @@ export function MetaAnalysisPanel({ protocolId }: MetaAnalysisPanelProps) {
       throw new Error(json.error);
     }
     toast.success("Entry added");
-    await loadEntries();
+    invalidateEntries();
   };
 
   const handleDelete = async (id: string) => {
@@ -66,7 +57,7 @@ export function MetaAnalysisPanel({ protocolId }: MetaAnalysisPanelProps) {
       throw new Error(json.error);
     }
     toast.success("Entry removed");
-    await loadEntries();
+    invalidateEntries();
   };
 
   if (isLoading) {

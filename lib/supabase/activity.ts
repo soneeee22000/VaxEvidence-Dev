@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/browser";
+import { buildSupabaseRange } from "@/lib/types/pagination";
 
 import type {
   ActivityFilters,
@@ -84,6 +85,62 @@ export const fetchActivityLog = async (
 
   if (error) return { data: null, error };
   return { data: withUser((data as any[]) ?? []), error: null };
+};
+
+/** Parameters for paginated activity list queries. */
+export interface ActivityListParams {
+  page: number;
+  pageSize: number;
+  userId?: string;
+}
+
+/**
+ * Fetch a paginated slice of activity logs with total count.
+ * Uses Supabase exact count for pagination metadata.
+ */
+export const fetchActivityLogPaginated = async (
+  params: ActivityListParams,
+): Promise<{
+  data: { items: ActivityLogWithUser[]; totalCount: number } | null;
+  error: { message: string } | null;
+}> => {
+  const client = getClient();
+  if (!client)
+    return { data: null, error: { message: "Supabase is not configured." } };
+
+  try {
+    const { from, to } = buildSupabaseRange(params.page, params.pageSize);
+
+    let query = client
+      .from("activity_logs")
+      .select("*", { count: "exact" })
+      .order("created_at", { ascending: false });
+
+    if (params.userId) {
+      query = query.eq("user_id", params.userId);
+    }
+
+    query = query.range(from, to);
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      return { data: null, error: { message: error.message } };
+    }
+
+    return {
+      data: {
+        items: withUser(data),
+        totalCount: count ?? 0,
+      },
+      error: null,
+    };
+  } catch (err) {
+    return {
+      data: null,
+      error: { message: err instanceof Error ? err.message : String(err) },
+    };
+  }
 };
 
 /**

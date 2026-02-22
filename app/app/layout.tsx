@@ -6,6 +6,7 @@
 // Main layout for authenticated app pages. Uses Supabase Auth.
 // =============================================================================
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -124,9 +125,11 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
               className="flex items-center gap-2.5"
               aria-label="VaxEvidence Home"
             >
-              <img
+              <Image
                 src="/logo-final.svg"
                 alt="VaxEvidence Logo"
+                width={32}
+                height={32}
                 className="h-8 w-8 shrink-0"
               />
               <span className="font-bold text-xl tracking-tight">

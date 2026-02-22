@@ -95,6 +95,23 @@ export default function EvidenceDetailPage() {
   const [formData, setFormData] = useState<Partial<EvidenceItem>>({});
   const [tagInput, setTagInput] = useState("");
 
+  const loadComments = useCallback(async () => {
+    if (!params.id || typeof params.id !== "string") return;
+
+    setIsLoadingComments(true);
+    try {
+      const { data, error } = await fetchComments("evidence_item", params.id);
+      if (!error && data) {
+        setComments(data as CommentWithUser[]);
+        setCommentCount(data.length);
+      }
+    } catch (error) {
+      console.error("Error loading comments:", error);
+    } finally {
+      setIsLoadingComments(false);
+    }
+  }, [params.id]);
+
   const loadEvidence = useCallback(async () => {
     if (!params.id || typeof params.id !== "string") return;
 
@@ -132,28 +149,11 @@ export default function EvidenceDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [params.id]);
+  }, [params.id, loadComments]);
 
   useEffect(() => {
     loadEvidence();
   }, [loadEvidence]);
-
-  const loadComments = async () => {
-    if (!params.id || typeof params.id !== "string") return;
-
-    setIsLoadingComments(true);
-    try {
-      const { data, error } = await fetchComments("evidence_item", params.id);
-      if (!error && data) {
-        setComments(data as CommentWithUser[]);
-        setCommentCount(data.length);
-      }
-    } catch (error) {
-      console.error("Error loading comments:", error);
-    } finally {
-      setIsLoadingComments(false);
-    }
-  };
 
   const handleCreateComment = async (content: string) => {
     if (!params.id || typeof params.id !== "string") return;

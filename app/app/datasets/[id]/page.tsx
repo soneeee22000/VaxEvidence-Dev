@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -116,15 +116,7 @@ export default function DatasetDetailPage() {
     },
   });
 
-  useEffect(() => {
-    if (datasetId) {
-      loadDataset();
-      loadLinkedProtocols();
-      loadComments();
-    }
-  }, [datasetId]);
-
-  const loadDataset = async () => {
+  const loadDataset = useCallback(async () => {
     if (!datasetId) return;
 
     const { data, error } = await fetchDatasetById(datasetId);
@@ -146,18 +138,18 @@ export default function DatasetDetailPage() {
       status: data.status,
     });
     setIsLoading(false);
-  };
+  }, [datasetId, form]);
 
-  const loadLinkedProtocols = async () => {
+  const loadLinkedProtocols = useCallback(async () => {
     if (!datasetId) return;
 
     const { data } = await getLinkedProtocols(datasetId);
     if (data) {
       setLinkedProtocols(data);
     }
-  };
+  }, [datasetId]);
 
-  const loadComments = async () => {
+  const loadComments = useCallback(async () => {
     if (!datasetId) return;
 
     setIsLoadingComments(true);
@@ -172,7 +164,15 @@ export default function DatasetDetailPage() {
     } finally {
       setIsLoadingComments(false);
     }
-  };
+  }, [datasetId]);
+
+  useEffect(() => {
+    if (datasetId) {
+      loadDataset();
+      loadLinkedProtocols();
+      loadComments();
+    }
+  }, [datasetId, loadDataset, loadLinkedProtocols, loadComments]);
 
   const handleCreateComment = async (content: string) => {
     if (!datasetId) return;

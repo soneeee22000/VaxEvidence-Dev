@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,8 +11,8 @@ import {
 } from "@/components/ui/dialog";
 import { RobDomainBadge } from "@/components/risk-of-bias/rob-domain-badge";
 import { RobAssessmentForm } from "@/components/risk-of-bias/rob-assessment-form";
+import { useRiskOfBiasAssessments, queryKeys } from "@/lib/query/hooks";
 import type {
-  RobAssessmentRecord,
   RobJudgment,
   RobTool,
   RobDomainAssessment,
@@ -39,29 +40,20 @@ export function RobSummaryTable({
   protocolId,
   includedEvidence,
 }: RobSummaryTableProps) {
-  const [assessments, setAssessments] = useState<RobAssessmentRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data: assessments = [], isLoading } =
+    useRiskOfBiasAssessments(protocolId);
   const [editingEvidence, setEditingEvidence] = useState<{
     id: string;
     title: string;
   } | null>(null);
 
-  const loadAssessments = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/risk-of-bias?protocol_id=${protocolId}`);
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
-      setAssessments(json.data ?? []);
-    } catch {
-      toast.error("Failed to load RoB assessments");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [protocolId]);
-
-  useEffect(() => {
-    loadAssessments();
-  }, [loadAssessments]);
+  /** Invalidate query cache after mutation. */
+  const invalidateAssessments = () => {
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.riskOfBias.byProtocol(protocolId),
+    });
+  };
 
   const handleSubmit = async (data: {
     protocol_id: string;
@@ -80,12 +72,12 @@ export function RobSummaryTable({
       throw new Error(json.error);
     }
     toast.success("Assessment saved");
-    await loadAssessments();
+    invalidateAssessments();
     setEditingEvidence(null);
   };
 
   /** Get assessment for a specific evidence item. */
-  const getAssessment = (evidenceId: string): RobAssessmentRecord | undefined =>
+  const getAssessment = (evidenceId: string) =>
     assessments.find((a) => a.evidence_id === evidenceId);
 
   /** Determine which domains to show based on assessments. */

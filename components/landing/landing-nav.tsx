@@ -1,24 +1,37 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
-import { Menu, X } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { ThemeToggle } from "@/components/theme-toggle"
-import { fadeIn } from "@/components/landing/motion"
+import { useState } from "react";
+import Link from "next/link";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { Menu, X } from "lucide-react";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { fadeIn } from "@/components/landing/motion";
 
 export default function LandingNav() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const reduceMotion = useReducedMotion()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const reduceMotion = useReducedMotion();
 
   return (
     <nav className="bg-background/85 backdrop-blur-xl border-b border-border sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <Link href="/" className="flex items-center gap-2.5" aria-label="VaxEvidence Home">
-            <img src="/logo-final.svg" alt="VaxEvidence Logo" className="w-9 h-9" />
-            <span className="text-xl font-bold text-foreground">VaxEvidence</span>
+          <Link
+            href="/"
+            className="flex items-center gap-2.5"
+            aria-label="VaxEvidence Home"
+          >
+            <Image
+              src="/logo-final.svg"
+              alt="VaxEvidence Logo"
+              width={36}
+              height={36}
+              className="w-9 h-9"
+            />
+            <span className="text-xl font-bold text-foreground">
+              VaxEvidence
+            </span>
           </Link>
 
           <div className="hidden md:flex items-center gap-6">
@@ -47,7 +60,11 @@ export default function LandingNav() {
               aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
               aria-expanded={mobileMenuOpen}
             >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {mobileMenuOpen ? (
+                <X className="w-5 h-5" />
+              ) : (
+                <Menu className="w-5 h-5" />
+              )}
             </button>
           </div>
         </div>
@@ -67,10 +84,18 @@ export default function LandingNav() {
                 initial={reduceMotion ? false : "hidden"}
                 animate="visible"
               >
-                <a href="#features" className="nav-link" onClick={() => setMobileMenuOpen(false)}>
+                <a
+                  href="#features"
+                  className="nav-link"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
                   Features
                 </a>
-                <a href="#how-it-works" className="nav-link" onClick={() => setMobileMenuOpen(false)}>
+                <a
+                  href="#how-it-works"
+                  className="nav-link"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
                   How It Works
                 </a>
                 <Button
@@ -96,5 +121,5 @@ export default function LandingNav() {
         </AnimatePresence>
       </div>
     </nav>
-  )
+  );
 }
