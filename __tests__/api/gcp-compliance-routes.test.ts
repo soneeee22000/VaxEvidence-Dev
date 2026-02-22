@@ -17,14 +17,14 @@ function createMockChain(resolveValue: { data: unknown; error: unknown }) {
 
 const VALID_UUID = "550e8400-e29b-41d4-a716-446655440000";
 
-let mockGetServerUser: ReturnType<typeof vi.fn>;
-let mockGetSupabaseAdmin: ReturnType<typeof vi.fn>;
+const mockGetServerUser = vi.fn();
+const mockGetSupabaseAdmin = vi.fn();
 let protocolChain: ReturnType<typeof createMockChain>;
 let gcpChain: ReturnType<typeof createMockChain>;
 
 vi.mock("@/lib/supabase/server", () => ({
-  getServerUser: (...args: unknown[]) => mockGetServerUser(...args),
-  getSupabaseAdmin: (...args: unknown[]) => mockGetSupabaseAdmin(...args),
+  getServerUser: () => mockGetServerUser(),
+  getSupabaseAdmin: () => mockGetSupabaseAdmin(),
 }));
 
 describe("gcp-compliance API routes", () => {
@@ -36,14 +36,14 @@ describe("gcp-compliance API routes", () => {
     });
     gcpChain = createMockChain({ data: null, error: null });
 
-    mockGetServerUser = vi.fn().mockResolvedValue({ id: VALID_UUID });
-    mockGetSupabaseAdmin = vi.fn(() => ({
+    mockGetServerUser.mockReset().mockResolvedValue({ id: VALID_UUID });
+    mockGetSupabaseAdmin.mockReset().mockReturnValue({
       from: vi.fn((table: string) => {
         if (table === "protocols") return protocolChain;
         if (table === "gcp_compliance") return gcpChain;
         return createMockChain({ data: null, error: null });
       }),
-    }));
+    });
   });
 
   // -----------------------------------------------------------------------

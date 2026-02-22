@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import * as Y from "yjs";
 import { SupabaseYjsProvider } from "@/lib/collaboration/supabase-yjs-provider";
 
