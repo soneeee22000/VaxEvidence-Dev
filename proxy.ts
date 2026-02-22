@@ -11,6 +11,16 @@ import { updateSession } from "@/lib/supabase/middleware";
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Allow v1 API routes through without cookie auth (uses API key auth)
+  if (pathname.startsWith("/api/v1")) {
+    return NextResponse.next({ request });
+  }
+
+  // Allow SSO auth routes through without session check (pre-authentication)
+  if (pathname.startsWith("/api/auth/sso")) {
+    return NextResponse.next({ request });
+  }
+
   // Update Supabase session and get current user
   const { response, user } = await updateSession(request);
 
@@ -32,5 +42,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/app/:path*", "/auth"],
+  matcher: ["/app/:path*", "/auth", "/api/v1/:path*", "/api/auth/sso/:path*"],
 };

@@ -19,6 +19,7 @@ import {
   LogOut,
   Activity,
   LayoutTemplate,
+  Settings,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { fetchPendingReviewCount } from "@/lib/supabase/reviews";
@@ -91,6 +92,12 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
       icon: Activity,
       exact: false,
       badge: pendingReviewCount > 0 ? pendingReviewCount : undefined,
+    },
+    {
+      href: "/app/settings",
+      label: "Settings",
+      icon: Settings,
+      exact: false,
     },
   ];
 
