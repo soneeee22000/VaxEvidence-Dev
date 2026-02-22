@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Loader2,
   Save,
@@ -40,14 +40,9 @@ import {
   getDocumentsByPhase,
 } from "@/lib/regulatory/gcp-essential-documents";
 import type {
-  GCPComplianceStatus,
   GCPPrincipleEntry,
   GCPProtocolSectionEntry,
   GCPDocumentEntry,
-} from "@/lib/validators/gcp-compliance";
-import {
-  complianceStatusLabels,
-  complianceStatusColors,
 } from "@/lib/validators/gcp-compliance";
 
 interface GCPCompliancePanelProps {
@@ -102,8 +97,9 @@ export function GCPCompliancePanel({ protocolId }: GCPCompliancePanelProps) {
           }
           setDocuments(dMap);
         }
-      } catch {
-        // No saved data
+      } catch (err) {
+        console.error("Failed to load GCP compliance:", err);
+        toast.error("Failed to load saved GCP compliance data.");
       } finally {
         setIsLoading(false);
       }
@@ -158,7 +154,7 @@ export function GCPCompliancePanel({ protocolId }: GCPCompliancePanelProps) {
     );
   };
 
-  /** Update principle. */
+  /** Update principle (reads from `prev` to avoid stale closures). */
   const updatePrinciple = (
     num: number,
     field: "status" | "notes",
@@ -166,13 +162,18 @@ export function GCPCompliancePanel({ protocolId }: GCPCompliancePanelProps) {
   ) => {
     setPrinciples((prev) => {
       const next = new Map(prev);
-      next.set(num, { ...getPrinciple(num), [field]: value });
+      const current = prev.get(num) ?? {
+        principle_number: num,
+        status: "not_assessed" as const,
+        notes: "",
+      };
+      next.set(num, { ...current, [field]: value });
       return next;
     });
     setIsDirty(true);
   };
 
-  /** Update protocol section. */
+  /** Update protocol section (reads from `prev` to avoid stale closures). */
   const updateProtocolSection = (
     sectionNumber: string,
     field: "status" | "notes",
@@ -180,16 +181,18 @@ export function GCPCompliancePanel({ protocolId }: GCPCompliancePanelProps) {
   ) => {
     setProtocolSections((prev) => {
       const next = new Map(prev);
-      next.set(sectionNumber, {
-        ...getProtocolSection(sectionNumber),
-        [field]: value,
-      });
+      const current = prev.get(sectionNumber) ?? {
+        section_number: sectionNumber,
+        status: "not_assessed" as const,
+        notes: "",
+      };
+      next.set(sectionNumber, { ...current, [field]: value });
       return next;
     });
     setIsDirty(true);
   };
 
-  /** Update document. */
+  /** Update document (reads from `prev` to avoid stale closures). */
   const updateDocument = (
     docId: string,
     field: "status" | "notes",
@@ -197,20 +200,29 @@ export function GCPCompliancePanel({ protocolId }: GCPCompliancePanelProps) {
   ) => {
     setDocuments((prev) => {
       const next = new Map(prev);
-      next.set(docId, { ...getDocument(docId), [field]: value });
+      const current = prev.get(docId) ?? {
+        document_id: docId,
+        status: "not_assessed" as const,
+        notes: "",
+      };
+      next.set(docId, { ...current, [field]: value });
       return next;
     });
     setIsDirty(true);
   };
 
-  /** Calculate compliance score. */
-  const calculateScore = (): number => {
+  /** Memoized compliance score. */
+  const score = useMemo(() => {
     const allItems = [
-      ...GCP_PRINCIPLES.map((p) => getPrinciple(p.number).status),
-      ...GCP_PROTOCOL_SECTIONS.map(
-        (s) => getProtocolSection(s.sectionNumber).status,
+      ...GCP_PRINCIPLES.map(
+        (p) => principles.get(p.number)?.status ?? "not_assessed",
       ),
-      ...GCP_ESSENTIAL_DOCUMENTS.map((d) => getDocument(d.id).status),
+      ...GCP_PROTOCOL_SECTIONS.map(
+        (s) => protocolSections.get(s.sectionNumber)?.status ?? "not_assessed",
+      ),
+      ...GCP_ESSENTIAL_DOCUMENTS.map(
+        (d) => documents.get(d.id)?.status ?? "not_assessed",
+      ),
     ];
     const total = allItems.length;
     if (total === 0) return 0;
@@ -218,7 +230,7 @@ export function GCPCompliancePanel({ protocolId }: GCPCompliancePanelProps) {
       (s) => s === "compliant" || s === "not_applicable",
     ).length;
     return Math.round((compliant / total) * 100);
-  };
+  }, [principles, protocolSections, documents]);
 
   /** Save to API. */
   const handleSave = async () => {
@@ -240,7 +252,7 @@ export function GCPCompliancePanel({ protocolId }: GCPCompliancePanelProps) {
           principles: principlesArray,
           protocol_sections: sectionsArray,
           essential_documents: documentsArray,
-          compliance_score: calculateScore(),
+          compliance_score: score,
         }),
       });
 
@@ -258,21 +270,7 @@ export function GCPCompliancePanel({ protocolId }: GCPCompliancePanelProps) {
     }
   };
 
-  /** Status badge. */
-  const statusBadge = (status: GCPComplianceStatus) => (
-    <Badge
-      variant="outline"
-      className={`text-xs ${complianceStatusColors[status]} bg-opacity-10 text-white`}
-    >
-      <span
-        className={`inline-block h-1.5 w-1.5 rounded-full mr-1 ${complianceStatusColors[status]}`}
-      />
-      {complianceStatusLabels[status]}
-    </Badge>
-  );
-
-  /** Compliance score display. */
-  const score = calculateScore();
+  /** Compliance score color. */
   const scoreColor =
     score >= 80
       ? "text-green-400"

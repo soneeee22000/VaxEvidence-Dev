@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  createServerSupabaseClient,
-  getServerUser,
-} from "@/lib/supabase/server";
+import { getSupabaseAdmin, getServerUser } from "@/lib/supabase/server";
 import { reportingChecklistSchema } from "@/lib/validators/reporting-checklist";
 
 /** GET /api/reporting-checklist?protocol_id=...&checklist_type=... */
@@ -24,7 +21,19 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = getSupabaseAdmin();
+
+    // Verify ownership
+    const { data: protocol } = await supabase
+      .from("protocols")
+      .select("user_id")
+      .eq("id", protocolId)
+      .single();
+
+    if (!protocol || protocol.user_id !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     let query = supabase
       .from("reporting_checklists")
       .select("*")
@@ -76,13 +85,26 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = getSupabaseAdmin();
+
+    // Verify ownership
+    const { data: protocol } = await supabase
+      .from("protocols")
+      .select("user_id")
+      .eq("id", parsed.data.protocol_id)
+      .single();
+
+    if (!protocol || protocol.user_id !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const { data, error } = await supabase
       .from("reporting_checklists")
       .upsert(
         {
           protocol_id: parsed.data.protocol_id,
           checklist_type: parsed.data.checklist_type,
+          strobe_study_type: parsed.data.strobe_study_type ?? null,
           items: parsed.data.items,
           completion_pct: parsed.data.completion_pct,
           created_by: user.id,

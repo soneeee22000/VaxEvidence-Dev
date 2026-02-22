@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  createServerSupabaseClient,
-  getServerUser,
-} from "@/lib/supabase/server";
+import { getSupabaseAdmin, getServerUser } from "@/lib/supabase/server";
 import { gcpComplianceSchema } from "@/lib/validators/gcp-compliance";
 
 /** GET /api/gcp-compliance?protocol_id=... */
@@ -23,7 +20,19 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = getSupabaseAdmin();
+
+    // Verify ownership
+    const { data: protocol } = await supabase
+      .from("protocols")
+      .select("user_id")
+      .eq("id", protocolId)
+      .single();
+
+    if (!protocol || protocol.user_id !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const { data, error } = await supabase
       .from("gcp_compliance")
       .select("*")
@@ -69,7 +78,19 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = getSupabaseAdmin();
+
+    // Verify ownership
+    const { data: protocol } = await supabase
+      .from("protocols")
+      .select("user_id")
+      .eq("id", parsed.data.protocol_id)
+      .single();
+
+    if (!protocol || protocol.user_id !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const { data, error } = await supabase
       .from("gcp_compliance")
       .upsert(
