@@ -59,6 +59,27 @@ export const screeningBatchInitSchema = z.object({
 
 export type ScreeningBatchInitValues = z.infer<typeof screeningBatchInitSchema>;
 
+/** Schema for creating a single screening decision via API. */
+export const screeningCreateSchema = z.object({
+  protocol_id: z.string().uuid(),
+  evidence_id: z.string().uuid(),
+  stage: z.enum(screeningStages),
+  decision: z.enum(screeningDecisions),
+  exclusion_reason: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+});
+
+export type ScreeningCreateValues = z.infer<typeof screeningCreateSchema>;
+
+/** Schema for updating a screening decision via API (PATCH whitelist). */
+export const screeningUpdateSchema = z.object({
+  decision: z.enum(screeningDecisions),
+  exclusion_reason: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+});
+
+export type ScreeningUpdateValues = z.infer<typeof screeningUpdateSchema>;
+
 /** Database record shape. */
 export interface ScreeningDecisionRecord {
   id: string;

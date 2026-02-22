@@ -1,3 +1,5 @@
+import { withSentryConfig } from "@sentry/nextjs";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   typescript: {
@@ -8,4 +10,10 @@ const nextConfig = {
   },
 }
 
-export default nextConfig
+export default withSentryConfig(nextConfig, {
+  // Suppress source map upload logs during build
+  silent: true,
+
+  // Upload source maps for better stack traces (requires SENTRY_AUTH_TOKEN)
+  widenClientFileUpload: true,
+});

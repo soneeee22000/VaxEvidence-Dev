@@ -94,6 +94,17 @@ export function RobAssessmentForm({
 
   const allDomainsAssessed = domainList.every((d) => domains[d]?.judgment);
 
+  /** Domains with high/critical judgment that lack justification. */
+  const domainsNeedingJustification = domainList.filter((d) => {
+    const assessment = domains[d];
+    if (!assessment) return false;
+    if (assessment.judgment !== "high" && assessment.judgment !== "critical")
+      return false;
+    return !assessment.justification?.trim();
+  });
+
+  const hasJustificationErrors = domainsNeedingJustification.length > 0;
+
   return (
     <div className="space-y-4">
       <div>
@@ -148,10 +159,24 @@ export function RobAssessmentForm({
                 onChange={(e) =>
                   updateDomain(domain, "justification", e.target.value)
                 }
-                placeholder="Justification (optional)"
-                className="text-sm min-h-[36px] h-9 flex-1"
+                placeholder={
+                  domains[domain]?.judgment === "high" ||
+                  domains[domain]?.judgment === "critical"
+                    ? "Justification (required for high/critical)"
+                    : "Justification (optional)"
+                }
+                className={`text-sm min-h-[36px] h-9 flex-1 ${
+                  domainsNeedingJustification.includes(domain)
+                    ? "border-destructive"
+                    : ""
+                }`}
               />
             </div>
+            {domainsNeedingJustification.includes(domain) && (
+              <p className="text-xs text-destructive">
+                Justification required for high/critical judgments
+              </p>
+            )}
           </div>
         ))}
       </div>
@@ -179,7 +204,12 @@ export function RobAssessmentForm({
       <div className="flex gap-2 pt-2">
         <Button
           onClick={handleSubmit}
-          disabled={!allDomainsAssessed || !overallJudgment || isSubmitting}
+          disabled={
+            !allDomainsAssessed ||
+            !overallJudgment ||
+            hasJustificationErrors ||
+            isSubmitting
+          }
         >
           {isSubmitting && (
             <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />

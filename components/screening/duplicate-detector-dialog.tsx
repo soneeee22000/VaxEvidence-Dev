@@ -53,6 +53,9 @@ export function DuplicateDetectorDialog({
 
   const handleResolve = async () => {
     setIsResolving(true);
+    let totalPatches = 0;
+    let failedPatches = 0;
+
     try {
       for (const group of groups) {
         const keepId = selections[group.groupIndex];
@@ -63,20 +66,42 @@ export function DuplicateDetectorDialog({
           .map((item) => item.id);
 
         for (const id of duplicateIds) {
-          await fetch(`/api/screening/${id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              decision: "duplicate",
-              exclusion_reason: "Duplicate",
-            }),
-          });
+          totalPatches++;
+          try {
+            const res = await fetch(`/api/screening/${id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                decision: "duplicate",
+                exclusion_reason: "Duplicate",
+              }),
+            });
+            if (!res.ok) {
+              failedPatches++;
+              const json = await res.json().catch(() => ({}));
+              console.error(
+                `Failed to mark ${id} as duplicate:`,
+                json.error ?? res.statusText,
+              );
+            }
+          } catch {
+            failedPatches++;
+          }
         }
       }
 
-      toast.success("Duplicates resolved");
-      await onResolved();
-      onOpenChange(false);
+      if (failedPatches === 0) {
+        toast.success("Duplicates resolved");
+        await onResolved();
+        onOpenChange(false);
+      } else if (failedPatches < totalPatches) {
+        toast.warning(
+          `${totalPatches - failedPatches} of ${totalPatches} duplicates resolved, ${failedPatches} failed`,
+        );
+        await onResolved();
+      } else {
+        toast.error("Failed to resolve duplicates");
+      }
     } catch {
       toast.error("Failed to resolve duplicates");
     } finally {

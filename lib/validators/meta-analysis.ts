@@ -30,3 +30,29 @@ export interface MetaAnalysisEntryRecord {
   created_at: string;
   updated_at: string;
 }
+
+/** Schema for creating a meta-analysis entry via API. */
+export const metaAnalysisCreateSchema = z.object({
+  protocol_id: z.string().uuid(),
+  evidence_id: z.string().uuid().nullable().optional(),
+  study_label: z.string().min(1, "Study label is required"),
+  effect_size: z.number(),
+  ci_lower: z.number(),
+  ci_upper: z.number(),
+  weight: z.number().nullable().optional(),
+  subgroup: z.string().nullable().optional(),
+});
+
+export type MetaAnalysisCreateValues = z.infer<typeof metaAnalysisCreateSchema>;
+
+/** Schema for updating a meta-analysis entry via API (PATCH whitelist). */
+export const metaAnalysisUpdateSchema = z.object({
+  study_label: z.string().min(1).optional(),
+  effect_size: z.number().optional(),
+  ci_lower: z.number().optional(),
+  ci_upper: z.number().optional(),
+  weight: z.number().nullable().optional(),
+  subgroup: z.string().nullable().optional(),
+});
+
+export type MetaAnalysisUpdateValues = z.infer<typeof metaAnalysisUpdateSchema>;

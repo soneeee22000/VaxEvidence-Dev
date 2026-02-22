@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { verifyProtocolOwnership } from "@/lib/api/verify-protocol-ownership";
+import { metaAnalysisCreateSchema } from "@/lib/validators/meta-analysis";
+import { calculateInverseVarianceWeight } from "@/lib/screening/meta-analysis-weights";
 import {
-  createServerSupabaseClient,
-  getServerUser,
-} from "@/lib/supabase/server";
+  checkIpRateLimit,
+  getIpRateLimitHeaders,
+} from "@/lib/api/ip-rate-limiter";
 
 /** GET /api/meta-analysis?protocol_id=... */
 export async function GET(request: NextRequest) {
-  const user = await getServerUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const url = new URL(request.url);
   const protocolId = url.searchParams.get("protocol_id");
 
@@ -21,9 +20,25 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const { error: authError } = await verifyProtocolOwnership(protocolId);
+  if (authError) {
+    return NextResponse.json(
+      { error: authError.message },
+      { status: authError.status },
+    );
+  }
+
+  const rl = checkIpRateLimit(request);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429, headers: getIpRateLimitHeaders(rl) },
+    );
+  }
+
   try {
-    const supabase = await createServerSupabaseClient();
-    const { data, error } = await supabase
+    const admin = getSupabaseAdmin();
+    const { data, error } = await admin
       .from("meta_analysis_entries")
       .select("*")
       .eq("protocol_id", protocolId)
@@ -44,14 +59,9 @@ export async function GET(request: NextRequest) {
 
 /** POST /api/meta-analysis */
 export async function POST(request: NextRequest) {
-  const user = await getServerUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  let payload: Record<string, unknown>;
+  let body: unknown;
   try {
-    payload = (await request.json()) as Record<string, unknown>;
+    body = await request.json();
   } catch {
     return NextResponse.json(
       { error: "Invalid JSON payload" },
@@ -59,19 +69,58 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const parsed = metaAnalysisCreateSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues.map((i) => i.message).join(", ") },
+      { status: 400 },
+    );
+  }
+
+  const {
+    protocol_id,
+    evidence_id,
+    study_label,
+    effect_size,
+    ci_lower,
+    ci_upper,
+    weight,
+    subgroup,
+  } = parsed.data;
+
+  const { error: authError } = await verifyProtocolOwnership(protocol_id);
+  if (authError) {
+    return NextResponse.json(
+      { error: authError.message },
+      { status: authError.status },
+    );
+  }
+
+  const rl = checkIpRateLimit(request);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429, headers: getIpRateLimitHeaders(rl) },
+    );
+  }
+
+  // Auto-calculate weight from CI if not provided
+  const computedWeight =
+    (weight ?? calculateInverseVarianceWeight(ci_lower, ci_upper)) || null;
+
   try {
-    const supabase = await createServerSupabaseClient();
-    const { data, error } = await supabase
+    const admin = getSupabaseAdmin();
+    const { data, error } = await admin
       .from("meta_analysis_entries")
       .insert({
-        protocol_id: payload.protocol_id,
-        evidence_id: payload.evidence_id ?? null,
-        study_label: payload.study_label,
-        effect_size: payload.effect_size,
-        ci_lower: payload.ci_lower,
-        ci_upper: payload.ci_upper,
-        weight: payload.weight ?? null,
-        subgroup: payload.subgroup ?? null,
+        protocol_id,
+        evidence_id: evidence_id ?? null,
+        study_label,
+        effect_size,
+        ci_lower,
+        ci_upper,
+        weight: computedWeight,
+        subgroup: subgroup ?? null,
       })
       .select("*")
       .single();

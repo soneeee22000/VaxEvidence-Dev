@@ -34,6 +34,6 @@ export function computePrismaCounts(
     screeningExcluded: sc.exclude,
     eligibilityAssessed: el.total,
     eligibilityExcluded: el.exclude,
-    included: inc.total > 0 ? inc.include + inc.pending : el.include,
+    included: inc.total > 0 ? inc.include : el.include,
   };
 }

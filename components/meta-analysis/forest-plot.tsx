@@ -18,24 +18,33 @@ const PADDING_BOTTOM = 30;
 
 /** Custom SVG forest plot for meta-analysis visualization. */
 export function ForestPlot({ entries, logScale = false }: ForestPlotProps) {
-  if (entries.length === 0) {
+  // Filter out entries with NaN/Infinity values
+  const validEntries = entries.filter(
+    (e) =>
+      isFinite(e.effect_size) && isFinite(e.ci_lower) && isFinite(e.ci_upper),
+  );
+
+  if (validEntries.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
-        No entries to display. Add study data in the table above.
+        {entries.length === 0
+          ? "No entries to display. Add study data in the table above."
+          : "No valid data to display. All entries contain invalid values."}
       </div>
     );
   }
 
-  const height = PADDING_TOP + entries.length * ROW_HEIGHT + PADDING_BOTTOM;
+  const height =
+    PADDING_TOP + validEntries.length * ROW_HEIGHT + PADDING_BOTTOM;
 
   // Compute scale bounds
-  const allValues = entries.flatMap((e) => [
+  const allValues = validEntries.flatMap((e) => [
     e.ci_lower,
     e.ci_upper,
     e.effect_size,
   ]);
-  const dataMin = Math.min(...allValues);
-  const dataMax = Math.max(...allValues);
+  const dataMin = allValues.length > 0 ? Math.min(...allValues) : 0;
+  const dataMax = allValues.length > 0 ? Math.max(...allValues) : 1;
   const nullValue = logScale ? 0 : 0; // log(1) = 0 for ratios, 0 for differences
 
   const padding = (dataMax - dataMin) * 0.15 || 0.5;
@@ -51,7 +60,8 @@ export function ForestPlot({ entries, logScale = false }: ForestPlotProps) {
   const nullLineX = toX(nullValue);
 
   // Max weight for circle sizing
-  const maxWeight = Math.max(...entries.map((e) => e.weight ?? 1));
+  const weights = validEntries.map((e) => e.weight ?? 1);
+  const maxWeight = weights.length > 0 ? Math.max(...weights) : 1;
 
   return (
     <svg
@@ -106,7 +116,7 @@ export function ForestPlot({ entries, logScale = false }: ForestPlotProps) {
       />
 
       {/* Study rows */}
-      {entries.map((entry, i) => {
+      {validEntries.map((entry, i) => {
         const y = PADDING_TOP + i * ROW_HEIGHT + ROW_HEIGHT / 2;
         const x1 = toX(entry.ci_lower);
         const x2 = toX(entry.ci_upper);

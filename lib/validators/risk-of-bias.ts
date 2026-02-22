@@ -80,3 +80,24 @@ export const judgmentLabels: Record<RobJudgment, string> = {
   high: "High",
   critical: "Critical",
 };
+
+/** Schema for creating a RoB assessment via API. */
+export const robCreateSchema = z.object({
+  protocol_id: z.string().uuid(),
+  evidence_id: z.string().uuid(),
+  tool: z.enum(robTools),
+  domains: z.record(z.string(), robDomainSchema),
+  overall_judgment: z.enum(robJudgments),
+});
+
+export type RobCreateValues = z.infer<typeof robCreateSchema>;
+
+/** Schema for updating a RoB assessment via API (PATCH whitelist). */
+export const robUpdateSchema = z.object({
+  tool: z.enum(robTools).optional(),
+  domains: z.record(z.string(), robDomainSchema).optional(),
+  overall_judgment: z.enum(robJudgments).optional(),
+  notes: z.string().nullable().optional(),
+});
+
+export type RobUpdateValues = z.infer<typeof robUpdateSchema>;

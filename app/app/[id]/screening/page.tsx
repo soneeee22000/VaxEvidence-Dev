@@ -36,6 +36,7 @@ export default function ScreeningPage() {
 
   const [protocolTitle, setProtocolTitle] = useState("");
   const [isInitializing, setIsInitializing] = useState(true);
+  const [protocolNotFound, setProtocolNotFound] = useState(false);
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   const [activeTab, setActiveTab] = useState("screening");
   const hasInitialized = useRef(false);
@@ -95,7 +96,12 @@ export default function ScreeningPage() {
       try {
         // Load protocol title
         const { data: protocol } = await fetchProtocolById(protocolId);
-        if (protocol) setProtocolTitle(protocol.title);
+        if (!protocol) {
+          setProtocolNotFound(true);
+          setIsInitializing(false);
+          return;
+        }
+        setProtocolTitle(protocol.title);
 
         // If no decisions exist, auto-initialize from linked evidence
         if (decisions.length === 0) {
@@ -200,6 +206,23 @@ export default function ScreeningPage() {
     },
     [protocolId, decisions, invalidateScreening],
   );
+
+  if (protocolNotFound) {
+    return (
+      <div className="container max-w-6xl mx-auto py-6">
+        <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-4">
+          <h2 className="text-xl font-semibold">Protocol not found</h2>
+          <p className="text-muted-foreground">
+            The protocol you are looking for does not exist or you do not have
+            access to it.
+          </p>
+          <Button variant="outline" asChild>
+            <Link href="/app">Back to Dashboard</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoadingDecisions || isInitializing) {
     return (

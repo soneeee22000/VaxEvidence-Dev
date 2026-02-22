@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { verifyProtocolOwnership } from "@/lib/api/verify-protocol-ownership";
 import {
-  createServerSupabaseClient,
-  getServerUser,
-} from "@/lib/supabase/server";
+  checkIpRateLimit,
+  getIpRateLimitHeaders,
+} from "@/lib/api/ip-rate-limiter";
+
+const duplicateRequestSchema = z.object({
+  protocol_id: z.string().uuid(),
+});
 
 /**
  * POST /api/screening/duplicates
@@ -10,14 +17,9 @@ import {
  * Returns duplicate groups detected among identification-stage pending items.
  */
 export async function POST(request: NextRequest) {
-  const user = await getServerUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  let payload: Record<string, unknown>;
+  let body: unknown;
   try {
-    payload = (await request.json()) as Record<string, unknown>;
+    body = await request.json();
   } catch {
     return NextResponse.json(
       { error: "Invalid JSON payload" },
@@ -25,17 +27,35 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const protocolId = payload.protocol_id as string;
-  if (!protocolId) {
+  const parsed = duplicateRequestSchema.safeParse(body);
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: "protocol_id is required" },
+      { error: parsed.error.issues.map((i) => i.message).join(", ") },
       { status: 400 },
     );
   }
 
+  const { protocol_id: protocolId } = parsed.data;
+
+  const { error: authError } = await verifyProtocolOwnership(protocolId);
+  if (authError) {
+    return NextResponse.json(
+      { error: authError.message },
+      { status: authError.status },
+    );
+  }
+
+  const rl = checkIpRateLimit(request);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429, headers: getIpRateLimitHeaders(rl) },
+    );
+  }
+
   try {
-    const supabase = await createServerSupabaseClient();
-    const { data, error } = await supabase
+    const admin = getSupabaseAdmin();
+    const { data, error } = await admin
       .from("screening_decisions")
       .select(
         `*, evidence_items(id, title, type, authors, doi, external_id, external_source, description, tags)`,
@@ -48,7 +68,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Import and run duplicate detection
     const { detectDuplicates } =
       await import("@/lib/screening/duplicate-detection");
     const groups = detectDuplicates(data ?? []);
