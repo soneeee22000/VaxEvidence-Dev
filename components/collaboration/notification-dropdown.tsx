@@ -72,7 +72,10 @@ export function NotificationDropdown({ userId }: NotificationDropdownProps) {
   useEffect(() => {
     if (!userId) return;
 
-    loadNotifications();
+    // Wrap in async IIFE to avoid synchronous setState in effect body
+    void (async () => {
+      await loadNotifications();
+    })();
 
     const supabase = createClient();
     const channel = supabase
