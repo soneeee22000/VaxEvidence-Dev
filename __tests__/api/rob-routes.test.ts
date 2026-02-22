@@ -6,11 +6,17 @@ import { NextRequest } from "next/server";
 // ---------------------------------------------------------------------------
 
 const mockGetServerUser = vi.fn();
-const mockCreateServerSupabaseClient = vi.fn();
+const mockGetSupabaseAdmin = vi.fn();
+const mockVerifyProtocolOwnership = vi.fn();
 
 vi.mock("@/lib/supabase/server", () => ({
   getServerUser: () => mockGetServerUser(),
-  createServerSupabaseClient: () => mockCreateServerSupabaseClient(),
+  getSupabaseAdmin: () => mockGetSupabaseAdmin(),
+}));
+
+vi.mock("@/lib/api/verify-protocol-ownership", () => ({
+  verifyProtocolOwnership: (...args: unknown[]) =>
+    mockVerifyProtocolOwnership(...args),
 }));
 
 // ---------------------------------------------------------------------------
@@ -28,6 +34,25 @@ function createMockChain(resolveValue: { data: unknown; error: unknown }) {
   chain.delete = vi.fn(() => chain);
   chain.then = (resolve: (val: unknown) => void) => resolve(resolveValue);
   return chain;
+}
+
+/**
+ * Creates a mock Supabase admin client that routes `.from(table)` calls to
+ * different chain responses per table. Supports multiple sequential calls to
+ * the same table — each call consumes the next entry in the array.
+ */
+function createMockAdmin(
+  tableChains: Record<string, Array<{ data: unknown; error: unknown }>>,
+) {
+  const callCounts: Record<string, number> = {};
+  return {
+    from: (table: string) => {
+      callCounts[table] = (callCounts[table] ?? 0) + 1;
+      const chains = tableChains[table] ?? [{ data: null, error: null }];
+      const idx = Math.min(callCounts[table] - 1, chains.length - 1);
+      return createMockChain(chains[idx]);
+    },
+  };
 }
 
 function makeGetRequest(url: string): NextRequest {
@@ -68,7 +93,10 @@ describe("GET /api/risk-of-bias", () => {
   });
 
   it("returns 401 when unauthenticated", async () => {
-    mockGetServerUser.mockResolvedValue(null);
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: null,
+      error: { message: "Unauthorized", status: 401 },
+    });
 
     const { GET } = await import("@/app/api/risk-of-bias/route");
     const res = await GET(
@@ -86,10 +114,13 @@ describe("GET /api/risk-of-bias", () => {
   });
 
   it("returns assessments on success", async () => {
-    mockGetServerUser.mockResolvedValue({ id: "u-1" });
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: { id: "u-1" },
+      error: null,
+    });
     const assessments = [{ id: "rob-1", tool: "rob2" }];
     const chain = createMockChain({ data: assessments, error: null });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    mockGetSupabaseAdmin.mockReturnValue({ from: () => chain });
 
     const { GET } = await import("@/app/api/risk-of-bias/route");
     const res = await GET(
@@ -102,9 +133,12 @@ describe("GET /api/risk-of-bias", () => {
   });
 
   it("filters by tool when provided", async () => {
-    mockGetServerUser.mockResolvedValue({ id: "u-1" });
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: { id: "u-1" },
+      error: null,
+    });
     const chain = createMockChain({ data: [], error: null });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    mockGetSupabaseAdmin.mockReturnValue({ from: () => chain });
 
     const { GET } = await import("@/app/api/risk-of-bias/route");
     const res = await GET(
@@ -115,12 +149,15 @@ describe("GET /api/risk-of-bias", () => {
   });
 
   it("returns 500 on database error", async () => {
-    mockGetServerUser.mockResolvedValue({ id: "u-1" });
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: { id: "u-1" },
+      error: null,
+    });
     const chain = createMockChain({
       data: null,
       error: { message: "DB error" },
     });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    mockGetSupabaseAdmin.mockReturnValue({ from: () => chain });
 
     const { GET } = await import("@/app/api/risk-of-bias/route");
     const res = await GET(
@@ -142,7 +179,10 @@ describe("POST /api/risk-of-bias", () => {
   });
 
   it("returns 401 when unauthenticated", async () => {
-    mockGetServerUser.mockResolvedValue(null);
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: null,
+      error: { message: "Unauthorized", status: 401 },
+    });
 
     const { POST } = await import("@/app/api/risk-of-bias/route");
     const res = await POST(
@@ -158,10 +198,13 @@ describe("POST /api/risk-of-bias", () => {
   });
 
   it("upserts a RoB assessment on success", async () => {
-    mockGetServerUser.mockResolvedValue({ id: "u-1" });
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: { id: "u-1" },
+      error: null,
+    });
     const assessment = { id: "rob-1", tool: "rob2", overall_judgment: "low" };
     const chain = createMockChain({ data: assessment, error: null });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    mockGetSupabaseAdmin.mockReturnValue({ from: () => chain });
 
     const { POST } = await import("@/app/api/risk-of-bias/route");
     const res = await POST(
@@ -180,12 +223,15 @@ describe("POST /api/risk-of-bias", () => {
   });
 
   it("returns 500 on upsert error", async () => {
-    mockGetServerUser.mockResolvedValue({ id: "u-1" });
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: { id: "u-1" },
+      error: null,
+    });
     const chain = createMockChain({
       data: null,
       error: { message: "Constraint error" },
     });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    mockGetSupabaseAdmin.mockReturnValue({ from: () => chain });
 
     const { POST } = await import("@/app/api/risk-of-bias/route");
     const res = await POST(
@@ -238,9 +284,14 @@ describe("GET /api/risk-of-bias/[id]", () => {
 
   it("returns assessment by ID on success", async () => {
     mockGetServerUser.mockResolvedValue({ id: "u-1" });
-    const assessment = { id: "rob-1", tool: "rob2" };
-    const chain = createMockChain({ data: assessment, error: null });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    const assessment = { id: "rob-1", tool: "rob2", protocol_id: UUID_P };
+    // GET sequence: risk_of_bias_assessments (select) -> protocols (ownership)
+    mockGetSupabaseAdmin.mockReturnValue(
+      createMockAdmin({
+        risk_of_bias_assessments: [{ data: assessment, error: null }],
+        protocols: [{ data: { user_id: "u-1" }, error: null }],
+      }),
+    );
 
     const mod = await import("@/app/api/risk-of-bias/[id]/route");
     const res = await mod.GET(makeGetRequest("/api/risk-of-bias/rob-1"), {
@@ -261,7 +312,7 @@ describe("GET /api/risk-of-bias/[id]", () => {
           "JSON object requested, multiple (or no) rows returned: 0 rows",
       },
     });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    mockGetSupabaseAdmin.mockReturnValue({ from: () => chain });
 
     const mod = await import("@/app/api/risk-of-bias/[id]/route");
     const res = await mod.GET(makeGetRequest("/api/risk-of-bias/missing"), {
@@ -296,8 +347,17 @@ describe("PATCH /api/risk-of-bias/[id]", () => {
   it("updates assessment on success", async () => {
     mockGetServerUser.mockResolvedValue({ id: "u-1" });
     const updated = { id: "rob-1", overall_judgment: "high" };
-    const chain = createMockChain({ data: updated, error: null });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    // PATCH sequence: risk_of_bias_assessments (existence) -> protocols (ownership)
+    //                 -> risk_of_bias_assessments (update)
+    mockGetSupabaseAdmin.mockReturnValue(
+      createMockAdmin({
+        risk_of_bias_assessments: [
+          { data: { protocol_id: UUID_P }, error: null },
+          { data: updated, error: null },
+        ],
+        protocols: [{ data: { user_id: "u-1" }, error: null }],
+      }),
+    );
 
     const mod = await import("@/app/api/risk-of-bias/[id]/route");
     const res = await mod.PATCH(
@@ -349,8 +409,17 @@ describe("DELETE /api/risk-of-bias/[id]", () => {
 
   it("deletes assessment on success", async () => {
     mockGetServerUser.mockResolvedValue({ id: "u-1" });
-    const chain = createMockChain({ data: null, error: null });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    // DELETE sequence: risk_of_bias_assessments (existence) -> protocols (ownership)
+    //                  -> risk_of_bias_assessments (delete)
+    mockGetSupabaseAdmin.mockReturnValue(
+      createMockAdmin({
+        risk_of_bias_assessments: [
+          { data: { protocol_id: UUID_P }, error: null },
+          { data: null, error: null },
+        ],
+        protocols: [{ data: { user_id: "u-1" }, error: null }],
+      }),
+    );
 
     const mod = await import("@/app/api/risk-of-bias/[id]/route");
     const res = await mod.DELETE(makeDeleteRequest("/api/risk-of-bias/rob-1"), {
@@ -364,11 +433,16 @@ describe("DELETE /api/risk-of-bias/[id]", () => {
 
   it("returns 500 on delete error", async () => {
     mockGetServerUser.mockResolvedValue({ id: "u-1" });
-    const chain = createMockChain({
-      data: null,
-      error: { message: "Delete failed" },
-    });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    // DELETE sequence: existence check passes, ownership passes, delete fails
+    mockGetSupabaseAdmin.mockReturnValue(
+      createMockAdmin({
+        risk_of_bias_assessments: [
+          { data: { protocol_id: UUID_P }, error: null },
+          { data: null, error: { message: "Delete failed" } },
+        ],
+        protocols: [{ data: { user_id: "u-1" }, error: null }],
+      }),
+    );
 
     const mod = await import("@/app/api/risk-of-bias/[id]/route");
     const res = await mod.DELETE(makeDeleteRequest("/api/risk-of-bias/rob-1"), {

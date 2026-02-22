@@ -6,11 +6,17 @@ import { NextRequest } from "next/server";
 // ---------------------------------------------------------------------------
 
 const mockGetServerUser = vi.fn();
-const mockCreateServerSupabaseClient = vi.fn();
+const mockGetSupabaseAdmin = vi.fn();
+const mockVerifyProtocolOwnership = vi.fn();
 
 vi.mock("@/lib/supabase/server", () => ({
   getServerUser: () => mockGetServerUser(),
-  createServerSupabaseClient: () => mockCreateServerSupabaseClient(),
+  getSupabaseAdmin: () => mockGetSupabaseAdmin(),
+}));
+
+vi.mock("@/lib/api/verify-protocol-ownership", () => ({
+  verifyProtocolOwnership: (...args: unknown[]) =>
+    mockVerifyProtocolOwnership(...args),
 }));
 
 // ---------------------------------------------------------------------------
@@ -28,6 +34,25 @@ function createMockChain(resolveValue: { data: unknown; error: unknown }) {
   chain.delete = vi.fn(() => chain);
   chain.then = (resolve: (val: unknown) => void) => resolve(resolveValue);
   return chain;
+}
+
+/**
+ * Creates a mock Supabase admin client that routes `.from(table)` calls to
+ * different chain responses per table. Supports multiple sequential calls to
+ * the same table — each call consumes the next entry in the array.
+ */
+function createMockAdmin(
+  tableChains: Record<string, Array<{ data: unknown; error: unknown }>>,
+) {
+  const callCounts: Record<string, number> = {};
+  return {
+    from: (table: string) => {
+      callCounts[table] = (callCounts[table] ?? 0) + 1;
+      const chains = tableChains[table] ?? [{ data: null, error: null }];
+      const idx = Math.min(callCounts[table] - 1, chains.length - 1);
+      return createMockChain(chains[idx]);
+    },
+  };
 }
 
 function makeGetRequest(url: string): NextRequest {
@@ -68,7 +93,10 @@ describe("GET /api/meta-analysis", () => {
   });
 
   it("returns 401 when unauthenticated", async () => {
-    mockGetServerUser.mockResolvedValue(null);
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: null,
+      error: { message: "Unauthorized", status: 401 },
+    });
 
     const { GET } = await import("@/app/api/meta-analysis/route");
     const res = await GET(
@@ -86,10 +114,13 @@ describe("GET /api/meta-analysis", () => {
   });
 
   it("returns entries on success", async () => {
-    mockGetServerUser.mockResolvedValue({ id: "u-1" });
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: { id: "u-1" },
+      error: null,
+    });
     const entries = [{ id: "m-1", study_label: "Smith 2024" }];
     const chain = createMockChain({ data: entries, error: null });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    mockGetSupabaseAdmin.mockReturnValue({ from: () => chain });
 
     const { GET } = await import("@/app/api/meta-analysis/route");
     const res = await GET(
@@ -102,9 +133,12 @@ describe("GET /api/meta-analysis", () => {
   });
 
   it("returns empty array when no entries exist", async () => {
-    mockGetServerUser.mockResolvedValue({ id: "u-1" });
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: { id: "u-1" },
+      error: null,
+    });
     const chain = createMockChain({ data: [], error: null });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    mockGetSupabaseAdmin.mockReturnValue({ from: () => chain });
 
     const { GET } = await import("@/app/api/meta-analysis/route");
     const res = await GET(
@@ -117,12 +151,15 @@ describe("GET /api/meta-analysis", () => {
   });
 
   it("returns 500 on database error", async () => {
-    mockGetServerUser.mockResolvedValue({ id: "u-1" });
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: { id: "u-1" },
+      error: null,
+    });
     const chain = createMockChain({
       data: null,
       error: { message: "DB error" },
     });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    mockGetSupabaseAdmin.mockReturnValue({ from: () => chain });
 
     const { GET } = await import("@/app/api/meta-analysis/route");
     const res = await GET(
@@ -144,7 +181,10 @@ describe("POST /api/meta-analysis", () => {
   });
 
   it("returns 401 when unauthenticated", async () => {
-    mockGetServerUser.mockResolvedValue(null);
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: null,
+      error: { message: "Unauthorized", status: 401 },
+    });
 
     const { POST } = await import("@/app/api/meta-analysis/route");
     const res = await POST(
@@ -160,10 +200,13 @@ describe("POST /api/meta-analysis", () => {
   });
 
   it("creates an entry on success", async () => {
-    mockGetServerUser.mockResolvedValue({ id: "u-1" });
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: { id: "u-1" },
+      error: null,
+    });
     const entry = { id: "m-1", study_label: "Smith 2024", effect_size: 0.85 };
     const chain = createMockChain({ data: entry, error: null });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    mockGetSupabaseAdmin.mockReturnValue({ from: () => chain });
 
     const { POST } = await import("@/app/api/meta-analysis/route");
     const res = await POST(
@@ -185,12 +228,15 @@ describe("POST /api/meta-analysis", () => {
   });
 
   it("returns 500 on insert error", async () => {
-    mockGetServerUser.mockResolvedValue({ id: "u-1" });
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: { id: "u-1" },
+      error: null,
+    });
     const chain = createMockChain({
       data: null,
       error: { message: "Insert failed" },
     });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    mockGetSupabaseAdmin.mockReturnValue({ from: () => chain });
 
     const { POST } = await import("@/app/api/meta-analysis/route");
     const res = await POST(
@@ -243,9 +289,14 @@ describe("GET /api/meta-analysis/[id]", () => {
 
   it("returns entry by ID on success", async () => {
     mockGetServerUser.mockResolvedValue({ id: "u-1" });
-    const entry = { id: "m-1", study_label: "Smith 2024" };
-    const chain = createMockChain({ data: entry, error: null });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    const entry = { id: "m-1", study_label: "Smith 2024", protocol_id: UUID_P };
+    // GET sequence: meta_analysis_entries (select) -> protocols (ownership)
+    mockGetSupabaseAdmin.mockReturnValue(
+      createMockAdmin({
+        meta_analysis_entries: [{ data: entry, error: null }],
+        protocols: [{ data: { user_id: "u-1" }, error: null }],
+      }),
+    );
 
     const mod = await import("@/app/api/meta-analysis/[id]/route");
     const res = await mod.GET(makeGetRequest("/api/meta-analysis/m-1"), {
@@ -266,7 +317,7 @@ describe("GET /api/meta-analysis/[id]", () => {
           "JSON object requested, multiple (or no) rows returned: 0 rows",
       },
     });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    mockGetSupabaseAdmin.mockReturnValue({ from: () => chain });
 
     const mod = await import("@/app/api/meta-analysis/[id]/route");
     const res = await mod.GET(makeGetRequest("/api/meta-analysis/missing"), {
@@ -282,7 +333,7 @@ describe("GET /api/meta-analysis/[id]", () => {
       data: null,
       error: { message: "Connection lost" },
     });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    mockGetSupabaseAdmin.mockReturnValue({ from: () => chain });
 
     const mod = await import("@/app/api/meta-analysis/[id]/route");
     const res = await mod.GET(makeGetRequest("/api/meta-analysis/m-1"), {
@@ -317,8 +368,17 @@ describe("PATCH /api/meta-analysis/[id]", () => {
   it("updates entry on success", async () => {
     mockGetServerUser.mockResolvedValue({ id: "u-1" });
     const updated = { id: "m-1", effect_size: 1.0 };
-    const chain = createMockChain({ data: updated, error: null });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    // PATCH sequence: meta_analysis_entries (existence) -> protocols (ownership)
+    //                 -> meta_analysis_entries (update)
+    mockGetSupabaseAdmin.mockReturnValue(
+      createMockAdmin({
+        meta_analysis_entries: [
+          { data: { protocol_id: UUID_P }, error: null },
+          { data: updated, error: null },
+        ],
+        protocols: [{ data: { user_id: "u-1" }, error: null }],
+      }),
+    );
 
     const mod = await import("@/app/api/meta-analysis/[id]/route");
     const res = await mod.PATCH(
@@ -349,11 +409,16 @@ describe("PATCH /api/meta-analysis/[id]", () => {
 
   it("returns 500 on update error", async () => {
     mockGetServerUser.mockResolvedValue({ id: "u-1" });
-    const chain = createMockChain({
-      data: null,
-      error: { message: "Update failed" },
-    });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    // PATCH sequence: existence check passes, ownership passes, update fails
+    mockGetSupabaseAdmin.mockReturnValue(
+      createMockAdmin({
+        meta_analysis_entries: [
+          { data: { protocol_id: UUID_P }, error: null },
+          { data: null, error: { message: "Update failed" } },
+        ],
+        protocols: [{ data: { user_id: "u-1" }, error: null }],
+      }),
+    );
 
     const mod = await import("@/app/api/meta-analysis/[id]/route");
     const res = await mod.PATCH(
@@ -387,8 +452,17 @@ describe("DELETE /api/meta-analysis/[id]", () => {
 
   it("deletes entry on success", async () => {
     mockGetServerUser.mockResolvedValue({ id: "u-1" });
-    const chain = createMockChain({ data: null, error: null });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    // DELETE sequence: meta_analysis_entries (existence) -> protocols (ownership)
+    //                  -> meta_analysis_entries (delete)
+    mockGetSupabaseAdmin.mockReturnValue(
+      createMockAdmin({
+        meta_analysis_entries: [
+          { data: { protocol_id: UUID_P }, error: null },
+          { data: null, error: null },
+        ],
+        protocols: [{ data: { user_id: "u-1" }, error: null }],
+      }),
+    );
 
     const mod = await import("@/app/api/meta-analysis/[id]/route");
     const res = await mod.DELETE(makeDeleteRequest("/api/meta-analysis/m-1"), {
@@ -402,11 +476,16 @@ describe("DELETE /api/meta-analysis/[id]", () => {
 
   it("returns 500 on delete error", async () => {
     mockGetServerUser.mockResolvedValue({ id: "u-1" });
-    const chain = createMockChain({
-      data: null,
-      error: { message: "FK violation" },
-    });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    // DELETE sequence: existence check passes, ownership passes, delete fails
+    mockGetSupabaseAdmin.mockReturnValue(
+      createMockAdmin({
+        meta_analysis_entries: [
+          { data: { protocol_id: UUID_P }, error: null },
+          { data: null, error: { message: "FK violation" } },
+        ],
+        protocols: [{ data: { user_id: "u-1" }, error: null }],
+      }),
+    );
 
     const mod = await import("@/app/api/meta-analysis/[id]/route");
     const res = await mod.DELETE(makeDeleteRequest("/api/meta-analysis/m-1"), {

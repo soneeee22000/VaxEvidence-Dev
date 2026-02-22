@@ -6,11 +6,17 @@ import { NextRequest } from "next/server";
 // ---------------------------------------------------------------------------
 
 const mockGetServerUser = vi.fn();
-const mockCreateServerSupabaseClient = vi.fn();
+const mockGetSupabaseAdmin = vi.fn();
+const mockVerifyProtocolOwnership = vi.fn();
 
 vi.mock("@/lib/supabase/server", () => ({
   getServerUser: () => mockGetServerUser(),
-  createServerSupabaseClient: () => mockCreateServerSupabaseClient(),
+  getSupabaseAdmin: () => mockGetSupabaseAdmin(),
+}));
+
+vi.mock("@/lib/api/verify-protocol-ownership", () => ({
+  verifyProtocolOwnership: (...args: unknown[]) =>
+    mockVerifyProtocolOwnership(...args),
 }));
 
 // ---------------------------------------------------------------------------
@@ -29,8 +35,28 @@ function createMockChain(resolveValue: { data: unknown; error: unknown }) {
   chain.update = vi.fn(() => chain);
   chain.delete = vi.fn(() => chain);
   chain.insert = vi.fn(() => chain);
+  chain.in = vi.fn(() => chain);
   chain.then = (resolve: (val: unknown) => void) => resolve(resolveValue);
   return chain;
+}
+
+/**
+ * Creates a mock Supabase admin client that routes `.from(table)` calls to
+ * different chain responses per table. Supports multiple sequential calls to
+ * the same table — each call consumes the next entry in the array.
+ */
+function createMockAdmin(
+  tableChains: Record<string, Array<{ data: unknown; error: unknown }>>,
+) {
+  const callCounts: Record<string, number> = {};
+  return {
+    from: (table: string) => {
+      callCounts[table] = (callCounts[table] ?? 0) + 1;
+      const chains = tableChains[table] ?? [{ data: null, error: null }];
+      const idx = Math.min(callCounts[table] - 1, chains.length - 1);
+      return createMockChain(chains[idx]);
+    },
+  };
 }
 
 function makeGetRequest(url: string): NextRequest {
@@ -71,7 +97,10 @@ describe("GET /api/screening", () => {
   });
 
   it("returns 401 when unauthenticated", async () => {
-    mockGetServerUser.mockResolvedValue(null);
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: null,
+      error: { message: "Unauthorized", status: 401 },
+    });
 
     const { GET } = await import("@/app/api/screening/route");
     const res = await GET(
@@ -89,12 +118,15 @@ describe("GET /api/screening", () => {
   });
 
   it("returns screening decisions on success", async () => {
-    mockGetServerUser.mockResolvedValue({ id: "u-1" });
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: { id: "u-1" },
+      error: null,
+    });
     const decisions = [
       { id: "d-1", stage: "identification", decision: "pending" },
     ];
     const chain = createMockChain({ data: decisions, error: null });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    mockGetSupabaseAdmin.mockReturnValue({ from: () => chain });
 
     const { GET } = await import("@/app/api/screening/route");
     const res = await GET(
@@ -107,9 +139,12 @@ describe("GET /api/screening", () => {
   });
 
   it("filters by stage when provided", async () => {
-    mockGetServerUser.mockResolvedValue({ id: "u-1" });
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: { id: "u-1" },
+      error: null,
+    });
     const chain = createMockChain({ data: [], error: null });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    mockGetSupabaseAdmin.mockReturnValue({ from: () => chain });
 
     const { GET } = await import("@/app/api/screening/route");
     const res = await GET(
@@ -122,12 +157,15 @@ describe("GET /api/screening", () => {
   });
 
   it("returns 500 on database error", async () => {
-    mockGetServerUser.mockResolvedValue({ id: "u-1" });
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: { id: "u-1" },
+      error: null,
+    });
     const chain = createMockChain({
       data: null,
       error: { message: "DB error" },
     });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    mockGetSupabaseAdmin.mockReturnValue({ from: () => chain });
 
     const { GET } = await import("@/app/api/screening/route");
     const res = await GET(
@@ -149,7 +187,10 @@ describe("POST /api/screening (single upsert)", () => {
   });
 
   it("returns 401 when unauthenticated", async () => {
-    mockGetServerUser.mockResolvedValue(null);
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: null,
+      error: { message: "Unauthorized", status: 401 },
+    });
 
     const { POST } = await import("@/app/api/screening/route");
     const res = await POST(
@@ -164,10 +205,13 @@ describe("POST /api/screening (single upsert)", () => {
   });
 
   it("upserts a single screening decision on success", async () => {
-    mockGetServerUser.mockResolvedValue({ id: "u-1" });
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: { id: "u-1" },
+      error: null,
+    });
     const decision = { id: "d-1", decision: "include" };
     const chain = createMockChain({ data: decision, error: null });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    mockGetSupabaseAdmin.mockReturnValue({ from: () => chain });
 
     const { POST } = await import("@/app/api/screening/route");
     const res = await POST(
@@ -185,12 +229,15 @@ describe("POST /api/screening (single upsert)", () => {
   });
 
   it("returns 500 on upsert database error", async () => {
-    mockGetServerUser.mockResolvedValue({ id: "u-1" });
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: { id: "u-1" },
+      error: null,
+    });
     const chain = createMockChain({
       data: null,
       error: { message: "Upsert failed" },
     });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    mockGetSupabaseAdmin.mockReturnValue({ from: () => chain });
 
     const { POST } = await import("@/app/api/screening/route");
     const res = await POST(
@@ -231,19 +278,29 @@ describe("POST /api/screening (batch init)", () => {
   });
 
   it("batch-initializes decisions for multiple evidence IDs", async () => {
-    mockGetServerUser.mockResolvedValue({ id: "u-1" });
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: { id: "u-1" },
+      error: null,
+    });
+    const evidenceIds = [UUID_E, "770e8400-e29b-41d4-a716-446655440002"];
     const batchResult = [
       { id: "d-1", decision: "pending" },
       { id: "d-2", decision: "pending" },
     ];
-    const chain = createMockChain({ data: batchResult, error: null });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    mockGetSupabaseAdmin.mockReturnValue(
+      createMockAdmin({
+        evidence_items: [
+          { data: evidenceIds.map((id) => ({ id })), error: null },
+        ],
+        screening_decisions: [{ data: batchResult, error: null }],
+      }),
+    );
 
     const { POST } = await import("@/app/api/screening/route");
     const res = await POST(
       makePostRequest("/api/screening", {
         protocol_id: UUID_P,
-        evidence_ids: [UUID_E, "770e8400-e29b-41d4-a716-446655440002"],
+        evidence_ids: evidenceIds,
         stage: "identification",
       }),
     );
@@ -254,12 +311,18 @@ describe("POST /api/screening (batch init)", () => {
   });
 
   it("returns 500 on batch database error", async () => {
-    mockGetServerUser.mockResolvedValue({ id: "u-1" });
-    const chain = createMockChain({
-      data: null,
-      error: { message: "Batch failed" },
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: { id: "u-1" },
+      error: null,
     });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    mockGetSupabaseAdmin.mockReturnValue(
+      createMockAdmin({
+        evidence_items: [{ data: [{ id: UUID_E }], error: null }],
+        screening_decisions: [
+          { data: null, error: { message: "Batch failed" } },
+        ],
+      }),
+    );
 
     const { POST } = await import("@/app/api/screening/route");
     const res = await POST(
@@ -295,9 +358,17 @@ describe("GET /api/screening/[id]", () => {
 
   it("returns decision by ID on success", async () => {
     mockGetServerUser.mockResolvedValue({ id: "u-1" });
-    const decision = { id: "d-1", stage: "identification" };
-    const chain = createMockChain({ data: decision, error: null });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    const decision = {
+      id: "d-1",
+      stage: "identification",
+      protocol_id: UUID_P,
+    };
+    mockGetSupabaseAdmin.mockReturnValue(
+      createMockAdmin({
+        screening_decisions: [{ data: decision, error: null }],
+        protocols: [{ data: { user_id: "u-1" }, error: null }],
+      }),
+    );
 
     const mod = await import("@/app/api/screening/[id]/route");
     const res = await mod.GET(makeGetRequest("/api/screening/d-1"), {
@@ -318,7 +389,7 @@ describe("GET /api/screening/[id]", () => {
           "JSON object requested, multiple (or no) rows returned: 0 rows",
       },
     });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    mockGetSupabaseAdmin.mockReturnValue({ from: () => chain });
 
     const mod = await import("@/app/api/screening/[id]/route");
     const res = await mod.GET(makeGetRequest("/api/screening/missing"), {
@@ -334,7 +405,7 @@ describe("GET /api/screening/[id]", () => {
       data: null,
       error: { message: "Connection refused" },
     });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    mockGetSupabaseAdmin.mockReturnValue({ from: () => chain });
 
     const mod = await import("@/app/api/screening/[id]/route");
     const res = await mod.GET(makeGetRequest("/api/screening/d-1"), {
@@ -369,8 +440,17 @@ describe("PATCH /api/screening/[id]", () => {
   it("updates a decision on success", async () => {
     mockGetServerUser.mockResolvedValue({ id: "u-1" });
     const updated = { id: "d-1", decision: "exclude" };
-    const chain = createMockChain({ data: updated, error: null });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    // PATCH sequence: screening_decisions (existence) -> protocols (ownership)
+    //                 -> screening_decisions (update)
+    mockGetSupabaseAdmin.mockReturnValue(
+      createMockAdmin({
+        screening_decisions: [
+          { data: { protocol_id: UUID_P }, error: null },
+          { data: updated, error: null },
+        ],
+        protocols: [{ data: { user_id: "u-1" }, error: null }],
+      }),
+    );
 
     const mod = await import("@/app/api/screening/[id]/route");
     const res = await mod.PATCH(
@@ -425,8 +505,17 @@ describe("DELETE /api/screening/[id]", () => {
 
   it("deletes a decision on success", async () => {
     mockGetServerUser.mockResolvedValue({ id: "u-1" });
-    const chain = createMockChain({ data: null, error: null });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    // DELETE sequence: screening_decisions (existence) -> protocols (ownership)
+    //                  -> screening_decisions (delete)
+    mockGetSupabaseAdmin.mockReturnValue(
+      createMockAdmin({
+        screening_decisions: [
+          { data: { protocol_id: UUID_P }, error: null },
+          { data: null, error: null },
+        ],
+        protocols: [{ data: { user_id: "u-1" }, error: null }],
+      }),
+    );
 
     const mod = await import("@/app/api/screening/[id]/route");
     const res = await mod.DELETE(makeDeleteRequest("/api/screening/d-1"), {
@@ -440,11 +529,16 @@ describe("DELETE /api/screening/[id]", () => {
 
   it("returns 500 on delete error", async () => {
     mockGetServerUser.mockResolvedValue({ id: "u-1" });
-    const chain = createMockChain({
-      data: null,
-      error: { message: "Delete failed" },
-    });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    // DELETE sequence: existence check passes, ownership passes, delete fails
+    mockGetSupabaseAdmin.mockReturnValue(
+      createMockAdmin({
+        screening_decisions: [
+          { data: { protocol_id: UUID_P }, error: null },
+          { data: null, error: { message: "Delete failed" } },
+        ],
+        protocols: [{ data: { user_id: "u-1" }, error: null }],
+      }),
+    );
 
     const mod = await import("@/app/api/screening/[id]/route");
     const res = await mod.DELETE(makeDeleteRequest("/api/screening/d-1"), {
@@ -466,7 +560,10 @@ describe("POST /api/screening/duplicates", () => {
   });
 
   it("returns 401 when unauthenticated", async () => {
-    mockGetServerUser.mockResolvedValue(null);
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: null,
+      error: { message: "Unauthorized", status: 401 },
+    });
 
     const { POST } = await import("@/app/api/screening/duplicates/route");
     const res = await POST(
@@ -484,7 +581,10 @@ describe("POST /api/screening/duplicates", () => {
   });
 
   it("returns duplicate groups on success", async () => {
-    mockGetServerUser.mockResolvedValue({ id: "u-1" });
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: { id: "u-1" },
+      error: null,
+    });
 
     const decisions = [
       {
@@ -517,7 +617,7 @@ describe("POST /api/screening/duplicates", () => {
       },
     ];
     const chain = createMockChain({ data: decisions, error: null });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    mockGetSupabaseAdmin.mockReturnValue({ from: () => chain });
 
     const { POST } = await import("@/app/api/screening/duplicates/route");
     const res = await POST(
@@ -531,7 +631,10 @@ describe("POST /api/screening/duplicates", () => {
   });
 
   it("returns empty groups when no duplicates found", async () => {
-    mockGetServerUser.mockResolvedValue({ id: "u-1" });
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: { id: "u-1" },
+      error: null,
+    });
 
     const decisions = [
       {
@@ -550,7 +653,7 @@ describe("POST /api/screening/duplicates", () => {
       },
     ];
     const chain = createMockChain({ data: decisions, error: null });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    mockGetSupabaseAdmin.mockReturnValue({ from: () => chain });
 
     const { POST } = await import("@/app/api/screening/duplicates/route");
     const res = await POST(
@@ -563,12 +666,15 @@ describe("POST /api/screening/duplicates", () => {
   });
 
   it("returns 500 on database error", async () => {
-    mockGetServerUser.mockResolvedValue({ id: "u-1" });
+    mockVerifyProtocolOwnership.mockResolvedValue({
+      user: { id: "u-1" },
+      error: null,
+    });
     const chain = createMockChain({
       data: null,
       error: { message: "Query failed" },
     });
-    mockCreateServerSupabaseClient.mockResolvedValue({ from: () => chain });
+    mockGetSupabaseAdmin.mockReturnValue({ from: () => chain });
 
     const { POST } = await import("@/app/api/screening/duplicates/route");
     const res = await POST(
