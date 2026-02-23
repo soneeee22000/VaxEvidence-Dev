@@ -14,7 +14,7 @@ VaxEvidence is a Real-World Evidence (RWE) platform for vaccine research scienti
 - **Data Fetching:** @tanstack/react-query v5 (caching, pagination, optimistic updates)
 - **Exports:** jsPDF, @react-pdf/renderer, docx, papaparse, exceljs, citation-js, archiver
 - **Charts:** recharts
-- **Animations:** framer-motion, lottie-react
+- **Animations:** framer-motion
 - **Theming:** next-themes (dark mode default)
 - **Notifications:** sonner (toast notifications)
 - **Real-time:** yjs (CRDT), Supabase Realtime (Broadcast + Presence)
@@ -240,6 +240,8 @@ Use `@/*` absolute imports. Order: external libs → UI components → feature c
 - Use `cn()` from `@/lib/utils` for conditional class merging
 - Mobile-first responsive: `sm:`, `md:`, `lg:`, `xl:`
 - Dark mode is the default theme
+- OKLCH color space: dark mode hue 260 (blue-slate), primary hue 168 (teal), dark primary lightness 0.60
+- Landing page visual system uses custom CSS classes in `globals.css`: `.glass-card` (translucent + backdrop-blur + border glow hover), `.glow-card` (gradient border shimmer via pseudo-element), `.dot-grid` (subtle dot pattern background), `.text-glow` (teal gradient text)
 
 ### TypeScript
 

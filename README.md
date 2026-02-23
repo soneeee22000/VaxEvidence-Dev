@@ -16,7 +16,7 @@ A Real-World Evidence (RWE) platform for vaccine research scientists. Enables co
 - **Charts:** recharts (dashboards) + custom SVG (forest plots)
 - **Monitoring:** @sentry/nextjs v10 (error tracking, source maps)
 - **Testing:** vitest (~1,400 unit + 60 integration + 51 benchmark tests), Playwright (63 E2E tests)
-- **Animations:** framer-motion, lottie-react
+- **Animations:** framer-motion
 - **Package Manager:** pnpm
 
 ## Getting Started

@@ -10,7 +10,7 @@ Build the **most powerful platform** for vaccine researchers to design protocols
 
 ### 1. Foundation
 
-- [x] Marketing landing page with waitlist
+- [x] Marketing landing page with waitlist (premium redesign: glassmorphism, gradient borders, dot grid, product preview hero)
 - [x] Supabase authentication (email OTP + OAuth)
 - [x] Protected routes with proxy middleware (Next.js 16)
 - [x] Dev mode with fallback UUID for rapid development
@@ -277,4 +277,4 @@ All 12 phases completed. Phases were built in this order:
 
 ---
 
-_Last Updated: February 24, 2026_
+_Last Updated: February 23, 2026_
