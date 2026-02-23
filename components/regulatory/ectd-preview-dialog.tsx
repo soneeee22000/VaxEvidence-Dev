@@ -226,7 +226,7 @@ export function ECTDPreviewDialog({
           {/* Progress bar */}
           <div className="h-2 w-full rounded-full bg-zinc-800">
             <div
-              className="h-2 rounded-full bg-gradient-to-r from-blue-500 to-green-500 transition-all"
+              className="h-2 rounded-full bg-primary transition-all"
               style={{
                 width: `${totalCount > 0 ? (completeCount / totalCount) * 100 : 0}%`,
               }}
