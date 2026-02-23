@@ -107,8 +107,8 @@ export function ProtocolTemplateSelector({
                 vaccine researchers.
               </p>
             </div>
-            <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center">
-              <LayoutTemplate className="w-10 h-10 text-white" />
+            <div className="w-20 h-20 bg-primary rounded-2xl flex items-center justify-center">
+              <LayoutTemplate className="w-10 h-10 text-primary-foreground" />
             </div>
           </div>
 
@@ -225,7 +225,7 @@ export function ProtocolTemplateSelector({
                     )}
                   </div>
 
-                  <button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:shadow-lg transition flex items-center justify-center space-x-2 group-hover:scale-105">
+                  <button className="w-full bg-primary text-primary-foreground py-3 rounded-lg font-semibold hover:bg-primary/90 hover:shadow-md transition flex items-center justify-center space-x-2">
                     <span>Use Template</span>
                     <ArrowRight className="w-5 h-5" />
                   </button>
@@ -394,7 +394,7 @@ export function ProtocolTemplateSelector({
                 <div className="flex space-x-4 pt-6">
                   <button
                     onClick={handleCreateFromTemplate}
-                    className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-xl font-bold text-lg hover:shadow-2xl transition flex items-center justify-center space-x-3"
+                    className="flex-1 bg-primary text-primary-foreground py-4 rounded-xl font-bold text-lg hover:bg-primary/90 hover:shadow-lg transition flex items-center justify-center space-x-3"
                   >
                     <Sparkles className="w-6 h-6" />
                     <span>Create Protocol from This Template</span>
