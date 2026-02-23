@@ -1,59 +1,16 @@
 "use client";
 
-import { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { CheckCircle } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { fadeUp, stagger, viewportOnce } from "@/components/landing/motion";
 
 /**
- * CTA section — gradient mesh background with waitlist form.
+ * CTA section — gradient mesh background with sign-up prompt.
  */
 export default function CTASection() {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const [status, setStatus] = useState<
-    "idle" | "loading" | "success" | "error"
-  >("idle");
-  const [message, setMessage] = useState("");
   const reduceMotion = useReducedMotion();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setStatus("loading");
-    setMessage("");
-
-    try {
-      const response = await fetch("/api/waitlist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          email,
-          source: "landing-page",
-          honeypot: "",
-        }),
-      });
-
-      const payload = await response.json();
-      if (!response.ok) {
-        setStatus("error");
-        setMessage(payload?.error ?? "Something went wrong.");
-        return;
-      }
-
-      setStatus("success");
-      setSubmitted(true);
-      setName("");
-      setEmail("");
-      setTimeout(() => setSubmitted(false), 3000);
-    } catch {
-      setStatus("error");
-      setMessage("Network error. Please try again.");
-    }
-  };
 
   return (
     <section className="relative overflow-hidden">
@@ -79,76 +36,44 @@ export default function CTASection() {
           </motion.h2>
           <motion.p
             variants={fadeUp(0.1)}
-            className="text-lg text-muted-foreground mb-8"
+            className="text-lg text-muted-foreground mb-8 max-w-md mx-auto"
           >
-            Join the waitlist for early access to VaxEvidence.
+            Create your first protocol in minutes. Import evidence from PubMed,
+            screen studies, and export regulatory-ready reports.
           </motion.p>
 
-          {!submitted ? (
-            <motion.form
-              onSubmit={handleSubmit}
-              className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto"
-              variants={fadeUp(0.2)}
-            >
-              <Input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Full name"
-                className="h-12 text-base bg-card/70 backdrop-blur-sm"
-                aria-label="Full name"
-              />
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Work email"
-                required
-                className="h-12 text-base bg-card/70 backdrop-blur-sm"
-                aria-label="Email address"
-              />
-              <motion.div
-                whileHover={reduceMotion ? undefined : { y: -2 }}
-                whileTap={reduceMotion ? undefined : { scale: 0.98 }}
-                transition={{ type: "spring", stiffness: 400, damping: 20 }}
-              >
-                <Button
-                  type="submit"
-                  size="lg"
-                  className="shrink-0 shadow-soft h-12"
-                  disabled={status === "loading"}
-                >
-                  {status === "loading" ? "Submitting..." : "Join Waitlist"}
-                </Button>
-              </motion.div>
-            </motion.form>
-          ) : (
+          <motion.div
+            variants={fadeUp(0.2)}
+            className="flex flex-col sm:flex-row gap-3 justify-center"
+          >
             <motion.div
-              variants={fadeUp(0.2)}
-              className="glass-card rounded-lg p-6 max-w-md mx-auto"
-              role="alert"
+              whileHover={reduceMotion ? undefined : { y: -2 }}
+              whileTap={reduceMotion ? undefined : { scale: 0.98 }}
+              transition={{ type: "spring", stiffness: 400, damping: 20 }}
             >
-              <CheckCircle className="w-10 h-10 text-primary mx-auto mb-3" />
-              <p className="text-foreground font-medium">
-                Thank you! We&apos;ll be in touch soon.
-              </p>
+              <Button asChild size="lg" className="shadow-soft h-12 px-8">
+                <Link href="/auth">
+                  Get Started Free
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
             </motion.div>
-          )}
-
-          {message ? (
-            <p
-              className={`text-sm mt-4 ${status === "success" ? "text-primary" : "text-destructive"}`}
-              aria-live="polite"
+            <motion.div
+              whileHover={reduceMotion ? undefined : { y: -2 }}
+              whileTap={reduceMotion ? undefined : { scale: 0.98 }}
+              transition={{ type: "spring", stiffness: 400, damping: 20 }}
             >
-              {message}
-            </p>
-          ) : null}
+              <Button asChild size="lg" variant="outline" className="h-12 px-8">
+                <Link href="/demo">Try the Demo</Link>
+              </Button>
+            </motion.div>
+          </motion.div>
 
           <motion.p
             variants={fadeUp(0.25)}
             className="text-sm text-muted-foreground mt-6"
           >
-            Free to get started. No credit card required.
+            Free to use. No credit card required.
           </motion.p>
         </motion.div>
       </div>

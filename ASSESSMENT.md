@@ -73,20 +73,20 @@ For a solo developer with AI assistance, the surface area is exceptional:
 
 ~~**4. Dev-only auth fallback is a liability.**~~ — **Fixed (Step 4).** `useUserId()` gated behind `NODE_ENV === "development"` check.
 
-### Enterprise Features Are UI Shells
+### Enterprise Features — Mixed Maturity
 
-The Phase 12 "enterprise" features render settings pages and dialogs. They do NOT:
+Phase 12 enterprise features have varying levels of backend implementation:
 
-| Feature      | What exists              | What's missing                                                            |
-| ------------ | ------------------------ | ------------------------------------------------------------------------- |
-| SSO/SAML     | Config form UI           | Actual IdP integration (Okta, Azure AD, etc.)                             |
-| API Keys     | Create/list UI, DB table | Key validation middleware, rate limiting, usage tracking                  |
-| Webhooks     | Create/list UI, DB table | Delivery queue, retry logic, signature verification, dead letter handling |
-| Audit Logs   | DB table, viewer UI      | 21 CFR Part 11 compliance (tamper-proof, signed, non-repudiation)         |
-| Compliance   | Dashboard UI             | SOC 2 controls, HIPAA BAA, actual data residency enforcement              |
-| Integrations | Provider cards UI        | Actual OAuth flows, data sync, API connectors                             |
+| Feature      | Status         | What exists                                                    | What's missing                                                       |
+| ------------ | -------------- | -------------------------------------------------------------- | -------------------------------------------------------------------- |
+| API Keys     | Functional     | Full CRUD, SHA-256 hashing, scope-based access, usage tracking | Production rate limiting middleware on public API routes             |
+| Webhooks     | Functional     | Full CRUD, event subscriptions, HMAC signing, delivery history | Dead letter queue, guaranteed delivery SLA                           |
+| Audit Logs   | Functional     | Immutable logging, filtering, CSV export, change diffs         | 21 CFR Part 11 compliance (tamper-proof signing, non-repudiation)    |
+| Integrations | Backend routes | Zotero/Mendeley/REDCap API routes with sync and import         | External API credentials required; not yet tested with real accounts |
+| SSO/SAML     | Config only    | SAML configuration form, DB storage                            | Requires Supabase Enterprise plan for actual IdP login               |
+| Compliance   | Basic checks   | Automated workspace config checks, pass/warn/fail scoring      | SOC 2 controls, HIPAA BAA, independent security audit                |
 
-A settings page that renders a SAML form is not SSO. A table that stores audit rows is not 21 CFR Part 11 compliance. These features would need 3-6 months of dedicated work each to be production-real.
+API Keys, Webhooks, and Audit Logs are production-functional. SSO requires an Enterprise Supabase subscription. Compliance is a configuration checklist, not a certification. The gap to enterprise-ready is real but smaller than originally assessed.
 
 ### Regulatory Exports Are Templates, Not Compliance
 

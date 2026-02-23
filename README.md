@@ -134,14 +134,14 @@ IP_HASH_SALT=                         # Optional (waitlist IP anonymization)
 - Literature synthesis and summary
 - Paper recommendations
 
-### Enterprise (UI Shells)
+### Enterprise & Integrations
 
-- API key management with create/revoke
-- Webhook configuration with event selection
-- SSO/SAML configuration form
-- Audit log viewer
-- Compliance dashboard
-- Integration provider cards
+- API key management with create/rotate/revoke and usage tracking
+- Webhook system with event subscriptions, delivery history, and HMAC signing
+- SSO/SAML configuration (requires Supabase Enterprise plan for login)
+- Audit log with filtering, pagination, and CSV export
+- Compliance dashboard with automated configuration checks
+- Zotero, Mendeley, and REDCap integration connectors
 
 ### Dataset Management
 

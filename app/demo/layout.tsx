@@ -7,13 +7,7 @@ import { Button } from "@/components/ui/button";
 import { DemoProvider } from "@/lib/demo/demo-context";
 import { DemoBanner } from "@/components/demo/demo-banner";
 import { FeedbackWidget } from "@/components/feedback/feedback-widget";
-import {
-  FileText,
-  BookOpen,
-  Database,
-  LayoutTemplate,
-  ArrowRight,
-} from "lucide-react";
+import { FileText, ArrowRight } from "lucide-react";
 import { useEffect } from "react";
 import { trackEvent } from "@/lib/analytics/track-event";
 
@@ -33,27 +27,6 @@ export default function DemoLayout({
 
   const navLinks = [
     { href: "/demo", label: "Protocols", icon: FileText, exact: true },
-    {
-      href: "/demo",
-      label: "Templates",
-      icon: LayoutTemplate,
-      exact: false,
-      disabled: true,
-    },
-    {
-      href: "/demo",
-      label: "Datasets",
-      icon: Database,
-      exact: false,
-      disabled: true,
-    },
-    {
-      href: "/demo",
-      label: "Evidence",
-      icon: BookOpen,
-      exact: false,
-      disabled: true,
-    },
   ];
 
   return (
@@ -91,16 +64,10 @@ export default function DemoLayout({
                 return (
                   <Link
                     key={link.label}
-                    href={link.disabled ? "#" : link.href}
+                    href={link.href}
                     className={`flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary ${
-                      link.disabled
-                        ? "pointer-events-none opacity-40"
-                        : active
-                          ? "text-foreground"
-                          : "text-muted-foreground"
+                      active ? "text-foreground" : "text-muted-foreground"
                     }`}
-                    aria-disabled={link.disabled}
-                    tabIndex={link.disabled ? -1 : undefined}
                   >
                     <Icon className="h-4 w-4" />
                     {link.label}

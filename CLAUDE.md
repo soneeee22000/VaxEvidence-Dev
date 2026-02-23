@@ -272,7 +272,7 @@ IP_HASH_SALT                          # Optional (waitlist IP anonymization)
 
 - Images are unoptimized (`images: { unoptimized: true }`)
 - Screening decisions, linked evidence, and `getUniqueTags()` are still unbounded (no pagination) — see `docs/PERFORMANCE-BENCHMARKS.md`
-- Enterprise features (SSO, webhooks, API keys) are UI shells — backend integrations not wired
+- API keys and webhooks are fully functional (CRUD + delivery + signing). SSO/SAML requires Supabase Enterprise plan (config saved locally, login disabled without it). Integrations (Zotero, Mendeley, REDCap) have backend routes but depend on external API credentials.
 - Regulatory exports (IND, eCTD, SDTM) produce structured templates, not submission-ready packages
 
 ## Important: Server vs Browser Client in API Routes

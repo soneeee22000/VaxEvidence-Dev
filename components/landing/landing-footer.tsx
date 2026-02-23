@@ -71,7 +71,7 @@ export default function LandingFooter() {
             <ul className="space-y-2.5 text-muted-foreground text-sm">
               <li>
                 <a
-                  href="#about"
+                  href="#how-it-works"
                   className="hover:text-foreground transition-colors"
                 >
                   About
@@ -96,48 +96,46 @@ export default function LandingFooter() {
             </ul>
           </nav>
 
-          <nav aria-label="Legal links">
+          <nav aria-label="Resources">
             <h4 className="font-semibold mb-4 text-sm text-foreground">
-              Legal
+              Resources
             </h4>
             <ul className="space-y-2.5 text-muted-foreground text-sm">
               <li>
-                <span className="cursor-default">Privacy</span>
+                <Link
+                  href="/demo"
+                  className="hover:text-foreground transition-colors"
+                >
+                  Live Demo
+                </Link>
               </li>
               <li>
-                <span className="cursor-default">Terms</span>
+                <Link
+                  href="/auth"
+                  className="hover:text-foreground transition-colors"
+                >
+                  Sign Up
+                </Link>
               </li>
               <li>
-                <span className="cursor-default">Security</span>
+                <a
+                  href="mailto:contact@vaxevidence.com"
+                  className="hover:text-foreground transition-colors"
+                >
+                  Support
+                </a>
               </li>
             </ul>
           </nav>
         </div>
 
-        <div className="border-t border-border mt-10 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="border-t border-border/50 mt-10 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-muted-foreground text-sm">
             &copy; {new Date().getFullYear()} VaxEvidence. All rights reserved.
           </p>
-          <div className="flex items-center gap-6">
-            <a
-              href="#"
-              className="text-muted-foreground hover:text-foreground transition-colors text-sm"
-            >
-              Twitter
-            </a>
-            <a
-              href="#"
-              className="text-muted-foreground hover:text-foreground transition-colors text-sm"
-            >
-              LinkedIn
-            </a>
-            <a
-              href="#"
-              className="text-muted-foreground hover:text-foreground transition-colors text-sm"
-            >
-              GitHub
-            </a>
-          </div>
+          <p className="text-muted-foreground text-sm">
+            Built for regulatory-grade vaccine research.
+          </p>
         </div>
       </div>
     </footer>
