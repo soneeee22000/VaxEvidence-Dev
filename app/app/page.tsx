@@ -170,7 +170,7 @@ function DashboardContent() {
                 {protocols.map((protocol) => (
                   <Card
                     key={protocol.id}
-                    className="border-border hover:border-primary/30 card-hover"
+                    className="border-border hover:border-primary/30"
                   >
                     <CardHeader>
                       <CardTitle className="text-lg">

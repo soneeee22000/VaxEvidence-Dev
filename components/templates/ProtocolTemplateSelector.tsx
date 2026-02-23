@@ -113,8 +113,7 @@ export function ProtocolTemplateSelector({
           </div>
 
           <div className="bg-primary/10 border-l-4 border-primary p-6 rounded-r-xl">
-            <div className="flex items-start space-x-3">
-              <Sparkles className="w-6 h-6 text-primary mt-1 flex-shrink-0" />
+            <div>
               <div>
                 <p className="text-foreground font-semibold mb-2">
                   Why use templates?
@@ -183,7 +182,7 @@ export function ProtocolTemplateSelector({
               {filteredTemplates.map((template) => (
                 <div
                   key={template.id}
-                  className="bg-card rounded-2xl shadow-lg hover:shadow-2xl transition p-6 border-2 border-border hover:border-primary/50 group cursor-pointer"
+                  className="bg-card rounded-2xl shadow-lg hover:shadow-lg transition p-6 border-2 border-border hover:border-primary/50 group cursor-pointer"
                   onClick={() => handleUseTemplate(template.id)}
                 >
                   <div className="flex items-start justify-between mb-4">
@@ -235,7 +234,7 @@ export function ProtocolTemplateSelector({
 
             {filteredTemplates.length === 0 && (
               <div className="bg-card rounded-2xl shadow-lg p-12 text-center">
-                <div className="text-6xl mb-4">🔍</div>
+                <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-2xl font-bold text-foreground mb-2">
                   No templates found
                 </h3>
