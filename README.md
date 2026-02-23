@@ -15,7 +15,7 @@ A Real-World Evidence (RWE) platform for vaccine research scientists. Enables co
 - **Exports:** jsPDF, @react-pdf/renderer, docx, papaparse, exceljs, citation-js, archiver
 - **Charts:** recharts (dashboards) + custom SVG (forest plots)
 - **Monitoring:** @sentry/nextjs v10 (error tracking, source maps)
-- **Testing:** vitest (~1,400 unit tests), Playwright (49 E2E tests), performance benchmarks (51 tests)
+- **Testing:** vitest (~1,400 unit + 60 integration + 51 benchmark tests), Playwright (63 E2E tests)
 - **Animations:** framer-motion, lottie-react
 - **Package Manager:** pnpm
 
@@ -176,10 +176,11 @@ lib/                    # 22 library modules
 ├── export/             # PDF/Word/CSV/ZIP + IND/eCTD/SDTM generators
 └── ...                 # + ai, analytics, audit, security, screening, validators, etc.
 
-__tests__/              # vitest unit + integration tests (~1,400 tests)
+__tests__/              # vitest unit + integration tests (~1,400 unit + 60 integration)
 ├── benchmarks/         # Performance benchmarks (51 tests)
+├── integration/        # Integration tests against real Supabase (RLS, CRUD, data integrity)
 └── ...                 # 16 sub-directories (api, screening, security, supabase, etc.)
-e2e/                    # Playwright E2E tests (49 tests)
+e2e/                    # Playwright E2E tests (63 tests)
 supabase/migrations/    # SQL migration files
 docs/                   # Project documentation
 proxy.ts                # Auth proxy (Next.js 16 convention)
@@ -188,10 +189,10 @@ proxy.ts                # Auth proxy (Next.js 16 convention)
 ## Testing
 
 ```bash
-pnpm test                # Unit tests (vitest, ~1,400 tests)
+pnpm test                # Unit tests (vitest, ~1,400 tests + 51 benchmarks)
 pnpm test:coverage       # Unit tests with v8 coverage
-pnpm test:integration    # Integration tests (separate config)
-pnpm test:e2e            # Playwright E2E tests (49 tests)
+pnpm test:integration    # Integration tests against real Supabase (60 tests)
+pnpm test:e2e            # Playwright E2E tests (63 tests)
 pnpm vitest run __tests__/benchmarks/  # Performance benchmarks (51 tests)
 ```
 

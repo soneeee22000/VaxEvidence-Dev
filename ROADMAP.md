@@ -71,7 +71,7 @@ Build the **most powerful platform** for vaccine researchers to design protocols
 - [x] Workspace bulk export (ZIP archive with JSON/CSV/PDF)
 - [x] Server-side export with admin client (auth-gated)
 
-**Database**: 12+ tables, RLS enabled on all tables, 9 migrations applied
+**Database**: 30 tables, RLS enabled on all tables, 20 migrations applied
 
 ---
 
@@ -277,4 +277,4 @@ All 12 phases completed. Phases were built in this order:
 
 ---
 
-_Last Updated: February 23, 2026_
+_Last Updated: February 24, 2026_

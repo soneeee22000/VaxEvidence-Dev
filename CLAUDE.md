@@ -173,14 +173,15 @@ lib/
 └── utils.ts            # cn() helper (clsx + tailwind-merge)
 
 hooks/                  # use-mobile, use-toast
-__tests__/              # Unit + integration tests (vitest, ~1,400 tests)
+__tests__/              # Unit + integration tests (vitest, ~1,400 unit + 60 integration)
 ├── benchmarks/         # Performance benchmarks (4 suites, 51 tests)
+├── integration/        # Integration tests against real Supabase (RLS, CRUD, data integrity)
 ├── api/                # API route tests
 ├── screening/          # Screening logic tests
 ├── security/           # Security audit tests
 ├── supabase/           # CRUD module tests
-└── ...                 # 16 sub-directories total
-e2e/                    # Playwright E2E tests (49 tests)
+└── ...                 # 17 sub-directories total
+e2e/                    # Playwright E2E tests (63 tests)
 supabase/migrations/    # SQL migration files
 docs/                   # Project documentation
 public/demo/            # Demo mode static assets

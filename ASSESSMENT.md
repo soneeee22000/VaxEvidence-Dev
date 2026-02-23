@@ -1,6 +1,6 @@
 # VaxEvidence — Honest Technical Assessment
 
-_Last updated: 2026-02-23_
+_Last updated: 2026-02-24_
 
 ---
 
@@ -16,7 +16,7 @@ VaxEvidence is a Next.js 16 application with Supabase backend covering 12 develo
 | 11    | Regulatory submissions (IND, eCTD, SDTM, checklists)    | Built  |
 | 12    | Enterprise (API keys, webhooks, SSO, audit, compliance) | Built  |
 
-**Test coverage:** ~1,400 unit tests (vitest), 49 E2E tests (Playwright), CI passing.
+**Test coverage:** ~1,400 unit tests + 51 benchmarks (vitest), 60 integration tests (vitest, real Supabase), 63 E2E tests (Playwright), CI passing.
 
 ---
 
@@ -63,37 +63,15 @@ For a solo developer with AI assistance, the surface area is exceptional:
 
 ## What's Honestly Wrong
 
-### Critical Issues
+### Critical Issues (All Resolved)
 
-**1. TypeScript safety is disabled for builds.**
+~~**1. TypeScript safety is disabled for builds.**~~ — **Fixed (Step 1).** `ignoreBuildErrors` set to `false`. All type errors resolved. Build enforces type safety.
 
-```js
-// next.config.mjs
-ignoreBuildErrors: true;
-```
+~~**2. No pagination anywhere.**~~ — **Fixed (Step 2).** Server-side pagination on evidence library, datasets, protocols, and activity log. Remaining unbounded: screening decisions, linked evidence, `getUniqueTags()` (see `docs/PERFORMANCE-BENCHMARKS.md`).
 
-This means type errors don't block production builds. The primary safety net of using TypeScript — catching errors at compile time — is turned off. Any pharma or enterprise buyer doing technical due diligence would flag this immediately. There are also 9 pre-existing lint errors that are simply ignored.
+~~**3. No caching layer.**~~ — **Fixed (Step 3).** React Query v5 with 30s stale time, 5min GC, `keepPreviousData` for smooth pagination, and proper loading states.
 
-**2. No pagination anywhere.**
-
-The evidence library, screening pipeline, and activity log all load every record. This works with 50 items. At 500 it's slow. At 5,000 the app is unusable. Any real research team would hit this wall within months.
-
-**3. No caching layer.**
-
-No React Query, no SWR, no cache invalidation strategy. Every page navigation re-fetches everything from Supabase. Combined with no pagination, this means:
-
-- Redundant network requests on every interaction
-- No optimistic updates (UI waits for server round-trip)
-- Poor perceived performance at scale
-
-**4. Dev-only auth fallback is a liability.**
-
-```typescript
-// useUserId() returns hardcoded UUID when no session exists
-return "550e8400-e29b-41d4-a716-446655440000";
-```
-
-If this ever runs in production (and there's no build-time guard preventing it), any unauthenticated user gets access as this hardcoded user.
+~~**4. Dev-only auth fallback is a liability.**~~ — **Fixed (Step 4).** `useUserId()` gated behind `NODE_ENV === "development"` check.
 
 ### Enterprise Features Are UI Shells
 
@@ -156,15 +134,25 @@ The majority test:
 - Mock data flow (given mock X, does function return Y?)
 - Utility functions (date formatting, string manipulation)
 
-What's NOT tested:
+What's NOT tested by unit tests alone:
 
-- Database query correctness against a real Supabase instance
-- RLS policy enforcement
+- ~~Database query correctness against a real Supabase instance~~ — **Now covered by 60 integration tests**
+- ~~RLS policy enforcement~~ — **Now covered by 31 RLS integration tests (cross-user isolation on all tables)**
 - Auth flow edge cases
 - Export output correctness (do generated PDFs match regulatory specs?)
 - Cross-feature integration (create protocol -> add evidence -> screen -> export)
 
-### E2E Tests (49)
+### Integration Tests (60)
+
+Added in Step 9. These connect to a real Supabase instance and verify:
+
+- RLS policy enforcement across all tables (31 tests: cross-user isolation, ownership scoping)
+- CRUD lifecycle correctness (14 tests: protocols, evidence, screening upsert, cascade delete)
+- Data integrity constraints (15 tests: unique constraints, FK cascades, check constraints, NOT NULL)
+
+These tests require `SUPABASE_TEST_URL`, `SUPABASE_TEST_ANON_KEY`, and `SUPABASE_TEST_SERVICE_KEY` env vars. They skip gracefully when not configured.
+
+### E2E Tests (63)
 
 These verify UI interactions work:
 
@@ -181,7 +169,7 @@ What's NOT tested:
 
 ### CI Pipeline
 
-Four jobs pass: typecheck, lint, unit tests, build. No integration tests, no E2E in CI (no browser environment), no security scanning, no dependency audit.
+Four jobs pass: typecheck, lint, unit tests, build. Integration tests exist in the repo (`pnpm test:integration`) but are not wired into CI (require real Supabase credentials). No E2E in CI (no browser environment), no security scanning, no dependency audit.
 
 ---
 
@@ -189,8 +177,8 @@ Four jobs pass: typecheck, lint, unit tests, build. No integration tests, no E2E
 
 ```
 Hackathon Demo -----> Strong Prototype -----> MVP -----> Product -----> Revenue
-                            ^
-                         YOU ARE HERE
+                                        ^
+                                     YOU ARE HERE
 ```
 
 **Strong prototype** means:
@@ -203,10 +191,10 @@ Hackathon Demo -----> Strong Prototype -----> MVP -----> Product -----> Revenue
 **What separates this from MVP:**
 
 - No real users providing feedback
-- No production deployment with monitoring
-- No single feature hardened to "works perfectly every time" level
-- No performance testing under realistic load
-- Security posture is "reasonable for dev" not "ready for health data"
+- ~~No production deployment with monitoring~~ — Vercel + Sentry deployed (Step 6)
+- ~~No single feature hardened to "works perfectly every time" level~~ — Screening pipeline hardened (Step 5)
+- ~~No performance testing under realistic load~~ — 51 benchmarks added (Step 10)
+- Security posture is "reasonable for dev" not "ready for health data" (partially addressed by Step 8)
 
 **What separates MVP from product:**
 
@@ -235,9 +223,9 @@ Any health-tech or reg-tech company would see this and recognize serious capabil
 
 Viable, with focus. The path would be:
 
-1. Pick ONE wedge (systematic review pipeline is the strongest)
-2. Remove `ignoreBuildErrors`, fix all type errors, add pagination
-3. Get 5 beta users from an academic research group or CRO
+1. ~~Pick ONE wedge (systematic review pipeline is the strongest)~~ — Done
+2. ~~Remove `ignoreBuildErrors`, fix all type errors, add pagination~~ — Done
+3. ~~Get 5 beta users from an academic research group or CRO~~ — Done
 4. Iterate on real feedback for 3 months
 5. Then decide if there's product-market fit before building more
 
@@ -257,7 +245,7 @@ Not close. The gap between "all features exist as UI" and "one feature works rel
 6. ~~**Deploy to production** with monitoring (Vercel + Sentry or similar).~~ **Done.**
 7. ~~**Get 5 real users** and watch them use it. Fix what they struggle with.~~ **Done.**
 8. ~~**Security audit** — run `npm audit`, review RLS policies, add rate limiting.~~ **Done.** Ownership checks on all export/AI routes, auth guards on search/import proxies, IP rate limiting on AI/export/SSO routes, RLS hardened across 9 tables, vulnerable deps patched (xlsx→exceljs, jspdf/next upgraded), Zod validation on export bodies, security headers expanded to all API routes.
-9. **Integration tests** against a real Supabase instance (not just mocks). **← YOU ARE HERE**
+9. ~~**Integration tests** against a real Supabase instance (not just mocks).~~ **Done.** 60 integration tests across 3 suites: RLS policy enforcement (31 tests verifying cross-user isolation on all tables), CRUD lifecycle (14 tests for protocols, evidence, screening upsert, cascade delete), and data integrity (15 tests for unique constraints, FK cascades, check constraints, NOT NULL). Tests connect to a real Supabase instance via `vitest.integration.config.ts`; skip gracefully when env vars are absent. All 60 tests pass against live database.
 10. ~~**Performance benchmarks** — how does it handle 1,000 evidence items? 10,000?~~ **Done.** 51 benchmarks across 4 test suites measuring duplicate detection (O(n²) fuzzy: 93ms@1K, 473ms@5K), CSV generation (<100ms@10K), payload sizes (evidence: 14KB paginated vs 7.1MB unbounded@10K), and screening count aggregation (4,395x payload reduction possible via SQL GROUP BY). Full report at `docs/PERFORMANCE-BENCHMARKS.md`. Key findings: pagination works well for evidence; critical bottlenecks are unbounded screening fetches, getUniqueTags full-table scan, and getScreeningCounts client-side aggregation.
 
 ---
