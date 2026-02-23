@@ -21,7 +21,7 @@ import { useDebouncedSearch } from "@/hooks/use-debounced-search";
 import { buildPaginationMeta } from "@/lib/types/pagination";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useOnboarding } from "@/lib/onboarding/onboarding-context";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2, FileText } from "lucide-react";
 
 const DASHBOARD_PAGE_SIZE = 12;
 
@@ -149,6 +149,7 @@ function DashboardContent() {
                   </>
                 ) : (
                   <>
+                    <FileText className="mx-auto h-8 w-8 text-muted-foreground/50 mb-3" />
                     <p className="text-base font-medium text-foreground">
                       {search
                         ? "No protocols match your search"
@@ -167,14 +168,19 @@ function DashboardContent() {
             {protocols.length > 0 && (
               <div className="grid gap-4 md:grid-cols-2">
                 {protocols.map((protocol) => (
-                  <Card key={protocol.id} className="border-muted/70">
+                  <Card
+                    key={protocol.id}
+                    className="border-border hover:border-primary/30 card-hover"
+                  >
                     <CardHeader>
                       <CardTitle className="text-lg">
                         {protocol.title}
                       </CardTitle>
-                      <CardDescription className="capitalize">
-                        {protocol.status.replace("_", " ")} - Updated{" "}
-                        {formatDate(protocol.updated_at)}
+                      <CardDescription>
+                        <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary capitalize mr-2">
+                          {protocol.status.replace("_", " ")}
+                        </span>
+                        Updated {formatDate(protocol.updated_at)}
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="text-sm text-muted-foreground">

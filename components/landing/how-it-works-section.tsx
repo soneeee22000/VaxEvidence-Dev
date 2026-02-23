@@ -1,16 +1,25 @@
-"use client"
+"use client";
 
-import { motion, useReducedMotion } from "framer-motion"
-import { ArrowRight } from "lucide-react"
-import { workflowSteps } from "@/components/landing/content"
-import { fadeUp, stagger, viewportOnce } from "@/components/landing/motion"
+import { motion, useReducedMotion } from "framer-motion";
+import { ArrowRight } from "lucide-react";
+import { workflowSteps } from "@/components/landing/content";
+import { fadeUp, stagger, viewportOnce } from "@/components/landing/motion";
 
+/**
+ * How-it-works section — 4-step flow with glass cards and step connectors.
+ */
 export default function HowItWorksSection() {
-  const reduceMotion = useReducedMotion()
+  const reduceMotion = useReducedMotion();
 
   return (
-    <section id="how-it-works" className="bg-muted/50 py-16 lg:py-24">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section
+      id="how-it-works"
+      className="relative py-16 lg:py-24 overflow-hidden"
+    >
+      <div className="absolute inset-0 bg-muted/30" />
+      <div className="absolute inset-0 dot-grid opacity-20 pointer-events-none" />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
         <motion.div
           className="text-center mb-12 lg:mb-16"
           variants={stagger(0.12, 0)}
@@ -24,8 +33,11 @@ export default function HowItWorksSection() {
           >
             From Question to Protocol in Minutes
           </motion.h2>
-          <motion.p variants={fadeUp(0.1)} className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Our streamlined workflow replaces months of manual work
+          <motion.p
+            variants={fadeUp(0.1)}
+            className="text-lg text-muted-foreground max-w-2xl mx-auto"
+          >
+            A streamlined workflow that replaces months of manual work
           </motion.p>
         </motion.div>
 
@@ -40,15 +52,21 @@ export default function HowItWorksSection() {
             <div key={item.step} className="relative">
               <motion.article
                 variants={fadeUp(0)}
-                className="bg-card rounded-xl p-6 border border-border hover:border-primary/50 transition-all duration-300 h-full hover:-translate-y-1 hover:shadow-xl"
+                className="glass-card rounded-xl p-6 h-full"
               >
-                <div className="text-5xl font-bold text-primary/20 mb-3">{item.step}</div>
-                <h3 className="text-lg font-semibold text-foreground mb-2">{item.title}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">{item.desc}</p>
+                <div className="text-5xl font-bold text-glow opacity-30 mb-3">
+                  {item.step}
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  {item.title}
+                </h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  {item.desc}
+                </p>
               </motion.article>
               {idx < workflowSteps.length - 1 && (
                 <div className="hidden lg:flex absolute top-1/2 -right-2 transform -translate-y-1/2 z-10">
-                  <ArrowRight className="w-5 h-5 text-muted-foreground/50" />
+                  <ArrowRight className="w-5 h-5 text-primary/40" />
                 </div>
               )}
             </div>
@@ -56,5 +74,5 @@ export default function HowItWorksSection() {
         </motion.div>
       </div>
     </section>
-  )
+  );
 }

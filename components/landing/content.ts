@@ -1,77 +1,91 @@
 import {
   BarChart3,
-  Clock,
-  Database,
+  BookOpen,
+  Brain,
   FileText,
   Shield,
-  TrendingUp,
   Users,
-  Zap,
-} from "lucide-react"
+} from "lucide-react";
 
 export const featureItems = [
   {
     icon: FileText,
-    title: "Protocol Generation",
-    description: "AI-powered study protocols following PICO frameworks tailored for vaccine research",
+    title: "Protocol Builder",
+    description:
+      "Create PICO-based study protocols with structured fields for population, intervention, comparator, and outcomes.",
   },
   {
-    icon: Database,
-    title: "Multi-Database Integration",
-    description: "Connect European EHR databases, US claims data, and vaccine registries in one platform",
+    icon: BookOpen,
+    title: "Evidence Library",
+    description:
+      "Import from PubMed, ClinicalTrials.gov, and CrossRef. Organize with tags, filters, and full-text search.",
   },
   {
     icon: Shield,
-    title: "Regulatory Compliance",
-    description: "FDA RWE framework and EMA DARWIN EU compatible exports built-in",
+    title: "Regulatory Export",
+    description:
+      "FDA IND packages, eCTD Module 5, CDISC/SDTM templates, CONSORT/STROBE checklists — one click.",
   },
   {
-    icon: TrendingUp,
-    title: "Vaccine-Specific Endpoints",
-    description: "Pre-configured for seroconversion, breakthrough infections, and effectiveness metrics",
+    icon: Brain,
+    title: "AI Research Assistant",
+    description:
+      "Generate PICO frameworks, synthesize evidence, and get AI-powered recommendations for your study design.",
   },
   {
     icon: Users,
-    title: "Collaboration Tools",
-    description: "Built for cross-functional teams: epidemiologists, medical affairs, regulatory",
+    title: "Team Collaboration",
+    description:
+      "Real-time co-editing with presence indicators, comments with @mentions, and version history tracking.",
   },
   {
     icon: BarChart3,
-    title: "Automated Reporting",
-    description: "One-click PRISMA flowcharts, STROBE checklists, and publication-ready tables",
+    title: "Systematic Review",
+    description:
+      "PRISMA-compliant screening pipeline, risk-of-bias assessment, meta-analysis with forest plots.",
   },
-]
+];
 
 export const crisisCards = [
   {
     value: "6+ months",
     title: "Study Protocol Development",
-    description: "Manual literature reviews, database queries, and protocol writing",
-    tone: "danger",
+    description:
+      "Manual literature reviews, database queries, and protocol writing consume valuable research time.",
   },
   {
     value: "15+ hours",
     title: "Per Systematic Review",
-    description: "Screening hundreds of papers manually with high error rates",
-    tone: "warning",
+    description:
+      "Screening hundreds of papers manually is slow and prone to human error.",
   },
   {
     value: "$50K+",
     title: "Cost Per Study",
-    description: "Senior epidemiologist time, database access, regulatory compliance",
-    tone: "accent",
+    description:
+      "Senior epidemiologist time, database access, and regulatory compliance add up fast.",
   },
-]
+];
 
 export const workflowSteps = [
-  { step: "01", title: "Define Study", desc: "Enter vaccine type, population, and research question" },
-  { step: "02", title: "AI Analysis", desc: "Automated literature search and data extraction" },
-  { step: "03", title: "Review & Refine", desc: "Collaborate with team on AI-generated protocol" },
-  { step: "04", title: "Export & Submit", desc: "Regulatory-ready documents in FDA/EMA format" },
-]
-
-export const heroHighlights = [
-  { icon: Shield, label: "FDA/EMA Compliant" },
-  { icon: Clock, label: "No Credit Card" },
-  { icon: Zap, label: "14-Day Trial" },
-]
+  {
+    step: "01",
+    title: "Define Study",
+    desc: "Enter your research question using PICO framework fields.",
+  },
+  {
+    step: "02",
+    title: "Gather Evidence",
+    desc: "Search PubMed and clinical trial registries from one interface.",
+  },
+  {
+    step: "03",
+    title: "Review & Collaborate",
+    desc: "Screen evidence, assess risk of bias, and co-edit with your team.",
+  },
+  {
+    step: "04",
+    title: "Export & Submit",
+    desc: "Generate FDA IND, eCTD, or SDTM packages ready for submission.",
+  },
+];

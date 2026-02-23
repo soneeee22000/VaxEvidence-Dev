@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export default function LandingFooter() {
   return (
-    <footer className="bg-card border-t border-border py-12 lg:py-16">
+    <footer className="bg-muted/30 border-t border-border/50 py-12 lg:py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
           <div className="sm:col-span-2 lg:col-span-1">

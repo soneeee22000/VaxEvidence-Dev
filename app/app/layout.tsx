@@ -154,12 +154,14 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
                   data-onboarding-id={
                     "onboardingId" in link ? link.onboardingId : undefined
                   }
-                  className={`flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary relative ${
-                    active ? "text-foreground" : "text-muted-foreground"
+                  className={`flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary relative py-4 ${
+                    active
+                      ? "text-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary"
+                      : "text-muted-foreground"
                   }`}
                 >
                   <Icon className="h-4 w-4" />
-                  {link.label}
+                  <span className="hidden lg:inline">{link.label}</span>
                   {link.badge && (
                     <Badge
                       variant="destructive"
