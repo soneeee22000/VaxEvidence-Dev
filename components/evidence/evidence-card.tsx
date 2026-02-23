@@ -1,5 +1,5 @@
-import Link from "next/link"
-import { Badge } from "@/components/ui/badge"
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -7,13 +7,13 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import type { EvidenceItem } from "@/lib/validators/evidence"
-import { FileText, Building2, Database, StickyNote } from "lucide-react"
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import type { EvidenceItem } from "@/lib/validators/evidence";
+import { FileText, Building2, Database, StickyNote } from "lucide-react";
 
 interface EvidenceCardProps {
-  evidence: EvidenceItem
+  evidence: EvidenceItem;
 }
 
 const typeIcons = {
@@ -21,16 +21,15 @@ const typeIcons = {
   regulatory: Building2,
   dataset: Database,
   note: StickyNote,
-}
+};
 
 const typeColors = {
-  academic: "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20",
-  regulatory:
-    "bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20",
+  academic: "bg-primary/10 text-primary border-primary/20",
+  regulatory: "bg-secondary text-secondary-foreground border-border",
   dataset:
     "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20",
   note: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20",
-}
+};
 
 const statusColors = {
   draft: "bg-gray-500/10 text-gray-700 dark:text-gray-400 border-gray-500/20",
@@ -38,22 +37,22 @@ const statusColors = {
     "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20",
   archived:
     "bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20",
-}
+};
 
 export function EvidenceCard({ evidence }: EvidenceCardProps) {
-  const Icon = typeIcons[evidence.type]
+  const Icon = typeIcons[evidence.type];
   const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return null
+    if (!dateStr) return null;
     try {
       return new Date(dateStr).toLocaleDateString("en-US", {
         year: "numeric",
         month: "short",
         day: "numeric",
-      })
+      });
     } catch {
-      return null
+      return null;
     }
-  }
+  };
 
   return (
     <Card className="h-full flex flex-col border-muted/70 hover:border-muted transition-colors">
@@ -70,7 +69,9 @@ export function EvidenceCard({ evidence }: EvidenceCardProps) {
           )}
         </div>
         <div>
-          <CardTitle className="text-lg line-clamp-2">{evidence.title}</CardTitle>
+          <CardTitle className="text-lg line-clamp-2">
+            {evidence.title}
+          </CardTitle>
           <CardDescription className="mt-2">
             {evidence.type === "academic" && evidence.authors && (
               <span className="text-sm">{evidence.authors}</span>
@@ -119,5 +120,5 @@ export function EvidenceCard({ evidence }: EvidenceCardProps) {
         </Button>
       </CardFooter>
     </Card>
-  )
+  );
 }

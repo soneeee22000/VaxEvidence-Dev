@@ -300,7 +300,7 @@ export function GCPCompliancePanel({ protocolId }: GCPCompliancePanelProps) {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5 text-blue-400" />
+                <Shield className="h-5 w-5 text-primary" />
                 ICH E6(R2) GCP Compliance
               </CardTitle>
               <CardDescription>
@@ -340,7 +340,7 @@ export function GCPCompliancePanel({ protocolId }: GCPCompliancePanelProps) {
             <CardHeader className="cursor-pointer hover:bg-zinc-900/50 transition-colors">
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <Shield className="h-4 w-4 text-blue-400" />
+                  <Shield className="h-4 w-4 text-primary" />
                   13 GCP Principles (Section 2)
                 </CardTitle>
                 {openSections.has("principles") ? (

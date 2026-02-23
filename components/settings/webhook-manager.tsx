@@ -77,11 +77,11 @@ const EVENT_LABELS: Record<WebhookEvent, string> = {
 
 /** Color mapping for event category badges. */
 const EVENT_BADGE_CLASSES: Record<string, string> = {
-  protocol: "border-blue-500/50 bg-blue-500/10 text-blue-400",
+  protocol: "border-primary/50 bg-primary/10 text-primary",
   evidence: "border-green-500/50 bg-green-500/10 text-green-400",
   screening: "border-yellow-500/50 bg-yellow-500/10 text-yellow-400",
-  dataset: "border-purple-500/50 bg-purple-500/10 text-purple-400",
-  export: "border-cyan-500/50 bg-cyan-500/10 text-cyan-400",
+  dataset: "border-primary/50 bg-primary/20 text-primary",
+  export: "border-muted-foreground/50 bg-muted text-muted-foreground",
 };
 
 /** Color mapping for delivery status badges. */

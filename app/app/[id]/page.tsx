@@ -1005,7 +1005,7 @@ export default function ProtocolDetailPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-blue-400" />
+                    <Shield className="h-5 w-5 text-primary" />
                     Regulatory Compliance
                   </CardTitle>
                   <CardDescription>

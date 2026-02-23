@@ -79,21 +79,21 @@ const PROVIDER_CONFIG: Record<
     description:
       "Sync your Zotero library with VaxEvidence for seamless reference management.",
     icon: BookOpen,
-    color: "text-red-500",
+    color: "text-primary",
   },
   mendeley: {
     label: "Mendeley",
     description:
       "Connect your Mendeley library for bidirectional reference synchronization.",
     icon: BookOpen,
-    color: "text-blue-500",
+    color: "text-primary",
   },
   redcap: {
     label: "REDCap",
     description:
       "Import clinical data from REDCap projects directly into VaxEvidence datasets.",
     icon: Database,
-    color: "text-green-500",
+    color: "text-primary",
   },
 };
 

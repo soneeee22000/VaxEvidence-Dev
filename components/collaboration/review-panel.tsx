@@ -1,17 +1,17 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -20,25 +20,35 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { CheckCircle, XCircle, AlertCircle, Clock, UserPlus } from "lucide-react"
-import type { ReviewWithDetails, ReviewStatus } from "@/lib/validators/review"
-import { getReviewStatusLabel } from "@/lib/validators/review"
+} from "@/components/ui/select";
+import {
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Clock,
+  UserPlus,
+} from "lucide-react";
+import type { ReviewWithDetails, ReviewStatus } from "@/lib/validators/review";
+import { getReviewStatusLabel } from "@/lib/validators/review";
 
 interface ReviewPanelProps {
-  reviews: ReviewWithDetails[]
-  currentUserId: string
-  protocolId: string
-  onRequestReview: (reviewerId: string) => Promise<void>
-  onSubmitDecision: (reviewId: string, status: ReviewStatus, decision: string) => Promise<void>
-  onCancelReview: (reviewId: string) => Promise<void>
+  reviews: ReviewWithDetails[];
+  currentUserId: string;
+  protocolId: string;
+  onRequestReview: (reviewerId: string) => Promise<void>;
+  onSubmitDecision: (
+    reviewId: string,
+    status: ReviewStatus,
+    decision: string,
+  ) => Promise<void>;
+  onCancelReview: (reviewId: string) => Promise<void>;
 }
 
 export function ReviewPanel({
@@ -49,8 +59,8 @@ export function ReviewPanel({
   onSubmitDecision,
   onCancelReview,
 }: ReviewPanelProps) {
-  const pendingReviews = reviews.filter((r) => r.status === "pending")
-  const completedReviews = reviews.filter((r) => r.status !== "pending")
+  const pendingReviews = reviews.filter((r) => r.status === "pending");
+  const completedReviews = reviews.filter((r) => r.status !== "pending");
 
   return (
     <Card>
@@ -112,14 +122,18 @@ export function ReviewPanel({
         )}
       </CardContent>
     </Card>
-  )
+  );
 }
 
 interface ReviewCardProps {
-  review: ReviewWithDetails
-  currentUserId: string
-  onSubmitDecision: (reviewId: string, status: ReviewStatus, decision: string) => Promise<void>
-  onCancelReview: (reviewId: string) => Promise<void>
+  review: ReviewWithDetails;
+  currentUserId: string;
+  onSubmitDecision: (
+    reviewId: string,
+    status: ReviewStatus,
+    decision: string,
+  ) => Promise<void>;
+  onCancelReview: (reviewId: string) => Promise<void>;
 }
 
 function ReviewCard({
@@ -128,53 +142,57 @@ function ReviewCard({
   onSubmitDecision,
   onCancelReview,
 }: ReviewCardProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [decision, setDecision] = useState("")
-  const [selectedStatus, setSelectedStatus] = useState<ReviewStatus | "">("")
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [decision, setDecision] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState<ReviewStatus | "">("");
 
-  const isReviewer = review.reviewer_id === currentUserId
-  const isPending = review.status === "pending"
+  const isReviewer = review.reviewer_id === currentUserId;
+  const isPending = review.status === "pending";
 
   const handleSubmit = async () => {
-    if (!selectedStatus || !decision.trim()) return
+    if (!selectedStatus || !decision.trim()) return;
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
-      await onSubmitDecision(review.id, selectedStatus as ReviewStatus, decision)
-      setDecision("")
-      setSelectedStatus("")
+      await onSubmitDecision(
+        review.id,
+        selectedStatus as ReviewStatus,
+        decision,
+      );
+      setDecision("");
+      setSelectedStatus("");
     } catch (error) {
-      console.error("Error submitting review:", error)
+      console.error("Error submitting review:", error);
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const getStatusIcon = (status: ReviewStatus) => {
     switch (status) {
       case "approved":
-        return <CheckCircle className="h-4 w-4 text-green-600" />
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
       case "rejected":
-        return <XCircle className="h-4 w-4 text-red-600" />
+        return <XCircle className="h-4 w-4 text-red-600" />;
       case "changes_requested":
-        return <AlertCircle className="h-4 w-4 text-yellow-600" />
+        return <AlertCircle className="h-4 w-4 text-yellow-600" />;
       case "pending":
-        return <Clock className="h-4 w-4 text-blue-600" />
+        return <Clock className="h-4 w-4 text-muted-foreground" />;
     }
-  }
+  };
 
   const getStatusBadgeVariant = (status: ReviewStatus) => {
     switch (status) {
       case "approved":
-        return "default"
+        return "default";
       case "rejected":
-        return "destructive"
+        return "destructive";
       case "changes_requested":
-        return "secondary"
+        return "secondary";
       case "pending":
-        return "outline"
+        return "outline";
     }
-  }
+  };
 
   return (
     <div className="rounded-lg border p-4 space-y-3">
@@ -222,7 +240,9 @@ function ReviewCard({
             <Label htmlFor={`decision-${review.id}`}>Your Decision</Label>
             <Select
               value={selectedStatus}
-              onValueChange={(value) => setSelectedStatus(value as ReviewStatus)}
+              onValueChange={(value) =>
+                setSelectedStatus(value as ReviewStatus)
+              }
             >
               <SelectTrigger id={`decision-${review.id}`}>
                 <SelectValue placeholder="Select decision..." />
@@ -230,7 +250,9 @@ function ReviewCard({
               <SelectContent>
                 <SelectItem value="approved">Approve</SelectItem>
                 <SelectItem value="rejected">Reject</SelectItem>
-                <SelectItem value="changes_requested">Request Changes</SelectItem>
+                <SelectItem value="changes_requested">
+                  Request Changes
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -254,32 +276,32 @@ function ReviewCard({
         </div>
       )}
     </div>
-  )
+  );
 }
 
 interface RequestReviewDialogProps {
-  onRequestReview: (reviewerId: string) => Promise<void>
+  onRequestReview: (reviewerId: string) => Promise<void>;
 }
 
 function RequestReviewDialog({ onRequestReview }: RequestReviewDialogProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [reviewerId, setReviewerId] = useState("")
-  const [isRequesting, setIsRequesting] = useState(false)
+  const [isOpen, setIsOpen] = useState(false);
+  const [reviewerId, setReviewerId] = useState("");
+  const [isRequesting, setIsRequesting] = useState(false);
 
   const handleRequest = async () => {
-    if (!reviewerId) return
+    if (!reviewerId) return;
 
-    setIsRequesting(true)
+    setIsRequesting(true);
     try {
-      await onRequestReview(reviewerId)
-      setReviewerId("")
-      setIsOpen(false)
+      await onRequestReview(reviewerId);
+      setReviewerId("");
+      setIsOpen(false);
     } catch (error) {
-      console.error("Error requesting review:", error)
+      console.error("Error requesting review:", error);
     } finally {
-      setIsRequesting(false)
+      setIsRequesting(false);
     }
-  }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -308,7 +330,7 @@ function RequestReviewDialog({ onRequestReview }: RequestReviewDialogProps) {
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             />
             <p className="text-xs text-muted-foreground mt-1">
-              For demo: use {" "}550e8400-e29b-41d4-a716-446655440000
+              For demo: use 550e8400-e29b-41d4-a716-446655440000
             </p>
           </div>
         </div>
@@ -316,11 +338,14 @@ function RequestReviewDialog({ onRequestReview }: RequestReviewDialogProps) {
           <Button variant="outline" onClick={() => setIsOpen(false)}>
             Cancel
           </Button>
-          <Button onClick={handleRequest} disabled={!reviewerId || isRequesting}>
+          <Button
+            onClick={handleRequest}
+            disabled={!reviewerId || isRequesting}
+          >
             {isRequesting ? "Requesting..." : "Request Review"}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

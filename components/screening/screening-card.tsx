@@ -50,8 +50,8 @@ const typeIcons: Record<string, React.ElementType> = {
 };
 
 const typeColors: Record<string, string> = {
-  academic: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  regulatory: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+  academic: "bg-primary/10 text-primary border-primary/20",
+  regulatory: "bg-secondary text-secondary-foreground border-border",
   dataset: "bg-green-500/10 text-green-400 border-green-500/20",
   note: "bg-amber-500/10 text-amber-400 border-amber-500/20",
 };

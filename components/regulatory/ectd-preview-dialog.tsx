@@ -203,7 +203,7 @@ export function ECTDPreviewDialog({
       <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileArchive className="h-5 w-5 text-blue-400" />
+            <FileArchive className="h-5 w-5 text-primary" />
             eCTD Module 5 &mdash; Clinical Study Report
           </DialogTitle>
           <DialogDescription>

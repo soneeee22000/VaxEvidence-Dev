@@ -166,7 +166,7 @@ export function SDTMPreviewDialog({
       <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Database className="h-5 w-5 text-blue-400" />
+            <Database className="h-5 w-5 text-primary" />
             CDISC/SDTM Dataset Templates
           </DialogTitle>
           <DialogDescription>

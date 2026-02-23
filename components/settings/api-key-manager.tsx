@@ -83,8 +83,8 @@ const SCOPE_OPTIONS: {
 /** Color mapping for rate limit tier badges. */
 const TIER_BADGE_CLASSES: Record<RateLimitTier, string> = {
   free: "border-zinc-500/50 bg-zinc-500/10 text-zinc-400",
-  pro: "border-blue-500/50 bg-blue-500/10 text-blue-400",
-  enterprise: "border-purple-500/50 bg-purple-500/10 text-purple-400",
+  pro: "border-primary/50 bg-primary/10 text-primary",
+  enterprise: "border-primary/50 bg-primary/20 text-primary",
 };
 
 /** Color mapping for scope badges. */
@@ -680,7 +680,7 @@ export function ApiKeyManager({ workspaceId }: ApiKeyManagerProps) {
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <RefreshCw className="h-5 w-5 text-blue-400" />
+              <RefreshCw className="h-5 w-5 text-primary" />
               Rotate API Key
             </DialogTitle>
             <DialogDescription>

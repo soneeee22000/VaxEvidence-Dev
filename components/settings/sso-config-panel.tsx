@@ -76,7 +76,7 @@ const ROLE_LABELS: Record<SsoDefaultRole, string> = {
 /** Color mapping for role badges. */
 const ROLE_BADGE_CLASSES: Record<SsoDefaultRole, string> = {
   admin: "border-red-500/50 bg-red-500/10 text-red-400",
-  lead: "border-blue-500/50 bg-blue-500/10 text-blue-400",
+  lead: "border-primary/50 bg-primary/10 text-primary",
   reviewer: "border-yellow-500/50 bg-yellow-500/10 text-yellow-400",
   viewer: "border-zinc-500/50 bg-zinc-500/10 text-zinc-400",
 };

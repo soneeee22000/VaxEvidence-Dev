@@ -49,14 +49,14 @@ export function DatasetCard({ dataset, onDownload }: DatasetCardProps) {
             <Badge
               variant="outline"
               className={`capitalize ${
-                typeColor === "blue"
-                  ? "border-blue-500/50 text-blue-600 dark:text-blue-400"
-                  : typeColor === "purple"
-                    ? "border-purple-500/50 text-purple-600 dark:text-purple-400"
-                    : typeColor === "orange"
-                      ? "border-orange-500/50 text-orange-600 dark:text-orange-400"
-                      : typeColor === "green"
-                        ? "border-green-500/50 text-green-600 dark:text-green-400"
+                typeColor === "primary"
+                  ? "border-primary/50 text-primary"
+                  : typeColor === "orange"
+                    ? "border-orange-500/50 text-orange-600 dark:text-orange-400"
+                    : typeColor === "green"
+                      ? "border-green-500/50 text-green-600 dark:text-green-400"
+                      : typeColor === "gray"
+                        ? "border-border text-muted-foreground"
                         : ""
               }`}
             >

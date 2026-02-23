@@ -171,27 +171,27 @@ export function getActivityIcon(actionType: ActivityActionType): string {
 export function getActivityColor(actionType: ActivityActionType): string {
   switch (actionType) {
     case "comment":
-      return "text-blue-600 dark:text-blue-400";
+      return "text-primary";
     case "review_request":
-      return "text-purple-600 dark:text-purple-400";
+      return "text-muted-foreground";
     case "review_decision":
       return "text-green-600 dark:text-green-400";
     case "create":
-      return "text-emerald-600 dark:text-emerald-400";
+      return "text-green-600 dark:text-green-400";
     case "update":
       return "text-amber-600 dark:text-amber-400";
     case "delete":
       return "text-red-600 dark:text-red-400";
     case "link":
-      return "text-indigo-600 dark:text-indigo-400";
+      return "text-primary";
     case "unlink":
-      return "text-gray-600 dark:text-gray-400";
+      return "text-muted-foreground";
     case "version_create":
-      return "text-cyan-600 dark:text-cyan-400";
+      return "text-primary";
     case "version_sign":
-      return "text-rose-600 dark:text-rose-400";
+      return "text-primary";
     default:
-      return "text-gray-600 dark:text-gray-400";
+      return "text-muted-foreground";
   }
 }
 
