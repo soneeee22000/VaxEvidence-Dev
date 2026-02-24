@@ -155,6 +155,7 @@ IP_HASH_SALT=                         # Optional (waitlist IP anonymization)
 app/                    # Next.js App Router
 ├── api/                # 21 API route groups (evidence, screening, export, ai, v1, etc.)
 ├── app/                # Authenticated pages (dashboard, evidence, datasets, screening, regulatory, settings)
+├── demo/               # Public demo mode (pre-loaded sample data, no auth)
 ├── auth/               # Login + OAuth callback
 ├── layout.tsx          # Root layout
 └── page.tsx            # Landing page

@@ -18,7 +18,7 @@ VaxEvidence is a Real-World Evidence (RWE) platform for vaccine research scienti
 - **Theming:** next-themes (dark mode default)
 - **Notifications:** sonner (toast notifications)
 - **Real-time:** yjs (CRDT), Supabase Realtime (Broadcast + Presence)
-- **AI:** ai SDK v6, @ai-sdk/openai, @ai-sdk/google
+- **AI:** ai SDK v6, @ai-sdk/openai, @ai-sdk/google, @ai-sdk/react
 - **Analytics:** @vercel/analytics
 - **Monitoring:** @sentry/nextjs v10 (error tracking, source maps)
 - **Testing:** vitest (unit), @playwright/test (E2E)
@@ -53,7 +53,7 @@ app/                    # Next.js App Router
 │   │   ├── activity/csv/   # Activity log CSV export
 │   │   ├── activity/pdf/   # Activity log PDF export
 │   │   ├── bibliography/   # Bibliography export (APA/MLA/Chicago/BibTeX/RIS)
-│   │   ├── protocol/[id]/  # Protocol PDF/Word + /ind + /ectd + /sdtm
+│   │   ├── protocol/[id]/  # Protocol PDF/Word + /ind + /ectd + /sdtm + /compliance
 │   │   └── workspace/      # Full workspace ZIP export
 │   ├── feedback/       # User feedback submission
 │   ├── gcp-compliance/ # GCP compliance CRUD
@@ -82,6 +82,10 @@ app/                    # Next.js App Router
 │   ├── templates/      # Protocol template browser
 │   ├── layout.tsx      # Authenticated layout (sidebar + auth guard)
 │   └── page.tsx        # Dashboard
+├── demo/               # Public demo mode (pre-loaded sample data)
+│   ├── [id]/           # Demo protocol view + /screening
+│   ├── layout.tsx      # Demo layout
+│   └── page.tsx        # Demo dashboard
 ├── auth/               # Login page
 │   └── callback/       # OAuth callback route handler
 ├── layout.tsx          # Root layout
