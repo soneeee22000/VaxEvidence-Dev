@@ -2,7 +2,7 @@
 
 ## Vision
 
-Build the **most powerful platform** for vaccine researchers to design protocols, gather evidence, collaborate with teams, and produce regulatory-ready reports. Target: FDA/EMA-compliant workflow used by pharma, biotech, and academic research teams worldwide.
+An end-to-end platform for vaccine researchers to design PICO-based protocols, manage evidence, run PRISMA-compliant systematic reviews, collaborate in real-time, and generate regulatory submission packages. Target users: pharma, biotech, CROs, and academic research teams doing vaccine RWE studies.
 
 ---
 
@@ -277,4 +277,4 @@ All 12 phases completed. Phases were built in this order:
 
 ---
 
-_Last Updated: February 23, 2026_
+_Last Updated: February 24, 2026_
