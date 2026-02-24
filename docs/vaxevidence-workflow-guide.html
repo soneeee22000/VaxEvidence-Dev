@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VaxEvidence — Platform Workflow Guide</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+    :root {
+      --bg-deep: #0a0e14;
+      --bg-card: #111820;
+      --bg-card-hover: #161e28;
+      --border: #1e2a3a;
+      --border-accent: #2dd4a8;
+      --text-primary: #e8ecf0;
+      --text-secondary: #8899aa;
+      --text-muted: #556677;
+      --accent: #2dd4a8;
+      --accent-dim: rgba(45, 212, 168, 0.12);
+      --accent-glow: rgba(45, 212, 168, 0.25);
+      --warning: #f59e0b;
+      --info: #3b82f6;
+      --danger: #ef4444;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      padding: 60px 40px 40px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: var(--accent-dim);
+      border: 1px solid rgba(45, 212, 168, 0.2);
+      padding: 6px 16px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+
+    .header h1 {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+    }
+
+    .header h1 span {
+      color: var(--accent);
+    }
+
+    .header p {
+      font-size: 16px;
+      color: var(--text-secondary);
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    /* Container */
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 40px;
+    }
+
+    /* Section intro */
+    .section-intro {
+      text-align: center;
+      padding: 48px 0 32px;
+    }
+
+    .section-intro h2 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .section-intro p {
+      color: var(--text-secondary);
+      font-size: 15px;
+    }
+
+    /* Pipeline */
+    .pipeline {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0;
+      padding: 32px 0 48px;
+      flex-wrap: wrap;
+    }
+
+    .pipeline-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+    }
+
+    .pipeline-circle {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: var(--accent-dim);
+      border: 2px solid var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .pipeline-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-secondary);
+      text-align: center;
+      max-width: 100px;
+    }
+
+    .pipeline-arrow {
+      width: 48px;
+      height: 2px;
+      background: var(--border);
+      position: relative;
+      margin: 0 4px;
+      margin-bottom: 28px;
+    }
+
+    .pipeline-arrow::after {
+      content: '';
+      position: absolute;
+      right: -1px;
+      top: -4px;
+      border: solid var(--border);
+      border-width: 0 2px 2px 0;
+      padding: 4px;
+      transform: rotate(-45deg);
+    }
+
+    /* Workflow cards */
+    .workflow-grid {
+      display: grid;
+      gap: 24px;
+      padding-bottom: 48px;
+    }
+
+    .workflow-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      display: grid;
+      grid-template-columns: 64px 1fr;
+      gap: 24px;
+      transition: border-color 0.2s;
+    }
+
+    .workflow-card:hover {
+      border-color: rgba(45, 212, 168, 0.3);
+    }
+
+    .step-number {
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+      background: var(--accent-dim);
+      border: 1px solid rgba(45, 212, 168, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .step-content h3 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .step-content h3 .tag {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      margin-left: 8px;
+      vertical-align: middle;
+      position: relative;
+      top: -1px;
+    }
+
+    .tag-core {
+      background: var(--accent-dim);
+      color: var(--accent);
+      border: 1px solid rgba(45, 212, 168, 0.2);
+    }
+
+    .tag-ai {
+      background: rgba(59, 130, 246, 0.12);
+      color: var(--info);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+
+    .tag-regulatory {
+      background: rgba(245, 158, 11, 0.12);
+      color: var(--warning);
+      border: 1px solid rgba(245, 158, 11, 0.2);
+    }
+
+    .step-content .description {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: 14px;
+      line-height: 1.65;
+    }
+
+    .feature-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .feature-chip {
+      font-size: 12px;
+      font-weight: 500;
+      padding: 4px 12px;
+      border-radius: 6px;
+      background: rgba(136, 153, 170, 0.08);
+      border: 1px solid rgba(136, 153, 170, 0.15);
+      color: var(--text-secondary);
+    }
+
+    /* Divider */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 16px 0;
+    }
+
+    /* Regulatory formats section */
+    .formats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      padding-bottom: 48px;
+    }
+
+    .format-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .format-card .format-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 12px;
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .format-icon-fda {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+    }
+
+    .format-icon-ectd {
+      background: rgba(59, 130, 246, 0.12);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      color: #3b82f6;
+    }
+
+    .format-icon-sdtm {
+      background: rgba(45, 212, 168, 0.12);
+      border: 1px solid rgba(45, 212, 168, 0.2);
+      color: #2dd4a8;
+    }
+
+    .format-card h4 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .format-card p {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* What makes it different */
+    .diff-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      padding-bottom: 48px;
+    }
+
+    .diff-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+    }
+
+    .diff-card h4 {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .diff-card h4 .icon {
+      color: var(--accent);
+      font-size: 16px;
+    }
+
+    .diff-card p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* Quick start */
+    .quickstart {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 40px;
+      text-align: center;
+      margin-bottom: 60px;
+    }
+
+    .quickstart h3 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .quickstart p {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+
+    .quickstart-steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      text-align: left;
+    }
+
+    .qs-step {
+      padding: 20px;
+      background: rgba(136, 153, 170, 0.04);
+      border: 1px solid rgba(136, 153, 170, 0.1);
+      border-radius: 10px;
+    }
+
+    .qs-step .qs-num {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+
+    .qs-step h4 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .qs-step p {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 0;
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 32px 40px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    /* Print styles */
+    @media print {
+      body {
+        background: #0d1117;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .workflow-card:hover {
+        border-color: var(--border);
+      }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .header { padding: 40px 20px 30px; }
+      .header h1 { font-size: 28px; }
+      .container { padding: 0 20px; }
+      .formats-grid { grid-template-columns: 1fr; }
+      .diff-grid { grid-template-columns: 1fr; }
+      .quickstart-steps { grid-template-columns: 1fr; }
+      .workflow-card { grid-template-columns: 48px 1fr; gap: 16px; padding: 24px; }
+      .step-number { width: 44px; height: 44px; font-size: 18px; border-radius: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-badge">Platform Workflow Guide</div>
+    <h1>How <span>VaxEvidence</span> Works</h1>
+    <p>A connected, end-to-end workflow for vaccine real-world evidence studies &mdash; from protocol design through regulatory export.</p>
+  </div>
+
+  <div class="container">
+
+    <!-- Pipeline overview -->
+    <div class="section-intro">
+      <h2>The Six-Stage Pipeline</h2>
+      <p>Each stage feeds into the next. No context switching between fragmented tools.</p>
+    </div>
+
+    <div class="pipeline">
+      <div class="pipeline-step">
+        <div class="pipeline-circle">1</div>
+        <div class="pipeline-label">Define Protocol</div>
+      </div>
+      <div class="pipeline-arrow"></div>
+      <div class="pipeline-step">
+        <div class="pipeline-circle">2</div>
+        <div class="pipeline-label">Gather Evidence</div>
+      </div>
+      <div class="pipeline-arrow"></div>
+      <div class="pipeline-step">
+        <div class="pipeline-circle">3</div>
+        <div class="pipeline-label">Screen &amp; Review</div>
+      </div>
+      <div class="pipeline-arrow"></div>
+      <div class="pipeline-step">
+        <div class="pipeline-circle">4</div>
+        <div class="pipeline-label">Assess Quality</div>
+      </div>
+      <div class="pipeline-arrow"></div>
+      <div class="pipeline-step">
+        <div class="pipeline-circle">5</div>
+        <div class="pipeline-label">Synthesize</div>
+      </div>
+      <div class="pipeline-arrow"></div>
+      <div class="pipeline-step">
+        <div class="pipeline-circle">6</div>
+        <div class="pipeline-label">Export &amp; Submit</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Detailed workflow cards -->
+    <div class="section-intro">
+      <h2>Stage-by-Stage Walkthrough</h2>
+      <p>What happens at each step, and what the platform handles for you.</p>
+    </div>
+
+    <div class="workflow-grid">
+
+      <!-- Step 1 -->
+      <div class="workflow-card">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <h3>Define Your Study Protocol <span class="tag tag-core">Core</span></h3>
+          <p class="description">
+            Start with a structured PICO framework (Population, Intervention, Comparator, Outcomes) &mdash; the gold standard for formulating clinical research questions. Choose from vaccine-specific templates (RSV, meningococcal, COVID-19, influenza) or build from scratch. Each protocol captures study design, eligibility criteria, and endpoints in a structured, auditable format.
+          </p>
+          <div class="feature-list">
+            <span class="feature-chip">PICO Framework</span>
+            <span class="feature-chip">Vaccine Templates</span>
+            <span class="feature-chip">Study Design Selection</span>
+            <span class="feature-chip">Version History</span>
+            <span class="feature-chip">AI-Assisted PICO Generation</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="workflow-card">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <h3>Gather Evidence <span class="tag tag-ai">AI-Powered</span></h3>
+          <p class="description">
+            Search PubMed and ClinicalTrials.gov directly from the platform, or import evidence from RIS/BibTeX/CSV files. Each evidence item is tagged, categorized (academic, regulatory, dataset, note), and linked to your protocol. The AI assistant helps identify relevant studies based on your PICO criteria.
+          </p>
+          <div class="feature-list">
+            <span class="feature-chip">PubMed Search</span>
+            <span class="feature-chip">ClinicalTrials.gov</span>
+            <span class="feature-chip">RIS / BibTeX Import</span>
+            <span class="feature-chip">Auto-Tagging</span>
+            <span class="feature-chip">Evidence Linking</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="workflow-card">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <h3>Screen &amp; Systematic Review <span class="tag tag-core">PRISMA</span></h3>
+          <p class="description">
+            Run a PRISMA-compliant 4-stage screening pipeline: Identification, Screening, Eligibility, and Included. Each evidence item moves through the stages with include/exclude decisions and exclusion reasons. Duplicate detection (DOI, PMID, fuzzy title matching) catches redundant records automatically. A real-time PRISMA flow diagram updates as you screen.
+          </p>
+          <div class="feature-list">
+            <span class="feature-chip">4-Stage Pipeline</span>
+            <span class="feature-chip">PRISMA Flow Diagram</span>
+            <span class="feature-chip">Duplicate Detection</span>
+            <span class="feature-chip">Exclusion Reasons</span>
+            <span class="feature-chip">Bulk Screening</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4 -->
+      <div class="workflow-card">
+        <div class="step-number">4</div>
+        <div class="step-content">
+          <h3>Assess Risk of Bias <span class="tag tag-core">Quality</span></h3>
+          <p class="description">
+            Evaluate study quality using internationally recognized tools: RoB 2 for randomized controlled trials and ROBINS-I for observational studies. Domain-by-domain assessment with structured judgments (low / some concerns / high / critical) and justification fields. Traffic-light summary visualization shows quality at a glance across all included studies.
+          </p>
+          <div class="feature-list">
+            <span class="feature-chip">RoB 2 (RCTs)</span>
+            <span class="feature-chip">ROBINS-I (Observational)</span>
+            <span class="feature-chip">Domain Judgments</span>
+            <span class="feature-chip">Traffic-Light Summary</span>
+            <span class="feature-chip">Per-Study Assessment</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 5 -->
+      <div class="workflow-card">
+        <div class="step-number">5</div>
+        <div class="step-content">
+          <h3>Synthesize &amp; Analyze <span class="tag tag-ai">AI-Powered</span></h3>
+          <p class="description">
+            Enter study-level effect sizes for meta-analysis with custom forest plot visualization (effect sizes, confidence intervals, weights, subgroups). The AI research assistant helps with evidence synthesis, gap analysis, and generating narrative summaries from your included studies. Real-time collaboration allows multiple researchers to work on the same protocol simultaneously.
+          </p>
+          <div class="feature-list">
+            <span class="feature-chip">Forest Plots</span>
+            <span class="feature-chip">Meta-Analysis</span>
+            <span class="feature-chip">AI Synthesis</span>
+            <span class="feature-chip">Gap Analysis</span>
+            <span class="feature-chip">Real-Time Collaboration</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 6 -->
+      <div class="workflow-card">
+        <div class="step-number">6</div>
+        <div class="step-content">
+          <h3>Export &amp; Regulatory Submission <span class="tag tag-regulatory">Regulatory</span></h3>
+          <p class="description">
+            Generate regulatory-format exports directly from your protocol data. FDA IND packages (21 CFR 312.23), ICH eCTD Module 5 clinical study reports, and CDISC SDTM dataset templates &mdash; all structured, pre-populated from your protocol's PICO framework. Plus CONSORT/STROBE reporting checklists and ICH E6(R2) GCP compliance tracking. Export as PDF, Word, CSV, or ZIP.
+          </p>
+          <div class="feature-list">
+            <span class="feature-chip">FDA IND (21 CFR 312.23)</span>
+            <span class="feature-chip">ICH eCTD Module 5</span>
+            <span class="feature-chip">CDISC SDTM Templates</span>
+            <span class="feature-chip">CONSORT / STROBE</span>
+            <span class="feature-chip">GCP Compliance</span>
+            <span class="feature-chip">PDF / Word / ZIP</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Regulatory export formats -->
+    <div class="section-intro">
+      <h2>Regulatory Export Formats</h2>
+      <p>Structured templates aligned to FDA/EMA submission standards.</p>
+    </div>
+
+    <div class="formats-grid">
+      <div class="format-card">
+        <div class="format-icon format-icon-fda">IND</div>
+        <h4>FDA IND Package</h4>
+        <p>10-section Investigational New Drug application per 21 CFR 312.23. Pre-populated from protocol PICO data.</p>
+      </div>
+      <div class="format-card">
+        <div class="format-icon format-icon-ectd">eCTD</div>
+        <h4>ICH eCTD Module 5</h4>
+        <p>Clinical study report structure per ICH M4E(R2). 15 sections covering tabular listings through integrated summaries.</p>
+      </div>
+      <div class="format-card">
+        <div class="format-icon format-icon-sdtm">DM</div>
+        <h4>CDISC SDTM Templates</h4>
+        <p>10 standardized dataset domains (trial design + clinical) per SDTM v3.3. Auto-populated from protocol metadata.</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- What makes it different -->
+    <div class="section-intro">
+      <h2>What Makes This Different</h2>
+      <p>Built for how vaccine evidence studies actually work.</p>
+    </div>
+
+    <div class="diff-grid">
+      <div class="diff-card">
+        <h4><span class="icon">&#10003;</span> One Connected Workflow</h4>
+        <p>Protocol data flows into screening, which feeds risk assessment, which populates exports. No copy-pasting between Excel, Word, and RevMan.</p>
+      </div>
+      <div class="diff-card">
+        <h4><span class="icon">&#10003;</span> Vaccine-Domain Specific</h4>
+        <p>Templates, terminology, and regulatory mappings designed for vaccine effectiveness studies &mdash; not adapted from generic clinical trial tools.</p>
+      </div>
+      <div class="diff-card">
+        <h4><span class="icon">&#10003;</span> Regulatory-Aware From Day One</h4>
+        <p>CONSORT/STROBE checklists, GCP compliance tracking, and FDA/EMA export formats are built in &mdash; not afterthoughts.</p>
+      </div>
+      <div class="diff-card">
+        <h4><span class="icon">&#10003;</span> Real-Time Collaboration</h4>
+        <p>Multiple researchers editing the same protocol simultaneously with presence indicators, field-level cursors, comments, and @mention notifications.</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Quick start -->
+    <div class="quickstart">
+      <h3>Quick Start in 3 Minutes</h3>
+      <p>Here's how to explore the platform.</p>
+      <div class="quickstart-steps">
+        <div class="qs-step">
+          <div class="qs-num">Step 1</div>
+          <h4>Try the Demo</h4>
+          <p>Visit the platform and click "Try Demo" to explore a pre-loaded RSV vaccine effectiveness study &mdash; no login needed.</p>
+        </div>
+        <div class="qs-step">
+          <div class="qs-num">Step 2</div>
+          <h4>Explore the Protocol</h4>
+          <p>Click into the sample protocol to see the PICO framework, linked evidence, and screening pipeline in action.</p>
+        </div>
+        <div class="qs-step">
+          <div class="qs-num">Step 3</div>
+          <h4>Sign Up to Build</h4>
+          <p>Create a free account to build your own protocols, import evidence, run systematic reviews, and generate exports.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p>VaxEvidence &mdash; The Evidence Platform for Vaccine Scientists</p>
+    <p style="margin-top: 6px;">
+      <a href="https://vaxevidence-dev.vercel.app/">Try the Platform</a>
+      &nbsp;&middot;&nbsp;
+      <a href="https://vax-evidence-pitch-deck.vercel.app/">View the Overview Deck</a>
+    </p>
+  </div>
+
+</body>
+</html>
