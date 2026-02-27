@@ -16,6 +16,7 @@ import { createClient } from "@/lib/supabase/browser";
 import { trackEvent } from "@/lib/analytics/track-event";
 
 const LOCALSTORAGE_KEY = "vax-onboarding-complete";
+const CHECKLIST_DISMISSED_KEY = "vax-checklist-dismissed";
 
 interface OnboardingContextValue {
   /** Whether the onboarding overlay is currently visible. */
@@ -34,6 +35,10 @@ interface OnboardingContextValue {
   completeOnboarding: () => void;
   /** The seeded sample protocol ID, if available. */
   sampleProtocolId: string | null;
+  /** Whether the Getting Started checklist has been dismissed. */
+  isChecklistDismissed: boolean;
+  /** Dismiss the Getting Started checklist permanently. */
+  dismissChecklist: () => void;
 }
 
 const OnboardingContext = createContext<OnboardingContextValue | null>(null);
@@ -48,6 +53,10 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   const [isOnboarding, setIsOnboarding] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [sampleProtocolId, setSampleProtocolId] = useState<string | null>(null);
+  const [isChecklistDismissed, setIsChecklistDismissed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(CHECKLIST_DISMISSED_KEY) === "true";
+  });
   const hasCheckedRef = useRef(false);
 
   // Check if onboarding is needed on mount
@@ -110,6 +119,14 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     markComplete();
   }, [markComplete]);
 
+  const dismissChecklist = useCallback(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(CHECKLIST_DISMISSED_KEY, "true");
+    }
+    setIsChecklistDismissed(true);
+    trackEvent("checklist_dismissed");
+  }, []);
+
   const currentStep = isOnboarding
     ? (ONBOARDING_STEPS[stepIndex] ?? null)
     : null;
@@ -125,6 +142,8 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
         skipOnboarding,
         completeOnboarding,
         sampleProtocolId,
+        isChecklistDismissed,
+        dismissChecklist,
       }}
     >
       {children}

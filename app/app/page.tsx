@@ -3,6 +3,7 @@
 import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,11 +17,13 @@ import {
 } from "@/components/ui/card";
 import { WorkspaceExportButton } from "@/components/export/workspace-export-button";
 import { PaginationControls } from "@/components/ui/pagination-controls";
+import { GettingStartedChecklist } from "@/components/onboarding/getting-started-checklist";
 import { useProtocolList } from "@/lib/query/hooks";
 import { useDebouncedSearch } from "@/hooks/use-debounced-search";
 import { buildPaginationMeta } from "@/lib/types/pagination";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useOnboarding } from "@/lib/onboarding/onboarding-context";
+import { createClient } from "@/lib/supabase/browser";
 import { Search, Loader2, FileText } from "lucide-react";
 
 const DASHBOARD_PAGE_SIZE = 12;
@@ -29,7 +32,7 @@ function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user: authUser, signOut } = useAuth();
-  const { isOnboarding } = useOnboarding();
+  const { isOnboarding, isChecklistDismissed } = useOnboarding();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   const initialPage = parseInt(searchParams.get("page") ?? "1", 10) || 1;
@@ -52,6 +55,52 @@ function DashboardContent() {
   const protocols = data?.items ?? [];
   const totalCount = data?.totalCount ?? 0;
   const pagination = buildPaginationMeta(totalCount, page, DASHBOARD_PAGE_SIZE);
+
+  // Lightweight checklist queries — only run when checklist is visible
+  const checklistEnabled = !isChecklistDismissed && !isOnboarding;
+
+  const { data: evidenceCount = 0 } = useQuery({
+    queryKey: ["checklist", "evidence-count"],
+    queryFn: async () => {
+      const supabase = createClient();
+      const { count } = await supabase
+        .from("evidence_items")
+        .select("id", { count: "exact", head: true });
+      return count ?? 0;
+    },
+    enabled: checklistEnabled,
+    staleTime: 60_000,
+  });
+
+  const { data: hasScreeningDecisions = false } = useQuery({
+    queryKey: ["checklist", "screening-exists"],
+    queryFn: async () => {
+      const supabase = createClient();
+      const { data: rows } = await supabase
+        .from("screening_decisions")
+        .select("id")
+        .limit(1);
+      return (rows?.length ?? 0) > 0;
+    },
+    enabled: checklistEnabled,
+    staleTime: 60_000,
+  });
+
+  const { data: hasRobAssessments = false } = useQuery({
+    queryKey: ["checklist", "rob-exists"],
+    queryFn: async () => {
+      const supabase = createClient();
+      const { data: rows } = await supabase
+        .from("risk_of_bias_assessments")
+        .select("id")
+        .limit(1);
+      return (rows?.length ?? 0) > 0;
+    },
+    enabled: checklistEnabled,
+    staleTime: 60_000,
+  });
+
+  const firstProtocolId = protocols.length > 0 ? protocols[0].id : null;
 
   const email = authUser?.email ?? null;
 
@@ -90,6 +139,16 @@ function DashboardContent() {
   return (
     <main className="min-h-screen bg-background px-4 py-12">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+        {checklistEnabled && (
+          <GettingStartedChecklist
+            protocolCount={totalCount}
+            evidenceCount={evidenceCount}
+            hasScreeningDecisions={hasScreeningDecisions}
+            hasRobAssessments={hasRobAssessments}
+            firstProtocolId={firstProtocolId}
+          />
+        )}
+
         <Card>
           <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>

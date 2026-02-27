@@ -12,6 +12,8 @@ export const EVENT_NAMES = [
   "demo_signup_clicked",
   "onboarding_completed",
   "onboarding_skipped",
+  "checklist_dismissed",
+  "checklist_item_clicked",
   "feedback_submitted",
 ] as const;
 

@@ -11,20 +11,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useOnboarding } from "@/lib/onboarding/onboarding-context";
-import { SpotlightHighlight } from "./spotlight-highlight";
-import {
-  ArrowRight,
-  Sparkles,
-  FileText,
-  Compass,
-  PartyPopper,
-} from "lucide-react";
-import Link from "next/link";
+import { ArrowRight, Sparkles, ListChecks } from "lucide-react";
 
-const STEP_ICONS = [Sparkles, FileText, Compass, PartyPopper];
+const STEP_ICONS = [Sparkles, ListChecks];
 
 /**
- * Full-screen onboarding overlay with step-by-step wizard.
+ * Full-screen onboarding overlay with 2-step wizard.
  * Renders nothing when onboarding is not active.
  */
 export function OnboardingOverlay() {
@@ -36,24 +28,17 @@ export function OnboardingOverlay() {
     nextStep,
     skipOnboarding,
     completeOnboarding,
-    sampleProtocolId,
   } = useOnboarding();
 
   if (!isOnboarding || !currentStep) return null;
 
   const isLastStep = stepIndex === totalSteps - 1;
-  const hasSpotlight = currentStep.spotlightTarget !== null;
   const StepIcon = STEP_ICONS[stepIndex] ?? Sparkles;
 
   return (
     <>
-      {/* Spotlight overlay for tour steps */}
-      <SpotlightHighlight targetId={currentStep.spotlightTarget} />
-
-      {/* Dark overlay for non-spotlight steps */}
-      {!hasSpotlight && (
-        <div className="fixed inset-0 z-[90] bg-black/60" aria-hidden="true" />
-      )}
+      {/* Dark overlay */}
+      <div className="fixed inset-0 z-[90] bg-black/60" aria-hidden="true" />
 
       {/* Step card */}
       <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none">
@@ -76,38 +61,6 @@ export function OnboardingOverlay() {
                   {currentStep.description}
                 </CardDescription>
               </CardHeader>
-
-              {/* Sample protocol link on step 2 */}
-              {currentStep.id === "sample-protocol" && sampleProtocolId && (
-                <CardContent className="pt-0">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    asChild
-                  >
-                    <Link href={`/app/${sampleProtocolId}`}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      View Sample Protocol
-                    </Link>
-                  </Button>
-                </CardContent>
-              )}
-
-              {/* Complete step CTA */}
-              {isLastStep && sampleProtocolId && (
-                <CardContent className="pt-0">
-                  <Button size="sm" className="w-full" asChild>
-                    <Link
-                      href={`/app/${sampleProtocolId}`}
-                      onClick={completeOnboarding}
-                    >
-                      Explore Sample Protocol
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                </CardContent>
-              )}
 
               <CardFooter className="flex items-center justify-between">
                 {/* Step dots */}
@@ -136,7 +89,7 @@ export function OnboardingOverlay() {
                       <ArrowRight className="ml-1 h-3 w-3" />
                     </Button>
                   )}
-                  {isLastStep && !sampleProtocolId && (
+                  {isLastStep && (
                     <Button size="sm" onClick={completeOnboarding}>
                       Get Started
                     </Button>

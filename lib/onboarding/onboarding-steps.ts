@@ -19,24 +19,10 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     spotlightTarget: null,
   },
   {
-    id: "sample-protocol",
-    title: "Your First Protocol",
+    id: "checklist-intro",
+    title: "Your Getting Started Guide",
     description:
-      "We created a sample protocol to help you explore. It demonstrates the PICO framework, evidence linking, and screening pipeline.",
-    spotlightTarget: null,
-  },
-  {
-    id: "nav-tour",
-    title: "Navigate Your Workspace",
-    description:
-      "Use the top navigation to switch between Protocols, Templates, Evidence Library, and more. Each section helps you build a complete study.",
-    spotlightTarget: "nav-protocols",
-  },
-  {
-    id: "complete",
-    title: "You're All Set!",
-    description:
-      "Start by exploring your sample protocol, or create a new one from scratch. The feedback button in the bottom-right corner is always available if you need help.",
+      "We created a sample protocol for you to explore. Your dashboard has a Getting Started checklist that tracks your progress — create protocols, add evidence, screen studies, and assess risk of bias. Close this overlay to begin.",
     spotlightTarget: null,
   },
 ];

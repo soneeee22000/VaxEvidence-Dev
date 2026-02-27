@@ -78,6 +78,9 @@ import {
   Download,
   Database,
   Shield,
+  Library,
+  ArrowRight,
+  Filter,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -1164,11 +1167,33 @@ export default function ProtocolDetailPage() {
             </CardHeader>
             <CardContent>
               {linkedEvidence.length === 0 ? (
-                <div className="rounded-lg border border-dashed p-8 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    No evidence linked yet. Click &ldquo;Add Evidence&rdquo; to
-                    link supporting evidence.
-                  </p>
+                <div className="rounded-lg border border-dashed p-8 text-center space-y-3">
+                  <Library className="mx-auto h-8 w-8 text-muted-foreground/50" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      No evidence linked yet
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Link existing evidence from your library or add new items
+                      to build your protocol&apos;s evidence base.
+                    </p>
+                  </div>
+                  <div className="flex justify-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        loadAvailableEvidence();
+                        setIsLinkDialogOpen(true);
+                      }}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Link Existing
+                    </Button>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href="/app/evidence">Evidence Library</Link>
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -1246,6 +1271,29 @@ export default function ProtocolDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Screening nudge — shown when evidence is linked but no screening started */}
+          {linkedEvidence.length > 0 && (
+            <div className="flex items-center gap-4 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+              <Filter className="h-5 w-5 flex-shrink-0 text-primary" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground">
+                  Ready to screen your evidence
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  You have {linkedEvidence.length} evidence{" "}
+                  {linkedEvidence.length === 1 ? "item" : "items"}. Start the
+                  screening pipeline to assess relevance.
+                </p>
+              </div>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/app/${protocolId}/screening`}>
+                  Start Screening
+                  <ArrowRight className="ml-1 h-3 w-3" />
+                </Link>
+              </Button>
+            </div>
+          )}
 
           {/* Linked Datasets Section */}
           <Card>
