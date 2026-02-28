@@ -1,6 +1,6 @@
 # VaxEvidence — Honest Technical Assessment
 
-_Last updated: 2026-02-24_
+_Last updated: 2026-02-28_
 
 ---
 
@@ -265,12 +265,13 @@ Not close. The gap between "all features exist as UI" and "one feature works rel
 8. **Integration tests.** 60 tests against real Supabase (RLS, CRUD, data integrity).
 9. **Performance benchmarks.** 51 benchmarks measuring duplicate detection, CSV generation, payload sizes, screening counts. Report at `docs/PERFORMANCE-BENCHMARKS.md`.
 10. **Design system consistency.** Hardcoded Tailwind colors replaced with OKLCH tokens across 20+ files. No gradient slop, no AI-generated color choices.
+11. **Onboarding flow redesigned.** First external user bounced after creating one protocol with zero evidence. Reduced overlay from 4 passive steps to 2, added a persistent Getting Started checklist on the dashboard tracking real milestones (protocol, evidence, screening, RoB), and added contextual next-step banners on the protocol page. Analytics events track checklist engagement.
 
 ---
 
 ## What Needs to Happen Next
 
-1. **Get real users.** Everything else is premature optimization without user feedback. The landing page, demo mode, and waitlist are ready. The missing piece is actually reaching out to researchers and watching them use it.
+1. **Get real users.** Everything else is premature optimization without user feedback. The landing page, demo mode, and waitlist are ready. First external signup (Feb 24) bounced — onboarding was redesigned in response (Feb 28). The missing piece is still outreach volume: reaching more researchers and watching them use it.
 2. **Validate AI output quality.** Have a domain expert evaluate PICO generation, synthesis, and gap analysis outputs. Adjust prompts based on what's wrong.
 3. **Test integrations against real APIs.** Zotero, Mendeley, and REDCap connectors have never touched real accounts. They might work or they might break on first contact.
 4. **Wire integration tests into CI.** They exist but only run locally. Set up a test Supabase project with credentials in GitHub Actions secrets.

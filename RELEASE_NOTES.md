@@ -1,5 +1,44 @@
 # Release Notes
 
+## 2026-02-28
+
+### Changed — Onboarding Flow Improvements
+
+First external user (signed up Feb 24) created one protocol, added zero evidence, and never returned. Root cause: the 4-step onboarding overlay was passive education with no persistent guidance afterward. Users closed the overlay and were left staring at an empty protocol with no idea what to do next.
+
+**Onboarding Overlay (simplified)**
+
+- Reduced from 4 steps to 2: "Welcome" and "Your Getting Started Guide". Removed the nav-tour spotlight step and the sample-protocol link step. Less friction to close, faster to reach the actual product.
+- Last step now mentions the dashboard checklist so users know guidance continues after the overlay.
+
+**Getting Started Checklist (new)**
+
+- Persistent card on the dashboard tracking 4 real milestones: create/explore a protocol, add evidence, screen evidence, run a risk-of-bias assessment.
+- Progress bar showing completion percentage. Each item links to the relevant page.
+- Dismiss button (X) persists to localStorage. Auto-hides when all items are complete.
+- Queries are gated (`enabled: !isChecklistDismissed`) so returning users who dismissed the checklist pay zero query cost.
+
+**Contextual Banners on Protocol Page**
+
+- Evidence empty state upgraded from plain text to a styled card with icon, description, and action buttons ("Link Existing", "Evidence Library").
+- Screening nudge banner appears between evidence and datasets cards when evidence is linked: "Ready to screen your evidence — You have N evidence items. Start the screening pipeline."
+
+**Analytics**
+
+- Added `checklist_dismissed` and `checklist_item_clicked` event names for tracking engagement with the new onboarding flow.
+
+### Files Changed
+
+- `lib/onboarding/onboarding-steps.ts` — 4 steps → 2 steps
+- `lib/onboarding/onboarding-context.tsx` — Added `isChecklistDismissed` state and `dismissChecklist()` callback
+- `components/onboarding/onboarding-overlay.tsx` — Simplified to 2-step flow, removed spotlight logic
+- `components/onboarding/getting-started-checklist.tsx` — New component
+- `app/app/page.tsx` — Mounted checklist with 3 lightweight completion queries
+- `app/app/[id]/page.tsx` — Better evidence empty state + screening nudge banner
+- `lib/validators/analytics.ts` — 2 new event names
+
+---
+
 ## 2026-02-22
 
 ### Added — Phase 10: Real-Time Collaboration
