@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://vaxevidence-dev.vercel.app
+    about: Check the documentation and live demo before opening an issue
