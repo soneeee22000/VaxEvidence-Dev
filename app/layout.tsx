@@ -32,6 +32,22 @@ export const metadata: Metadata = {
     ],
     apple: "/logo-final.svg",
   },
+  metadataBase: new URL("https://vaxevidence-dev.vercel.app"),
+  openGraph: {
+    title: "VaxEvidence | Real-World Evidence Platform for Vaccine Research",
+    description:
+      "PICO protocols, PRISMA systematic reviews, and FDA/EMA regulatory exports. Built with Next.js 16, React 19, TypeScript, and Supabase.",
+    url: "https://vaxevidence-dev.vercel.app",
+    siteName: "VaxEvidence",
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "VaxEvidence | Real-World Evidence Platform",
+    description:
+      "PICO protocols, PRISMA systematic reviews, and FDA/EMA regulatory exports for vaccine research scientists.",
+  },
 };
 
 export const viewport: Viewport = {
