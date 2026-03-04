@@ -31,3 +31,17 @@ next-env.d.ts
 test-results/
 playwright-report/
 e2e/.auth/
+
+# coverage
+coverage/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code
+CLAUDE.md
