@@ -1,6 +1,28 @@
 {
-  "name": "vax-evidence-landing-page",
-  "version": "0.1.0",
+  "name": "vaxevidence",
+  "version": "1.0.0",
+  "description": "Real-World Evidence platform for vaccine research. PICO protocols, PRISMA systematic reviews, FDA/EMA regulatory exports.",
+  "license": "MIT",
+  "author": "Pyae Sone <pyaesone@vaxevidence.com>",
+  "homepage": "https://vaxevidence-dev.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/VaxEvidence/vax-evidence-dev.git"
+  },
+  "keywords": [
+    "nextjs",
+    "react",
+    "typescript",
+    "supabase",
+    "healthcare",
+    "regulatory",
+    "systematic-review",
+    "real-world-evidence",
+    "vaccine-research",
+    "PICO",
+    "PRISMA",
+    "FDA"
+  ],
   "private": true,
   "scripts": {
     "build": "next build",
