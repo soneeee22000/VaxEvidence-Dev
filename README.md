@@ -12,6 +12,11 @@
 
 > [**Live Demo**](https://vaxevidence-dev.vercel.app/demo) — No sign-up required. Pre-loaded with sample vaccine research data.
 
+
+<p align="center">
+  <img src="docs/screenshot-hero.png" alt="VaxEvidence Screenshot" width="100%" />
+</p>
+
 ---
 
 ## Why This Exists
